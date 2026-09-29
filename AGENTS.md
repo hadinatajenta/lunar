@@ -111,15 +111,71 @@ Reject all low-quality AI-generated patterns:
 
 ---
 
-## 7. GIT & SECURITY GUARDRAILS
+---
+
+## 7. BACKEND SECURITY & THREAT MITIGATION (SAST & OWASP)
+
+All backend code must pass Static Application Security Testing (SAST) and SonarQube security audits without exceptions. Every engineer and AI agent must design defensively against all known attack vectors:
+
+### Injection & Query Safety (CWE-89, CWE-77, CWE-78)
+- Always use parameterized queries or typed query builders. Never concatenate or interpolate raw strings into SQL, NoSQL, or shell command strings.
+- Disallow dynamic SQL construction from untrusted user inputs.
+- Never pass user input directly to system command execution (`exec.Command`, `child_process.exec`, `system`). If shell execution is strictly required, use fixed binaries with explicitly validated arguments array.
+
+### Broken Access Control & IDOR (CWE-284, CWE-639)
+- Always enforce tenant-level and user-level authorization at the data query layer. Never trust client-provided resource IDs (`userId`, `companyId`, `orderId`) without verifying ownership against the authenticated session context.
+- Implement strict Role-Based Access Control (RBAC) / Attribute-Based Access Control (ABAC) at service boundaries before business logic executes.
+
+### Server-Side Request Forgery (SSRF) Prevention (CWE-918)
+- Never make outbound HTTP requests to user-supplied URLs without an explicit domain allowlist.
+- Block internal IP ranges (RFC 1918 private subnets `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, loopback `127.0.0.0/8`, and cloud metadata endpoints `169.254.169.254`).
+
+### Path Traversal & Arbitrary File Access (CWE-22, CWE-73)
+- Never construct filesystem paths using unvalidated user input.
+- Use path canonicalization (`filepath.Clean`, `path.resolve`) and verify the resulting path remains scoped strictly within the intended base directory.
+- Avoid directly exposing internal file paths or filenames in API responses.
+
+### Denial of Service & Resource Exhaustion (CWE-400, CWE-1333)
+- Enforce strict size limits on all incoming request bodies (`http.MaxBytesReader` or middleware body parsers).
+- Configure explicit timeouts on all network servers (`ReadTimeout`, `WriteTimeout`, `IdleTimeout`) and HTTP client connections.
+- Avoid catastrophic backtracking in Regular Expressions (ReDoS). Pre-compile regex patterns and prefer linear parsing when feasible.
+- Limit concurrency, channel buffer capacities, and database connection pool sizes to prevent memory saturation and thread starvation.
+
+### Memory, Concurrency, and Resource Lifecycles (CWE-401, CWE-362)
+- Always release resources deterministically (`defer response.Body.Close()`, `defer file.Close()`, closing database rows and transaction rollbacks).
+- Ensure concurrency safety: protect shared mutable states with mutexes or immutable data structures. All Go code must pass `go test -race ./...`.
+- Prevent goroutine leaks: every spawned goroutine must bind to a `context.Context` lifecycle or deterministic exit channel.
+
+### Cryptography & Secret Hygiene (CWE-338, CWE-798, CWE-312)
+- Use cryptographically secure pseudo-random generators (`crypto/rand`) for tokens, salts, and session IDs. Never use `math/rand` for security contexts.
+- Never hardcode secrets, API keys, tokens, or credentials. Rely exclusively on environment variables or secure vault stores.
+- Never log sensitive user data, passwords, authorization headers, or PII.
+
+---
+
+## 8. CODE SMELLS & SONARQUBE QUALITY GATES
+
+Code must maintain a clean Maintainability Rating (Grade A) and zero code smells:
+
+- **Cognitive & Cyclomatic Complexity**:
+  - Keep cyclomatic complexity under 10 and cognitive complexity under 15 per function.
+  - Decompose nested conditionals into early returns, guard clauses, or distinct domain strategies.
+- **Dead Code & Redundancy**:
+  - Zero unused variables, uncalled private functions, dead imports, or unreachable branches.
+  - Zero duplicated string literals (extract repeated configuration keys, SQL fragments, or error strings into typed constants).
+- **Error Handling Discipline**:
+  - Never swallow errors silently (`_ = err`, empty `catch {}`).
+  - Never throw generic untyped exceptions or invoke unhandled `panic()`. Always wrap errors with descriptive context (`fmt.Errorf("actionName: %w", err)`).
+- **Type Safety & Nil Checks**:
+  - Always validate pointers, nil interfaces, and optional fields before dereferencing.
+  - Avoid unsafe type casting and unchecked type assertions.
+
+---
+
+## 9. GIT & SECURITY GUARDRAILS
 
 - **Git Commits & Branches**:
   - Branches: `feat/`, `fix/`, `chore/`, `refactor/`, `docs/` with short kebab-case description.
   - Commits: Conventional Commits (`feat(auth): ...`, `fix(api): ...`).
   - Never commit without running verification tests first.
   - Never push, hard reset, or discard unstaged work without explicit user request.
-- **Security & Secrets**:
-  - Never hardcode secrets, API keys, tokens, or credentials. Use environment variables.
-  - Never log sensitive user data, auth tokens, or passwords.
-  - Always use parameterized queries for SQL/database access. Never string-concatenate SQL.
-  - Validate all input at system boundaries.

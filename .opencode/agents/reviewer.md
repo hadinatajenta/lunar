@@ -28,7 +28,8 @@ Report findings in severity order with file and line references, focusing on:
 - **Zero Code Comments**: Enforce the global ban on comments (`//`, `/* */`, `#`, `<!-- -->`). Ensure code is self-documenting.
 - **English Language**: Ensure all UI text, code identifiers, types, filenames, and commit messages are strictly in English.
 - **Reusability & Anti-Slop**: Reject duplicated logic, fake test coverage, silent error swallowing, unnecessary abstractions, or monolithic files (>300 lines).
-- **Security & Data Safety**: Check for hardcoded credentials, unparameterized SQL queries, and sensitive data leakage.
-- **Test Adequacy**: Verify that meaningful unit/integration tests cover new functionality and edge cases.
+- **Security & SAST Verification**: Check for SQL/command injection, SSRF risks, BOLA/IDOR flaws, path traversal, hardcoded secrets, unhandled concurrency races, and sensitive data leakage.
+- **SonarQube & Code Smell Audits**: Reject high cognitive complexity (>15), duplicated string literals, dead code, unchecked type assertions, and unclosed resources.
+- **Test Adequacy**: Verify that meaningful unit/integration tests cover new functionality, failure modes, and edge cases.
 
 Do not modify any file. Do not claim a change is correct merely because it compiles or runs without error.
