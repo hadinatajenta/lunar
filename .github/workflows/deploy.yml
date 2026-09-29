@@ -1,0 +1,189 @@
+name: CI and VM Deployment Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deployment-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  filter:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.changes.outputs.backend }}
+      frontend: ${{ steps.changes.outputs.frontend }}
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Check Modified Paths
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+
+  ci-backend:
+    name: Backend CI
+    needs: filter
+    if: ${{ needs.filter.outputs.backend == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Verify Backend Directory
+        id: verify
+        run: |
+          if [ -d "backend" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Go Runtime
+        if: steps.verify.outputs.exists == 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: backend/go.sum
+
+      - name: Run Backend Tests
+        if: steps.verify.outputs.exists == 'true'
+        run: |
+          cd backend
+          go test -v -race ./...
+
+      - name: Compile Linux Binary
+        if: steps.verify.outputs.exists == 'true'
+        run: |
+          cd backend
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o server .
+
+      - name: Upload Binary Artifact
+        if: steps.verify.outputs.exists == 'true' && github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-binary
+          path: backend/server
+          retention-days: 1
+
+  ci-frontend:
+    name: Frontend CI
+    needs: filter
+    if: ${{ needs.filter.outputs.frontend == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Verify Frontend Directory
+        id: verify
+        run: |
+          if [ -d "frontend" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node Runtime
+        if: steps.verify.outputs.exists == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        if: steps.verify.outputs.exists == 'true'
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build Production Assets
+        if: steps.verify.outputs.exists == 'true'
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Upload Production Dist
+        if: steps.verify.outputs.exists == 'true' && github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 1
+
+  deploy:
+    name: Deploy to VM
+    needs: [filter, ci-backend, ci-frontend]
+    if: |
+      always() &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'push' &&
+      (needs.ci-backend.result == 'success' || needs.ci-backend.result == 'skipped') &&
+      (needs.ci-frontend.result == 'success' || needs.ci-frontend.result == 'skipped') &&
+      (needs.filter.outputs.backend == 'true' || needs.filter.outputs.frontend == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure SSH Credentials
+        env:
+          SSH_KEY: ${{ secrets.VM_SSH_PRIVATE_KEY }}
+          SSH_HOST: ${{ secrets.VM_HOST }}
+          SSH_PORT: ${{ secrets.VM_SSH_PORT || 22 }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Download Backend Binary
+        if: needs.filter.outputs.backend == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-binary
+          path: ./artifacts/backend
+
+      - name: Deploy Backend Binary
+        if: needs.filter.outputs.backend == 'true'
+        env:
+          VM_USER: ${{ secrets.VM_USER }}
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_PORT: ${{ secrets.VM_SSH_PORT || 22 }}
+          APP_DIR: ${{ secrets.VM_APP_DIR || '/opt/lunar' }}
+        run: |
+          ssh -p "$VM_PORT" "$VM_USER@$VM_HOST" "mkdir -p $APP_DIR"
+          scp -P "$VM_PORT" ./artifacts/backend/server "$VM_USER@$VM_HOST:$APP_DIR/server.new"
+          ssh -p "$VM_PORT" "$VM_USER@$VM_HOST" "
+            mv $APP_DIR/server.new $APP_DIR/server &&
+            chmod +x $APP_DIR/server &&
+            sudo systemctl restart lunar-backend
+          "
+
+      - name: Download Frontend Dist
+        if: needs.filter.outputs.frontend == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: ./artifacts/frontend
+
+      - name: Deploy Frontend Assets
+        if: needs.filter.outputs.frontend == 'true'
+        env:
+          VM_USER: ${{ secrets.VM_USER }}
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_PORT: ${{ secrets.VM_SSH_PORT || 22 }}
+          WEB_ROOT: ${{ secrets.VM_WEB_ROOT || '/var/www/lunar/dist' }}
+        run: |
+          ssh -p "$VM_PORT" "$VM_USER@$VM_HOST" "mkdir -p $WEB_ROOT"
+          rsync -avz -e "ssh -p $VM_PORT" --delete ./artifacts/frontend/ "$VM_USER@$VM_HOST:$WEB_ROOT/"
