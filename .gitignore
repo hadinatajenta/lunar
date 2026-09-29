@@ -1,0 +1,22 @@
+# Environment files
+.env
+.env.*
+!.env.example
+*.env
+!*.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts & dependencies
+dist/
+build/
+bin/
+node_modules/
+vendor/
+
+# Logs & temp
+*.log
+*.tmp
+.cache/
