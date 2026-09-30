@@ -155,13 +155,14 @@ func (c *AtlassianJiraClient) GetBacklogSprints(ctx context.Context, pat string)
 	}
 
 	filteredSprints := filterBacklogSprints(sprintList)
-	c.enrichBacklogSprints(ctx, pat, filteredSprints)
+	prioritySprints := selectPrioritySprints(filteredSprints)
+	c.enrichBacklogSprints(ctx, pat, prioritySprints)
 
-	if len(filteredSprints) == 0 && c.fallbackEnabled {
+	if len(prioritySprints) == 0 && c.fallbackEnabled {
 		return c.seedSprints, nil
 	}
 
-	return filteredSprints, nil
+	return prioritySprints, nil
 }
 
 func (c *AtlassianJiraClient) fetchSprintList(ctx context.Context, pat string) ([]domain.JiraSprint, error) {
@@ -207,17 +208,6 @@ func (c *AtlassianJiraClient) sprintListFallbackOr(fetchErr error) error {
 		return errSprintListUnavailable
 	}
 	return fetchErr
-}
-
-func filterBacklogSprints(sprintList []domain.JiraSprint) []domain.JiraSprint {
-	filteredSprints := make([]domain.JiraSprint, 0, len(sprintList))
-	for _, sprint := range sprintList {
-		if sprint.OriginBoardID > 0 && sprint.OriginBoardID != JIRA_BACKLOG_BOARD_ID {
-			continue
-		}
-		filteredSprints = append(filteredSprints, sprint)
-	}
-	return filteredSprints
 }
 
 func (c *AtlassianJiraClient) enrichBacklogSprints(ctx context.Context, pat string, sprints []domain.JiraSprint) {

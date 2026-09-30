@@ -6,6 +6,7 @@ import DashboardPage from "@/features/dashboard/pages/DashboardPage.vue"
 import JiraPage from "@/features/jira/pages/JiraPage.vue"
 import BitbucketPage from "@/features/bitbucket/pages/BitbucketPage.vue"
 import ConfluencePage from "@/features/confluence/pages/ConfluencePage.vue"
+import DocumentDetailView from "@/features/confluence/pages/DocumentDetailView.vue"
 import CopilotPage from "@/features/copilot/pages/CopilotPage.vue"
 import SettingsPage from "@/features/settings/pages/SettingsPage.vue"
 
@@ -62,6 +63,14 @@ const routes: RouteRecordRaw[] = [
     component: ConfluencePage,
     meta: {
       title: "Lunar - Confluence BRI"
+    }
+  },
+  {
+    path: "/confluence/:id",
+    name: "ConfluenceDocument",
+    component: DocumentDetailView,
+    meta: {
+      title: "Lunar - Confluence Document"
     }
   },
   {

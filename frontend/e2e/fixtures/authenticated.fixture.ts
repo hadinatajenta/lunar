@@ -1,8 +1,49 @@
-import { test as base } from "@playwright/test"
+import { test as base, expect } from "@playwright/test"
+import { AuthPage } from "../pages/AuthPage"
+import { RegisterPage } from "../pages/RegisterPage"
+import { DashboardPage } from "../pages/DashboardPage"
+import { CopilotPage } from "../pages/CopilotPage"
+import { JiraPage } from "../pages/JiraPage"
+import { BitbucketPage } from "../pages/BitbucketPage"
+import { ConfluencePage } from "../pages/ConfluencePage"
+import { SettingsPage } from "../pages/SettingsPage"
 
-export type AuthenticatedFixtures = {
-  authenticatedPage: typeof base extends (args: infer A) => unknown ? A : never
+type AppFixtures = {
+  authPage: AuthPage
+  registerPage: RegisterPage
+  dashboardPage: DashboardPage
+  copilotPage: CopilotPage
+  jiraPage: JiraPage
+  bitbucketPage: BitbucketPage
+  confluencePage: ConfluencePage
+  settingsPage: SettingsPage
 }
 
-export const test = base.extend<Record<string, never>>({})
-export { expect } from "@playwright/test"
+export const test = base.extend<AppFixtures>({
+  authPage: async ({ page }, use) => {
+    await use(new AuthPage(page))
+  },
+  registerPage: async ({ page }, use) => {
+    await use(new RegisterPage(page))
+  },
+  dashboardPage: async ({ page }, use) => {
+    await use(new DashboardPage(page))
+  },
+  copilotPage: async ({ page }, use) => {
+    await use(new CopilotPage(page))
+  },
+  jiraPage: async ({ page }, use) => {
+    await use(new JiraPage(page))
+  },
+  bitbucketPage: async ({ page }, use) => {
+    await use(new BitbucketPage(page))
+  },
+  confluencePage: async ({ page }, use) => {
+    await use(new ConfluencePage(page))
+  },
+  settingsPage: async ({ page }, use) => {
+    await use(new SettingsPage(page))
+  }
+})
+
+export { expect }

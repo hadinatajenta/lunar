@@ -24,3 +24,5 @@ data/
 backend/server
 test-results/
 playwright-report/
+playwright/.auth/
+.auth/

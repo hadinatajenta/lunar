@@ -4,28 +4,24 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
-	"time"
 
 	authApp "lunar/backend/internal/auth/application"
 	"lunar/backend/internal/jira/domain"
+	"lunar/backend/internal/shared/cache"
 	sharedErrors "lunar/backend/internal/shared/errors"
 )
 
 type JiraService struct {
-	repo         domain.JiraRepository
-	authService  *authApp.AuthService
-	cacheMu      sync.Mutex
-	cacheEntries map[string]jiraCacheEntry
-	cacheTTL     time.Duration
+	repo        domain.JiraRepository
+	authService *authApp.AuthService
+	cacheStore  *cache.Store
 }
 
 func NewJiraService(repo domain.JiraRepository, authService *authApp.AuthService) *JiraService {
 	return &JiraService{
-		repo:         repo,
-		authService:  authService,
-		cacheEntries: make(map[string]jiraCacheEntry),
-		cacheTTL:     JIRA_CACHE_TTL,
+		repo:        repo,
+		authService: authService,
+		cacheStore:  cache.New(JIRA_CACHE_TTL),
 	}
 }
 
@@ -49,7 +45,7 @@ func (s *JiraService) GetMyIssues(ctx context.Context, userID string) ([]domain.
 	}
 
 	if !isForceRefresh(ctx) {
-		if cached, exists := s.loadCacheEntry(issuesCacheKey(userID)); exists {
+		if cached, exists := s.cacheStore.Get(issuesCacheKey(userID)); exists {
 			if issues, ok := cached.([]domain.JiraIssue); ok {
 				return issues, nil
 			}
@@ -60,7 +56,7 @@ func (s *JiraService) GetMyIssues(ctx context.Context, userID string) ([]domain.
 	if err != nil {
 		return nil, err
 	}
-	s.storeCacheEntry(issuesCacheKey(userID), issues)
+	s.cacheStore.Set(issuesCacheKey(userID), issues)
 	return issues, nil
 }
 
@@ -72,7 +68,7 @@ func (s *JiraService) GetBacklog(ctx context.Context, userID string, requestedSq
 
 	cacheKey := backlogCacheKey(userID, requestedSquad)
 	if !isForceRefresh(ctx) {
-		if cached, exists := s.loadCacheEntry(cacheKey); exists {
+		if cached, exists := s.cacheStore.Get(cacheKey); exists {
 			if backlog, ok := cached.(*domain.JiraBacklogResponse); ok {
 				return backlog, nil
 			}
@@ -83,7 +79,7 @@ func (s *JiraService) GetBacklog(ctx context.Context, userID string, requestedSq
 	if err != nil {
 		return nil, err
 	}
-	s.storeCacheEntry(cacheKey, backlog)
+	s.cacheStore.Set(cacheKey, backlog)
 	return backlog, nil
 }
 

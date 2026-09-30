@@ -2,3 +2,5 @@ dist/
 node_modules/
 *.tsbuildinfo
 .DS_Store
+playwright/.auth/
+.auth/

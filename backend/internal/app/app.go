@@ -15,6 +15,9 @@ import (
 	bitbucketInfra "lunar/backend/internal/bitbucket/infrastructure"
 	bitbucketTransport "lunar/backend/internal/bitbucket/transport"
 	"lunar/backend/internal/config"
+	confluenceApp "lunar/backend/internal/confluence/application"
+	confluenceInfra "lunar/backend/internal/confluence/infrastructure"
+	confluenceTransport "lunar/backend/internal/confluence/transport"
 	copilotApp "lunar/backend/internal/copilot/application"
 	copilotInfra "lunar/backend/internal/copilot/infrastructure"
 	copilotTransport "lunar/backend/internal/copilot/transport"
@@ -89,6 +92,10 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	jiraService := jiraApp.NewJiraService(jiraClient, authService)
 	jiraHandler := jiraTransport.NewJiraHandler(jiraService)
 
+	confluenceClient := confluenceInfra.NewConfluenceClient(cfg.ConfluenceBaseURL)
+	confluenceService := confluenceApp.NewConfluenceService(confluenceClient, authService)
+	confluenceHandler := confluenceTransport.NewConfluenceHandler(confluenceService)
+
 	dashboardService := dashboardApp.NewDashboardService(jiraService, bitbucketService, copilotService, authService)
 	dashboardHandler := dashboardTransport.NewDashboardHandler(dashboardService)
 
@@ -152,6 +159,9 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	mux.Handle("GET /api/jira/issues", authMiddleware(http.HandlerFunc(jiraHandler.ListMyIssues)))
 	mux.Handle("GET /api/jira/backlog", authMiddleware(http.HandlerFunc(jiraHandler.GetBacklog)))
 	mux.Handle("GET /api/jira/issues/{key}", authMiddleware(http.HandlerFunc(jiraHandler.GetIssueDetail)))
+
+	mux.Handle("GET /api/confluence/documents", authMiddleware(http.HandlerFunc(confluenceHandler.ListDocuments)))
+	mux.Handle("GET /api/confluence/documents/{id}", authMiddleware(http.HandlerFunc(confluenceHandler.GetDocument)))
 
 	mux.Handle("GET /api/dashboard/summary", authMiddleware(http.HandlerFunc(dashboardHandler.GetSummary)))
 

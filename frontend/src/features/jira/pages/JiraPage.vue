@@ -9,7 +9,7 @@ import BacklogList from "../components/BacklogList.vue"
 import BacklogSkeleton from "../components/BacklogSkeleton.vue"
 import IssueDetailModal from "../components/IssueDetailModal.vue"
 
-const { secrets, config, fetchSettings } = useSettings()
+const { secrets, config } = useSettings()
 
 const {
   sprints,
@@ -37,20 +37,11 @@ const {
   setDocType,
   setSquad,
   fetchData,
-  clearError,
   initialize
 } = useJira()
 
 onMounted(() => {
-  const settingsPromise = secrets.value ? Promise.resolve() : fetchSettings()
-  if (secrets.value?.has_jira_pat !== false) {
-    initialize()
-  }
-  settingsPromise.then(() => {
-    if (secrets.value?.has_jira_pat === false) {
-      clearError()
-    }
-  })
+  initialize()
 })
 </script>
 

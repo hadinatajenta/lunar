@@ -156,8 +156,6 @@ function normalizeSprint(
   }
 }
 
-const JIRA_CACHE_TTL_MS = 30000
-
 const issues = ref<JiraIssue[]>([])
 const sprints = ref<JiraSprint[]>([])
 const activeTab = ref<"assigned" | "backlog">("assigned")
@@ -172,7 +170,7 @@ const columnLimits = ref<Record<string, number>>({
   done: 5
 })
 const selectedIssue = ref<JiraIssue | null>(null)
-const isLoading = ref(true)
+const isLoading = ref(false)
 const error = ref<string | null>(null)
 const errorCode = ref<number | null>(null)
 const lastLoadedAt = ref<number | null>(null)
@@ -235,7 +233,7 @@ const isVpnError = computed(() => errorCode.value === 502)
 const isAuthError = computed(() => errorCode.value === 401)
 
 export function useJira() {
-  const { secrets } = useSettings()
+  const { secrets, fetchSettings } = useSettings()
 
   const loadMore = (status: string) => {
     const currentLimit = columnLimits.value[status] ?? 5
@@ -356,23 +354,34 @@ export function useJira() {
     }
   }
 
-  const revalidate = async () => {
-    try {
-      await loadJiraData()
-    } catch (err: unknown) {
-      handleFetchError(err)
+  const initialize = async () => {
+    if (isLoading.value || lastLoadedAt.value !== null) {
+      return
     }
+    await fetchData()
   }
 
-  const initialize = async () => {
-    if (lastLoadedAt.value === null) {
-      await fetchData()
+  const prefetchJiraData = async () => {
+    if (secrets.value === null) {
+      await fetchSettings()
+    }
+    if (secrets.value?.has_jira_pat === false) {
       return
     }
-    if (Date.now() - lastLoadedAt.value < JIRA_CACHE_TTL_MS) {
-      return
-    }
-    await revalidate()
+    await initialize()
+  }
+
+  const resetJiraData = () => {
+    issues.value = []
+    sprints.value = []
+    detectedSquad.value = ""
+    availableSquads.value = []
+    selectedSquad.value = ""
+    selectedIssue.value = null
+    error.value = null
+    errorCode.value = null
+    lastLoadedAt.value = null
+    isLoading.value = false
   }
 
   return {
@@ -405,6 +414,8 @@ export function useJira() {
     setSquad,
     fetchData,
     clearError,
-    initialize
+    initialize,
+    prefetchJiraData,
+    resetJiraData
   }
 }

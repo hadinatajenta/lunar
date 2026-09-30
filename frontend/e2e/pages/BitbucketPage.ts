@@ -107,8 +107,36 @@ export class BitbucketPage {
     return this.page.getByTestId("btn-send-comment")
   }
 
+  get postCommentButton() {
+    return this.sendCommentButton
+  }
+
   approveButton() {
     return this.page.getByTestId("btn-action-approve")
+  }
+
+  get approvePrButton() {
+    return this.approveButton()
+  }
+
+  get generateAiReviewButton() {
+    return this.triggerAiReviewButton
+  }
+
+  get prReviewNoAiWarning() {
+    return this.noAiKeysBanner
+  }
+
+  get diffContainer() {
+    return this.diffViewer
+  }
+
+  get aiReviewFindings() {
+    return this.aiFindings
+  }
+
+  get reviewCommentTextarea() {
+    return this.reviewCommentInput
   }
 
   get globalToast() {

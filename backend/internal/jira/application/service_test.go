@@ -12,6 +12,7 @@ import (
 	authApp "lunar/backend/internal/auth/application"
 	authDomain "lunar/backend/internal/auth/domain"
 	"lunar/backend/internal/jira/domain"
+	"lunar/backend/internal/shared/cache"
 	"lunar/backend/internal/shared/crypto"
 	sharedErrors "lunar/backend/internal/shared/errors"
 )
@@ -310,7 +311,7 @@ func TestJiraService_CacheExpiresAfterTTL(t *testing.T) {
 		issues: cacheTestIssues(),
 	}
 	service, configuredUserID, _ := setupTestService(repo)
-	service.cacheTTL = 20 * time.Millisecond
+	service.cacheStore = cache.New(20 * time.Millisecond)
 	ctx := context.Background()
 
 	if _, err := service.GetMyIssues(ctx, configuredUserID); err != nil {
