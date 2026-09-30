@@ -13,15 +13,20 @@ export interface ConfluenceDocument {
   title: string
   status: ConfluenceDocStatus
   owner: string
+  last_editor?: string
   updated: string
   space: string
   description: string
+  body?: string
   url: string
 }
 
 export interface ConfluenceDocumentsResponse {
   documents: ConfluenceDocument[]
   total: number
+  source?: string
+  degraded?: boolean
+  degraded_reason?: string
 }
 
 export interface StatsCounts {

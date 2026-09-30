@@ -19,13 +19,13 @@ This report provides the canonical status of the Lunar end-to-end automation tes
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Auth** | 14 | 8 | 6 | 0 | 4 | 4 | PASSED |
 | **Dashboard** | 12 | 5 | 7 | 0 | 4 | 3 | PASSED |
-| **Copilot** | 9 | 5 | 2 | 2 | 2 | 7 | PASSED |
+| **Copilot** | 10 | 6 | 2 | 2 | 3 | 7 | **PASSED** (Resolved `DEF-COPILOT-001`) |
 | **Jira BRI** | 20 | 15 | 5 | 0 | 5 | 5 | PASSED |
 | **Bitbucket BRI** | 18 | 11 | 6 | 1 | 4 | 6 | PASSED |
 | **Confluence BRI** | 21 | 14 | 5 | 2 | 4 | 5 | PASSED |
 | **Settings** | 6 | 6 | 0 | 0 | 2 | 1 | PASSED |
 | **Global Setup** | 1 | 1 | 0 | 0 | 1 | 1 | PASSED |
-| **Total** | **107** | **65** | **31** | **11** | **26** | **32** | **HEALTHY** |
+| **Total** | **108** | **66** | **31** | **11** | **27** | **32** | **HEALTHY** |
 
 ---
 

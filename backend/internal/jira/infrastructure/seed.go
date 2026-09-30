@@ -1,6 +1,8 @@
 package infrastructure
 
 import (
+	"strings"
+
 	"lunar/backend/internal/jira/domain"
 )
 
@@ -198,4 +200,31 @@ func buildSeedSprints(issues []domain.JiraIssue) []domain.JiraSprint {
 			Issues:        sprintAzzuriIssues,
 		},
 	}
+}
+
+var seedConfluencePageIDs = map[string][]string{
+	"CRMMS-77911": {"110001"},
+	"CRMMS-77913": {"110002", "110003"},
+	"CRMMS-77914": {"110004"},
+	"CRMMS-77925": {"110005"},
+}
+
+func buildSeedRemoteLinks(issueKey string) []domain.JiraRemoteLink {
+	pageIDs, exists := seedConfluencePageIDs[strings.ToUpper(strings.TrimSpace(issueKey))]
+	if !exists {
+		return []domain.JiraRemoteLink{}
+	}
+
+	links := make([]domain.JiraRemoteLink, 0, len(pageIDs))
+	for index, pageID := range pageIDs {
+		links = append(links, domain.JiraRemoteLink{
+			ID:           7000 + index,
+			Relationship: "wiki",
+			Object: domain.JiraRemoteLinkObject{
+				URL:   "https://confluence.bri.co.id/pages/viewpage.action?pageId=" + pageID,
+				Title: "Wiki Page " + pageID,
+			},
+		})
+	}
+	return links
 }

@@ -412,7 +412,7 @@ h1 {
   padding: 0 14px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--surface);
   color: var(--text);
   font-size: 12px;
   font-weight: 500;
@@ -421,7 +421,7 @@ h1 {
 }
 
 .heading-action:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-hover);
   border-color: var(--border-strong);
 }
 
@@ -441,11 +441,12 @@ h1 {
   padding: 20px 22px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: rgba(16, 18, 23, 0.86);
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .metric-label {
-  color: var(--subtle);
+  color: var(--muted);
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -456,20 +457,21 @@ h1 {
   margin-top: 10px;
   color: var(--text);
   font-size: 32px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1;
   letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
 }
 
 .metric-value.is-placeholder {
-  color: var(--muted);
+  color: var(--subtle);
 }
 
 .metric-sub {
   margin-top: 8px;
   color: var(--muted);
   font-size: 12px;
+  font-weight: 500;
 }
 
 .dashboard-panels {
@@ -482,8 +484,9 @@ h1 {
 .panel {
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: rgba(16, 18, 23, 0.86);
+  background: var(--surface);
   overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .panel-header {
@@ -501,7 +504,7 @@ h1 {
 }
 
 .panel-meta {
-  color: var(--subtle);
+  color: var(--muted);
   font-size: 11px;
 }
 
@@ -521,12 +524,12 @@ h1 {
   padding: 16px;
   border: 1px solid var(--border);
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.015);
+  background: var(--surface-raised);
   transition: background-color 180ms ease, border-color 180ms ease, transform 180ms ease;
 }
 
 .action-tile:hover {
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--surface-hover);
   border-color: var(--border-strong);
   transform: translateY(-1px);
 }
@@ -538,7 +541,7 @@ h1 {
   place-items: center;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--surface-raised);
+  background: var(--surface);
   color: var(--text);
   margin-bottom: 12px;
 }
@@ -556,7 +559,7 @@ h1 {
 
 .tile-desc {
   margin-top: 4px;
-  color: var(--subtle);
+  color: var(--muted);
   font-size: 11px;
   line-height: 1.4;
 }
@@ -573,7 +576,7 @@ h1 {
   padding: 12px 14px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.015);
+  background: var(--surface-raised);
 }
 
 .tool-name {
@@ -590,15 +593,15 @@ h1 {
 }
 
 .status-badge.connected {
-  background: rgba(159, 182, 166, 0.12);
+  background: color-mix(in srgb, var(--positive) 14%, transparent);
   color: var(--positive);
-  border: 1px solid rgba(159, 182, 166, 0.25);
+  border: 1px solid color-mix(in srgb, var(--positive) 30%, transparent);
 }
 
 .status-badge.warning {
-  background: rgba(187, 169, 132, 0.12);
+  background: color-mix(in srgb, var(--warning) 14%, transparent);
   color: var(--warning);
-  border: 1px solid rgba(187, 169, 132, 0.25);
+  border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
 }
 
 .settings-hint {

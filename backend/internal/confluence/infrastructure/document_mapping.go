@@ -20,18 +20,37 @@ var (
 func buildDocumentFromContent(content confluenceContent, fallbackBase string) domain.ConfluenceDocument {
 	labelNames := collectLabelNames(content)
 	documentType := resolveDocumentType(labelNames, content.Title)
+	lastEditor := content.Version.By.DisplayName
+
 	return domain.ConfluenceDocument{
 		ID:          content.ID,
 		Type:        documentType,
 		TypeLabel:   typeLabelFor(documentType),
 		Title:       content.Title,
 		Status:      resolveStatus(labelNames),
-		Owner:       content.Version.By.DisplayName,
+		Owner:       lastEditor,
+		LastEditor:  lastEditor,
 		Updated:     content.Version.When,
 		Space:       resolveSpaceName(content.Space),
 		Description: plainTextFromStorage(content.Body.Storage.Value),
+		Body:        buildBodyHTML(content, fallbackBase),
 		URL:         buildDocumentURL(content, fallbackBase),
 	}
+}
+
+func buildBodyHTML(content confluenceContent, fallbackBase string) string {
+	storage := content.Body.Storage.Value
+	if strings.TrimSpace(storage) == "" {
+		return ""
+	}
+	attachmentBase := strings.TrimRight(content.Links.Base, "/")
+	if attachmentBase == "" {
+		attachmentBase = strings.TrimRight(fallbackBase, "/")
+	}
+	if attachmentBase == "" || content.ID == "" {
+		return confluenceStorageToHTML(storage, "")
+	}
+	return confluenceStorageToHTML(storage, attachmentBase+"/download/attachments/"+content.ID)
 }
 
 func collectLabelNames(content confluenceContent) []string {

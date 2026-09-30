@@ -25,12 +25,12 @@ for (const envCandidate of envCandidates) {
 export default defineConfig({
   testDir: "./e2e/tests",
   outputDir: "./test-results",
-  timeout: 30000,
+  timeout: process.env.SLOW_MO ? 60000 : 30000,
   expect: {
     timeout: 8000
   },
   fullyParallel: true,
-  workers: process.env.CI ? 2 : 4,
+  workers: process.env.SLOW_MO ? 1 : (process.env.CI ? 2 : 4),
   retries: process.env.CI ? 2 : 0,
   reporter: [
     ["list"],
@@ -43,7 +43,11 @@ export default defineConfig({
     viewport: { width: 1360, height: 860 },
     screenshot: "only-on-failure",
     trace: "on-first-retry",
-    video: "off"
+    video: "off",
+    launchOptions: {
+      slowMo: process.env.SLOW_MO ? parseInt(process.env.SLOW_MO, 10) : 0,
+      channel: process.env.CHROME ? "chrome" : undefined
+    }
   },
   projects: [
     {

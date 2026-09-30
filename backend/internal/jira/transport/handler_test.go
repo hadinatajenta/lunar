@@ -41,10 +41,19 @@ type mockJiraRepo struct {
 	issues      []domain.JiraIssue
 	sprints     []domain.JiraSprint
 	detail      *domain.JiraIssue
+	remoteLinks map[string][]domain.JiraRemoteLink
+	remoteErr   error
 	err         error
 	detailErr   error
 	searchCalls atomic.Int64
 	sprintCalls atomic.Int64
+}
+
+func (m *mockJiraRepo) GetIssueRemoteLinks(ctx context.Context, pat string, issueKey string) ([]domain.JiraRemoteLink, error) {
+	if m.remoteErr != nil {
+		return nil, m.remoteErr
+	}
+	return m.remoteLinks[issueKey], nil
 }
 
 func (m *mockJiraRepo) SearchMyIssues(ctx context.Context, pat string) ([]domain.JiraIssue, error) {

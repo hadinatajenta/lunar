@@ -321,7 +321,7 @@ const selectEffort = (effort: ReasoningEffort) => {
   height: 52px;
   padding: 0 24px;
   border-bottom: 1px solid var(--border);
-  background: rgba(16, 18, 23, 0.6);
+  background: color-mix(in srgb, var(--bg) 95%, transparent);
 }
 
 .header-left {
@@ -452,22 +452,22 @@ const selectEffort = (effort: ReasoningEffort) => {
 
 .message.user .message-bubble {
   background: var(--surface-raised);
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border);
   color: var(--text);
   white-space: pre-wrap;
 }
 
 .message.assistant .message-bubble {
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--surface);
   border: 1px solid var(--border);
-  color: #e5e9f0;
+  color: var(--text);
 }
 
 .thought-section {
   margin-bottom: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--surface-raised);
   overflow: hidden;
 }
 
@@ -479,7 +479,7 @@ const selectEffort = (effort: ReasoningEffort) => {
   padding: 8px 12px;
   border: 0;
   background: transparent;
-  color: var(--subtle);
+  color: var(--muted);
   font-size: 11px;
   font-weight: 500;
   cursor: pointer;
@@ -487,7 +487,7 @@ const selectEffort = (effort: ReasoningEffort) => {
 }
 
 .thought-toggle:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-hover);
   color: var(--text);
 }
 
@@ -504,18 +504,19 @@ const selectEffort = (effort: ReasoningEffort) => {
 }
 
 .thought-title {
-  color: var(--muted);
+  color: var(--text);
   font-weight: 600;
 }
 
 .thought-duration {
-  color: var(--subtle);
+  color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
 
 .chevron-icon {
   width: 12px;
   height: 12px;
+  stroke: var(--muted);
   transition: transform 180ms ease;
 }
 
@@ -525,11 +526,11 @@ const selectEffort = (effort: ReasoningEffort) => {
 
 .thought-content {
   padding: 10px 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(0, 0, 0, 0.15);
+  border-top: 1px solid var(--border);
+  background: var(--surface);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
-  color: #9aa2ae;
+  color: var(--text);
   line-height: 1.5;
   white-space: pre-wrap;
 }
@@ -541,6 +542,7 @@ const selectEffort = (effort: ReasoningEffort) => {
 
 .message-text {
   white-space: pre-wrap;
+  color: var(--text);
 }
 
 .source-row {
@@ -549,14 +551,14 @@ const selectEffort = (effort: ReasoningEffort) => {
   gap: 6px;
   margin-top: 14px;
   padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--border);
 }
 
 .source-chip {
   padding: 2px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border);
   border-radius: 5px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-raised);
   color: var(--muted);
   font-size: 11px;
 }
@@ -612,10 +614,11 @@ const selectEffort = (effort: ReasoningEffort) => {
 .chat-composer {
   max-width: 820px;
   margin: 0 auto;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border);
   border-radius: 12px;
-  background: var(--surface-raised);
+  background: var(--surface);
   padding: 12px 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .chat-composer textarea {
@@ -627,6 +630,10 @@ const selectEffort = (effort: ReasoningEffort) => {
   font-size: 14px;
   line-height: 1.5;
   resize: none;
+}
+
+.chat-composer textarea::placeholder {
+  color: var(--subtle);
 }
 
 .composer-actions {
@@ -652,8 +659,8 @@ const selectEffort = (effort: ReasoningEffort) => {
   padding: 0 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.025);
-  color: var(--subtle);
+  background: var(--surface-raised);
+  color: var(--muted);
   font-size: 11px;
   font-weight: 500;
   cursor: pointer;
@@ -661,7 +668,7 @@ const selectEffort = (effort: ReasoningEffort) => {
 }
 
 .control-pill:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-hover);
   color: var(--text);
 }
 
@@ -671,8 +678,8 @@ const selectEffort = (effort: ReasoningEffort) => {
 }
 
 .thinking-toggle.is-active {
-  border-color: rgba(159, 182, 166, 0.35);
-  background: rgba(159, 182, 166, 0.1);
+  border-color: color-mix(in srgb, var(--positive) 40%, transparent);
+  background: color-mix(in srgb, var(--positive) 12%, transparent);
   color: var(--positive);
 }
 
@@ -686,10 +693,10 @@ const selectEffort = (effort: ReasoningEffort) => {
   left: 0;
   width: 220px;
   padding: 4px;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #151820;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  background: var(--surface);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
   display: grid;
   gap: 2px;
   z-index: 30;
@@ -703,17 +710,19 @@ const selectEffort = (effort: ReasoningEffort) => {
   border: 0;
   border-radius: 6px;
   background: transparent;
+  color: var(--text);
   text-align: left;
   cursor: pointer;
   transition: background-color 160ms ease;
 }
 
 .effort-option:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-hover);
 }
 
 .effort-option.is-selected {
-  background: rgba(159, 182, 166, 0.1);
+  background: color-mix(in srgb, var(--positive) 12%, transparent);
+  color: var(--positive);
 }
 
 .effort-opt-text {
@@ -745,7 +754,7 @@ const selectEffort = (effort: ReasoningEffort) => {
   padding: 0 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--surface-raised);
   color: var(--muted);
   font-size: 11px;
   font-weight: 500;
@@ -754,7 +763,7 @@ const selectEffort = (effort: ReasoningEffort) => {
 }
 
 .model-trigger:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-hover);
   color: var(--text);
 }
 
@@ -769,10 +778,10 @@ const selectEffort = (effort: ReasoningEffort) => {
   right: 0;
   width: 240px;
   padding: 4px;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #151820;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  background: var(--surface);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
   display: grid;
   gap: 2px;
   z-index: 30;
@@ -794,7 +803,7 @@ const selectEffort = (effort: ReasoningEffort) => {
 }
 
 .model-option:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-hover);
   color: var(--text);
 }
 
@@ -812,7 +821,7 @@ const selectEffort = (effort: ReasoningEffort) => {
 .model-option.is-disabled {
   opacity: 0.55;
   cursor: not-allowed;
-  background: rgba(255, 255, 255, 0.015);
+  background: var(--surface-raised);
 }
 
 .disabled-name {
@@ -861,14 +870,14 @@ const selectEffort = (effort: ReasoningEffort) => {
 }
 
 .send-btn {
-  width: 28px;
-  height: 28px;
   display: grid;
   place-items: center;
+  width: 32px;
+  height: 32px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--accent);
-  color: #0b0c0f;
+  color: var(--accent-contrast);
   cursor: pointer;
   transition: opacity 180ms ease, transform 180ms ease;
 }

@@ -44,7 +44,7 @@ func (s *JiraService) GetMyIssues(ctx context.Context, userID string) ([]domain.
 		return nil, err
 	}
 
-	if !isForceRefresh(ctx) {
+	if !cache.IsForceRefresh(ctx) {
 		if cached, exists := s.cacheStore.Get(issuesCacheKey(userID)); exists {
 			if issues, ok := cached.([]domain.JiraIssue); ok {
 				return issues, nil
@@ -67,7 +67,7 @@ func (s *JiraService) GetBacklog(ctx context.Context, userID string, requestedSq
 	}
 
 	cacheKey := backlogCacheKey(userID, requestedSquad)
-	if !isForceRefresh(ctx) {
+	if !cache.IsForceRefresh(ctx) {
 		if cached, exists := s.cacheStore.Get(cacheKey); exists {
 			if backlog, ok := cached.(*domain.JiraBacklogResponse); ok {
 				return backlog, nil
@@ -184,4 +184,18 @@ func (s *JiraService) GetIssueDetail(ctx context.Context, userID string, issueKe
 	}
 
 	return s.repo.GetIssueDetail(ctx, pat, trimmedKey)
+}
+
+func (s *JiraService) GetIssueRemoteLinks(ctx context.Context, userID string, issueKey string) ([]domain.JiraRemoteLink, error) {
+	trimmedKey := strings.TrimSpace(issueKey)
+	if trimmedKey == "" {
+		return nil, fmt.Errorf("%w: issue key is required", sharedErrors.ErrBadRequest)
+	}
+
+	pat, err := s.resolvePAT(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.repo.GetIssueRemoteLinks(ctx, pat, trimmedKey)
 }

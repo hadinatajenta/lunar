@@ -100,4 +100,40 @@ test.describe("Jira BRI - Issue Detail Modal Positive Flows", () => {
       await expect(jiraPage.issueModal).not.toBeVisible()
     }
   )
+
+  test(
+    "JIRA-MODAL-007 user can click Confluence wiki link to navigate to document detail",
+    {
+      tag: ["@jira", "@positive", "@modal", "@confluence-link"]
+    },
+    async ({ page, jiraPage }) => {
+      await page.route(/\/api\/jira\/issues\/remotelinks/, async (route) => {
+        await route.fulfill({
+          status: 200,
+          json: [
+            {
+              id: "link-1",
+              relationship: "wiki",
+              object: {
+                url: "https://confluence.bri.co.id/pages/101",
+                title: "Authentication Architecture Spec"
+              }
+            }
+          ]
+        })
+      })
+
+      await jiraPage.goto()
+      await page.getByTestId("kanban-card-CRMMS-77911").click()
+      await expect(jiraPage.issueModal).toBeVisible()
+
+      const wikiSection = page.getByTestId("wiki-links-section")
+      await expect(wikiSection).toBeVisible()
+      await expect(wikiSection).toContainText("Authentication Architecture Spec")
+
+      await wikiSection.getByTestId("wiki-link-item").click()
+      await expect(page).toHaveURL("/confluence/101")
+      await expect(jiraPage.issueModal).not.toBeVisible()
+    }
+  )
 })

@@ -62,7 +62,9 @@ const formattedUpdatedAt = computed(() => {
 .settings-card {
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: rgba(16, 18, 23, 0.86);
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
   overflow: hidden;
 }
 
@@ -97,10 +99,11 @@ const formattedUpdatedAt = computed(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
+  gap: 16px;
+  padding: 14px 16px;
   border: 1px solid var(--border);
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.015);
+  background: var(--surface-raised);
 }
 
 .security-name {

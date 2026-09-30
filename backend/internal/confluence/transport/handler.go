@@ -1,11 +1,13 @@
 package transport
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
 	"lunar/backend/internal/confluence/application"
 	sharedAuth "lunar/backend/internal/shared/auth"
+	"lunar/backend/internal/shared/cache"
 	sharedErrors "lunar/backend/internal/shared/errors"
 	sharedHttp "lunar/backend/internal/shared/http"
 )
@@ -42,9 +44,17 @@ func (h *ConfluenceHandler) writeError(w http.ResponseWriter, err error) {
 	sharedHttp.WriteError(w, http.StatusBadGateway, err.Error())
 }
 
+func (h *ConfluenceHandler) requestContext(r *http.Request) context.Context {
+	if r.URL.Query().Get("refresh") == "1" {
+		return cache.WithForceRefresh(r.Context())
+	}
+	return r.Context()
+}
+
 func (h *ConfluenceHandler) ListDocuments(w http.ResponseWriter, r *http.Request) {
 	userID := h.getUserID(r)
-	response, err := h.service.GetDocuments(r.Context(), userID)
+	scope := r.URL.Query().Get("scope")
+	response, err := h.service.GetDocuments(h.requestContext(r), userID, scope)
 	if err != nil {
 		h.writeError(w, err)
 		return

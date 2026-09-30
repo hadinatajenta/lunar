@@ -114,8 +114,8 @@ const handleSearchInput = (event: Event) => {
   border: 1px solid var(--border);
   border-radius: 9px;
   outline: 0;
-  background: rgba(255, 255, 255, 0.022);
-  color: #ebeff3;
+  background: var(--surface-raised);
+  color: var(--text);
   font-size: 12px;
   transition:
     border-color 160ms ease,
@@ -123,12 +123,12 @@ const handleSearchInput = (event: Event) => {
 }
 
 .search input::placeholder {
-  color: #5d6570;
+  color: var(--subtle);
 }
 
 .search input:focus {
   border-color: var(--border-strong);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.03);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 .filter {
@@ -137,7 +137,7 @@ const handleSearchInput = (event: Event) => {
   padding: 3px;
   border: 1px solid var(--border);
   border-radius: 9px;
-  background: rgba(16, 18, 23, 0.6);
+  background: var(--surface-raised);
 }
 
 .filter button {
@@ -159,13 +159,14 @@ const handleSearchInput = (event: Event) => {
 }
 
 .filter button:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-hover);
   color: var(--text);
 }
 
 .filter button.is-active {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--surface);
   color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .filter button .chip {
@@ -176,14 +177,16 @@ const handleSearchInput = (event: Event) => {
   height: 16px;
   padding: 0 5px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-hover);
+  color: var(--muted);
   font-size: 9.5px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
 .filter button.is-active .chip {
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--surface-raised);
+  color: var(--text);
 }
 
 .toolbar-right {

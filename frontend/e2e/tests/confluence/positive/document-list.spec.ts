@@ -17,7 +17,7 @@ test.describe("Confluence BRI - Document List Positive Flows", () => {
       await confluencePage.navigateTo()
 
       await expect(confluencePage.statCards.filter({ hasText: /UT/ })).toContainText("2")
-      await expect(confluencePage.statCards.filter({ hasText: /QR/ })).toContainText("2")
+      await expect(confluencePage.statCards.filter({ hasText: /Query/ })).toContainText("2")
       await expect(confluencePage.statCards.filter({ hasText: /SOP/ })).toContainText("1")
       await expect(confluencePage.statCards.filter({ hasText: /All/ })).toContainText("6")
       await expect(confluencePage.documentCards).toHaveCount(6)
@@ -79,19 +79,19 @@ test.describe("Confluence BRI - Document List Positive Flows", () => {
     async ({ page, confluencePage }) => {
       await confluencePage.navigateTo()
 
-      await page.getByTestId("doc-filter").filter({ hasText: /Query/ }).click()
+      await page.locator('[data-testid="doc-filter"][data-filter="query"]').click()
       await expect(confluencePage.documentCards).toHaveCount(2)
       await expect(confluencePage.visibleCount).toContainText("Showing 2 of 2")
 
-      await page.getByTestId("doc-filter").filter({ hasText: /Unit Test/ }).click()
+      await page.locator('[data-testid="doc-filter"][data-filter="ut"]').click()
       await expect(confluencePage.documentCards).toHaveCount(2)
       await expect(confluencePage.visibleCount).toContainText("Showing 2 of 2")
 
-      await page.getByTestId("doc-filter").filter({ hasText: /SOP/ }).click()
+      await page.locator('[data-testid="doc-filter"][data-filter="sop"]').click()
       await expect(confluencePage.documentCards).toHaveCount(1)
       await expect(confluencePage.visibleCount).toContainText("Showing 1 of 1")
 
-      await page.getByTestId("doc-filter").filter({ hasText: /All/ }).click()
+      await page.locator('[data-testid="doc-filter"][data-filter="all"]').click()
       await expect(confluencePage.documentCards).toHaveCount(6)
       await expect(confluencePage.visibleCount).toContainText("Showing 6 of 6")
     }

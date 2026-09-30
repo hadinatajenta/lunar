@@ -17,11 +17,11 @@ import (
 )
 
 const (
-	JIRA_DIAL_TIMEOUT            = 3 * time.Second
-	JIRA_TLS_HANDSHAKE_TIMEOUT   = 3 * time.Second
-	JIRA_RESPONSE_HEADER_TIMEOUT = 8 * time.Second
+	JIRA_DIAL_TIMEOUT            = 2 * time.Second
+	JIRA_TLS_HANDSHAKE_TIMEOUT   = 2 * time.Second
+	JIRA_RESPONSE_HEADER_TIMEOUT = 4 * time.Second
 	JIRA_IDLE_CONN_TIMEOUT       = 30 * time.Second
-	JIRA_CLIENT_TIMEOUT          = 10 * time.Second
+	JIRA_CLIENT_TIMEOUT          = 6 * time.Second
 	JIRA_BACKLOG_BOARD_ID        = 2646
 	BACKLOG_SPRINT_FETCH_LIMIT   = 4
 )
@@ -335,6 +335,71 @@ func (c *AtlassianJiraClient) GetIssueDetail(ctx context.Context, pat string, is
 
 	enrichIssueMetadata(&issue)
 	return &issue, nil
+}
+
+func (c *AtlassianJiraClient) GetIssueRemoteLinks(ctx context.Context, pat string, issueKey string) ([]domain.JiraRemoteLink, error) {
+	if strings.TrimSpace(issueKey) == "" {
+		return nil, fmt.Errorf("%w: issue key is required", sharedErrors.ErrBadRequest)
+	}
+
+	if strings.TrimSpace(pat) == "" {
+		return nil, fmt.Errorf("%w: Jira PAT is not configured", sharedErrors.ErrUnauthorized)
+	}
+
+	if pat == "invalid" {
+		return nil, fmt.Errorf("%w: invalid or expired Jira PAT", sharedErrors.ErrUnauthorized)
+	}
+
+	if pat == "mock" || c.baseURL == "mock" {
+		return buildSeedRemoteLinks(issueKey), nil
+	}
+
+	targetURL := fmt.Sprintf("%s/rest/api/2/issue/%s/remotelink", c.baseURL, url.PathEscape(issueKey))
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("build remote link request for %s: %w", issueKey, err)
+	}
+	req.Header.Set("Authorization", "Bearer "+pat)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "Lunar-Workspace/1.0")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		if c.fallbackEnabled {
+			return buildSeedRemoteLinks(issueKey), nil
+		}
+		return nil, fmt.Errorf("fetch remote links for %s: %w", issueKey, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, fmt.Errorf("%w: invalid or expired Jira PAT", sharedErrors.ErrUnauthorized)
+	}
+
+	if resp.StatusCode == http.StatusNotFound {
+		return []domain.JiraRemoteLink{}, nil
+	}
+
+	if resp.StatusCode >= http.StatusInternalServerError {
+		if c.fallbackEnabled {
+			return buildSeedRemoteLinks(issueKey), nil
+		}
+		return nil, fmt.Errorf("fetch remote links for %s: upstream returned %d", issueKey, resp.StatusCode)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("fetch remote links for %s: upstream returned %d", issueKey, resp.StatusCode)
+	}
+
+	var links []domain.JiraRemoteLink
+	if err := json.NewDecoder(resp.Body).Decode(&links); err != nil {
+		return nil, fmt.Errorf("failed to parse remote links for %s: %w", issueKey, err)
+	}
+	if links == nil {
+		return []domain.JiraRemoteLink{}, nil
+	}
+	return links, nil
 }
 
 func (c *AtlassianJiraClient) findSeedIssue(issueKey string) (*domain.JiraIssue, error) {

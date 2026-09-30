@@ -1,6 +1,7 @@
 import { test, expect } from "../../../fixtures/authenticated.fixture"
 import { routeSecrets, routeStandardConfluence } from "../../../helpers/route-mock"
 import { mockConfluenceDocuments } from "../../../data/confluence.data"
+import { captureEvidence } from "../../../helpers/evidence"
 
 test.describe("Confluence BRI - Negative Flows and Error Handling", () => {
   test(
@@ -11,7 +12,7 @@ test.describe("Confluence BRI - Negative Flows and Error Handling", () => {
     async ({ confluencePage, page }) => {
       let documentRequestCount = 0
       page.on("request", (req) => {
-        if (req.url().includes("/api/confluence/documents")) {
+        if (req.url().includes("/api/confluence/documents") && !req.url().includes("/api/confluence/documents/")) {
           documentRequestCount++
         }
       })
@@ -22,6 +23,8 @@ test.describe("Confluence BRI - Negative Flows and Error Handling", () => {
       await expect(confluencePage.noPatBanner).toBeVisible()
       await expect(confluencePage.documentCards).toHaveCount(0)
       expect(documentRequestCount).toBe(0)
+
+      await captureEvidence(page, "confluence", "03_confluence_unconfigured_pat.png")
     }
   )
 
@@ -40,6 +43,8 @@ test.describe("Confluence BRI - Negative Flows and Error Handling", () => {
       await expect(confluencePage.errorBanner).toBeVisible()
       await expect(confluencePage.vpnBanner).not.toBeVisible()
       await expect(confluencePage.documentCards).toHaveCount(0)
+
+      await captureEvidence(page, "confluence", "04_confluence_401_invalid_pat.png")
     }
   )
 
@@ -58,6 +63,8 @@ test.describe("Confluence BRI - Negative Flows and Error Handling", () => {
       await expect(confluencePage.vpnBanner).toBeVisible()
       await expect(confluencePage.errorBanner).not.toBeVisible()
       await expect(confluencePage.documentCards).toHaveCount(0)
+
+      await captureEvidence(page, "confluence", "05_confluence_502_vpn_error.png")
     }
   )
 
@@ -74,7 +81,8 @@ test.describe("Confluence BRI - Negative Flows and Error Handling", () => {
       await page.goto("/confluence/NONEXISTENT")
 
       await expect(confluencePage.detailBackButton).toBeVisible()
-      await expect(confluencePage.detailBackButton).toHaveAttribute("href", "/confluence")
+      await confluencePage.detailBackButton.click()
+      await expect(page).toHaveURL("/confluence")
     }
   )
 

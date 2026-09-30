@@ -55,7 +55,7 @@ const handlePost = () => {
   padding: 18px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: rgba(16, 18, 23, 0.6);
+  background: var(--surface);
 }
 
 .detail-comments-head {
@@ -66,7 +66,7 @@ const handlePost = () => {
 }
 
 .detail-comments-title {
-  color: #dfe3e8;
+  color: var(--text);
   font-size: 12px;
   font-weight: 600;
 }
@@ -104,7 +104,7 @@ const handlePost = () => {
   border-radius: 8px;
   outline: 0;
   background: var(--surface-raised);
-  color: #dfe4e9;
+  color: var(--text);
   font-size: 12px;
   line-height: 1.55;
   font-family: inherit;
@@ -114,12 +114,12 @@ const handlePost = () => {
 }
 
 .comment-composer textarea::placeholder {
-  color: #5d6570;
+  color: var(--subtle);
 }
 
 .comment-composer textarea:focus {
   border-color: var(--border-strong);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.03);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 .btn {
@@ -142,7 +142,7 @@ const handlePost = () => {
 
 .btn-primary {
   background: var(--accent);
-  color: #0b0c0f;
+  color: var(--accent-contrast);
 }
 
 .btn-primary:hover {

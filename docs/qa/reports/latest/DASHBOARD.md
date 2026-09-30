@@ -3,8 +3,8 @@
 ## 1. Executive Summary
 - **Feature Area**: Dashboard & Central Navigation
 - **Test Suite**: `frontend/e2e/tests/dashboard/`
-- **Total Scenarios**: 12
-- **Pass Rate**: 100% (12 / 12)
+- **Total Scenarios**: 14
+- **Pass Rate**: 100% (14 / 14)
 - **Status**: PASSED
 
 ## 2. Test Execution Breakdown
@@ -15,6 +15,8 @@
 | `DASH-SYNC-001` | Positive | Sync button spinner and timestamp update | P1 | PASSED |
 | `DASH-NAV-001` | Positive | Quick action navigation tiles navigate | P1 | PASSED |
 | `DASH-CRED-001` | Positive | Credential status badges configured/needs PAT | P1 | PASSED |
+| `THEME-TOGGLE-001` | Positive | Global theme button toggles light and dark modes in header | P1 | PASSED |
+| `THEME-TOGGLE-002` | Positive | Persisted theme preference is respected across navigation | P1 | PASSED |
 | `DASH-AUTH-001` | Negative | Unauthenticated visitor redirected to login | P0 | PASSED |
 | `DASH-AUTH-002` | Negative | Deep link unauthorized redirects to login | P1 | PASSED |
 | `DASH-API-002` | Negative | Invalid bearer token returns 401 | P0 | PASSED |
@@ -26,6 +28,7 @@
 ## 3. Evidence Mapping
 - `01_dashboard_metrics.png` -> `docs/qa/evidence/dashboard/01_dashboard_metrics.png`
 - `02_dashboard_synced.png` -> `docs/qa/evidence/dashboard/02_dashboard_synced.png`
+- `03_dashboard_light_theme.png` -> `docs/qa/evidence/dashboard/03_dashboard_light_theme.png`
 - `03_dashboard_quick_actions.png` -> `docs/qa/evidence/dashboard/03_dashboard_quick_actions.png`
 - `04_unauthenticated_redirect.png` -> `docs/qa/evidence/dashboard/04_unauthenticated_redirect.png`
 - `05_summary_error_banner.png` -> `docs/qa/evidence/dashboard/05_summary_error_banner.png`

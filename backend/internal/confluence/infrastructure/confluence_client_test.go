@@ -5,8 +5,10 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	sharedErrors "lunar/backend/internal/shared/errors"
 )
@@ -136,7 +138,7 @@ func TestConfluenceClient_ListDocumentsRequestShape(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if receivedQuery != "type=page AND status=current" {
+	if receivedQuery != "type=page" {
 		t.Errorf("expected cql query, got %q", receivedQuery)
 	}
 	if receivedAuth != "Bearer "+testPAT {
@@ -319,5 +321,103 @@ func TestConfluenceClient_FallbackBaseUsedWhenLinksMissing(t *testing.T) {
 
 	if document.URL != "https://confluence.example.com/pages/viewpage.action?pageId=42" {
 		t.Errorf("expected URL built from client base, got %q", document.URL)
+	}
+}
+
+func TestConfluenceClient_GetDocumentsByIDsSkipsNotFound(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/missing") {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"1","title":"Doc 1","version":{"when":"2026-01-02T03:04:05.000+07:00","by":{"displayName":"Jane Doe"}}}`))
+	}))
+	defer upstream.Close()
+
+	client := NewConfluenceClient(upstream.URL)
+
+	documents, err := client.GetDocumentsByIDs(context.Background(), testPAT, []string{"1", "missing", "3"})
+	if err != nil {
+		t.Fatalf("expected skipped 404 to not surface an error, got %v", err)
+	}
+	if len(documents) != 2 {
+		t.Fatalf("expected 2 documents after skipping 404, got %d", len(documents))
+	}
+}
+
+func TestConfluenceClient_GetDocumentsByIDsReturnsPartialOnError(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/broken") {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"1","title":"Doc 1","version":{"when":"2026-01-02T03:04:05.000+07:00","by":{"displayName":"Jane Doe"}}}`))
+	}))
+	defer upstream.Close()
+
+	client := NewConfluenceClient(upstream.URL)
+
+	documents, err := client.GetDocumentsByIDs(context.Background(), testPAT, []string{"1", "broken", "3"})
+	if err == nil {
+		t.Fatal("expected error for the document that returned 500")
+	}
+	if len(documents) != 2 {
+		t.Errorf("expected 2 healthy documents to be preserved, got %d", len(documents))
+	}
+}
+
+func TestConfluenceClient_GetDocumentsByIDsStopsOnCancelledContext(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(150 * time.Millisecond)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"1","title":"Doc 1"}`))
+	}))
+	defer upstream.Close()
+
+	client := NewConfluenceClient(upstream.URL)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(30 * time.Millisecond)
+		cancel()
+	}()
+
+	documentIDs := make([]string, 0, 20)
+	for i := range 20 {
+		documentIDs = append(documentIDs, strconv.Itoa(i+1))
+	}
+
+	startedAt := time.Now()
+	_, err := client.GetDocumentsByIDs(ctx, testPAT, documentIDs)
+	elapsed := time.Since(startedAt)
+
+	if err == nil {
+		t.Error("expected cancellation to surface as an error")
+	}
+	if elapsed > time.Second {
+		t.Errorf("expected cancellation to return promptly, took %s", elapsed)
+	}
+}
+
+func TestConfluenceClient_GetDocumentsByIDsRejectsEmptyPAT(t *testing.T) {
+	client := NewConfluenceClient("https://confluence.example.com")
+
+	_, err := client.GetDocumentsByIDs(context.Background(), "  ", []string{"1"})
+	if !errors.Is(err, sharedErrors.ErrUnauthorized) {
+		t.Fatalf("expected ErrUnauthorized for empty PAT, got %v", err)
+	}
+}
+
+func TestConfluenceClient_GetDocumentsByIDsEmptyInputReturnsEmpty(t *testing.T) {
+	client := NewConfluenceClient("https://confluence.example.com")
+
+	documents, err := client.GetDocumentsByIDs(context.Background(), testPAT, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if documents == nil || len(documents) != 0 {
+		t.Errorf("expected empty non-nil slice, got %v", documents)
 	}
 }

@@ -112,8 +112,8 @@ onMounted(async () => {
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  background: #3b82f6;
-  color: #ffffff;
+  background: var(--accent);
+  color: var(--accent-contrast);
   font-size: 0.9rem;
   font-weight: 500;
   border-radius: 6px;

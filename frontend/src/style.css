@@ -16,7 +16,27 @@
   --warning: #bba984;
   --danger: #c69090;
   --accent: #f5f7fa;
+  --accent-contrast: #0b0c0f;
   --radius: 12px;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f8fafc;
+  --sidebar: #f8fafc;
+  --surface: #ffffff;
+  --surface-raised: #f1f5f9;
+  --surface-hover: #e2e8f0;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --text: #0f172a;
+  --muted: #475569;
+  --subtle: #64748b;
+  --positive: #15803d;
+  --warning: #b45309;
+  --danger: #b91c1c;
+  --accent: #0f172a;
+  --accent-contrast: #ffffff;
 }
 
 * {

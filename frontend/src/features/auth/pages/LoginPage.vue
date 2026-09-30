@@ -29,7 +29,7 @@ import LoginForm from "../components/LoginForm.vue"
   min-width: 0;
   padding: 40px;
   border-left: 1px solid var(--border);
-  background: rgba(17, 19, 24, 0.82);
+  background: var(--surface);
   backdrop-filter: blur(14px);
 }
 

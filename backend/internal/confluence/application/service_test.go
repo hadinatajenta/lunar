@@ -69,7 +69,7 @@ func setupTestService(baseURL string) (*ConfluenceService, string, string) {
 
 	authService := authApp.NewAuthService(nil, vaultRepo, encryptionTestKey, "jwt-secret", time.Hour)
 	client := confluenceInfra.NewConfluenceClient(baseURL)
-	return NewConfluenceService(client, authService), configuredUserID, unconfiguredUserID
+	return NewConfluenceService(client, authService, nil), configuredUserID, unconfiguredUserID
 }
 
 func TestConfluenceService_MissingPATReturnsUnauthorized(t *testing.T) {
@@ -77,7 +77,7 @@ func TestConfluenceService_MissingPATReturnsUnauthorized(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("empty userID", func(t *testing.T) {
-		_, err := service.GetDocuments(ctx, "")
+		_, err := service.GetDocuments(ctx, "", CONFLUENCE_SCOPE_ALL)
 		if !errors.Is(err, sharedErrors.ErrUnauthorized) {
 			t.Fatalf("expected ErrUnauthorized, got %v", err)
 		}
@@ -87,7 +87,7 @@ func TestConfluenceService_MissingPATReturnsUnauthorized(t *testing.T) {
 	})
 
 	t.Run("userID without vault entry", func(t *testing.T) {
-		_, err := service.GetDocuments(ctx, missingVaultUserID)
+		_, err := service.GetDocuments(ctx, missingVaultUserID, CONFLUENCE_SCOPE_ALL)
 		if !errors.Is(err, sharedErrors.ErrUnauthorized) {
 			t.Fatalf("expected ErrUnauthorized, got %v", err)
 		}
@@ -97,7 +97,7 @@ func TestConfluenceService_MissingPATReturnsUnauthorized(t *testing.T) {
 	})
 
 	t.Run("userID with empty Confluence PAT", func(t *testing.T) {
-		_, err := service.GetDocuments(ctx, unconfiguredUserID)
+		_, err := service.GetDocuments(ctx, unconfiguredUserID, CONFLUENCE_SCOPE_ALL)
 		if !errors.Is(err, sharedErrors.ErrUnauthorized) {
 			t.Fatalf("expected ErrUnauthorized, got %v", err)
 		}
@@ -137,7 +137,7 @@ func TestConfluenceService_UpstreamUnauthorizedMapsToErrUnauthorized(t *testing.
 
 	service, _, _ := setupTestService(upstream.URL)
 
-	_, err := service.GetDocuments(context.Background(), configuredUserID)
+	_, err := service.GetDocuments(context.Background(), configuredUserID, CONFLUENCE_SCOPE_ALL)
 	if !errors.Is(err, sharedErrors.ErrUnauthorized) {
 		t.Fatalf("expected ErrUnauthorized for upstream 401, got %v", err)
 	}
@@ -158,12 +158,12 @@ func TestConfluenceService_UpstreamUnreachableReturnsErrorForEveryCall(t *testin
 	ctx := context.Background()
 
 	firstErr := error(nil)
-	if _, err := service.GetDocuments(ctx, configuredUserID); err == nil {
+	if _, err := service.GetDocuments(ctx, configuredUserID, CONFLUENCE_SCOPE_ALL); err == nil {
 		t.Fatal("expected error on first call, got nil")
 	} else {
 		firstErr = err
 	}
-	if _, err := service.GetDocuments(ctx, configuredUserID); err == nil {
+	if _, err := service.GetDocuments(ctx, configuredUserID, CONFLUENCE_SCOPE_ALL); err == nil {
 		t.Fatal("expected error on second call, got nil")
 	}
 	if errors.Is(firstErr, sharedErrors.ErrUnauthorized) {
@@ -186,7 +186,7 @@ func TestConfluenceService_UpstreamServerErrorIsNotCached(t *testing.T) {
 	ctx := context.Background()
 
 	for call := 1; call <= 2; call++ {
-		_, err := service.GetDocuments(ctx, configuredUserID)
+		_, err := service.GetDocuments(ctx, configuredUserID, CONFLUENCE_SCOPE_ALL)
 		if err == nil {
 			t.Fatalf("expected error on call %d, got nil", call)
 		}
@@ -233,11 +233,11 @@ func TestConfluenceService_CacheServesRepeatWithinTTL(t *testing.T) {
 	service, _, _ := setupTestService(upstream.URL)
 	ctx := context.Background()
 
-	first, err := service.GetDocuments(ctx, configuredUserID)
+	first, err := service.GetDocuments(ctx, configuredUserID, CONFLUENCE_SCOPE_ALL)
 	if err != nil {
 		t.Fatalf("unexpected error on first call: %v", err)
 	}
-	second, err := service.GetDocuments(ctx, configuredUserID)
+	second, err := service.GetDocuments(ctx, configuredUserID, CONFLUENCE_SCOPE_ALL)
 	if err != nil {
 		t.Fatalf("unexpected error on second call: %v", err)
 	}
@@ -262,10 +262,10 @@ func TestConfluenceService_CacheExpiresAfterTTL(t *testing.T) {
 	service.cacheStore = cache.New(20 * time.Millisecond)
 	ctx := context.Background()
 
-	if _, err := service.GetDocuments(ctx, configuredUserID); err != nil {
+	if _, err := service.GetDocuments(ctx, configuredUserID, CONFLUENCE_SCOPE_ALL); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if _, err := service.GetDocuments(ctx, configuredUserID); err != nil {
+	if _, err := service.GetDocuments(ctx, configuredUserID, CONFLUENCE_SCOPE_ALL); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if hits := upstreamHits.Load(); hits != 1 {
@@ -274,7 +274,7 @@ func TestConfluenceService_CacheExpiresAfterTTL(t *testing.T) {
 
 	time.Sleep(60 * time.Millisecond)
 
-	if _, err := service.GetDocuments(ctx, configuredUserID); err != nil {
+	if _, err := service.GetDocuments(ctx, configuredUserID, CONFLUENCE_SCOPE_ALL); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if hits := upstreamHits.Load(); hits != 2 {
@@ -294,24 +294,24 @@ func TestConfluenceService_PerUserCacheIsolation(t *testing.T) {
 	service, userA, _ := setupTestService(upstream.URL)
 	ctx := context.Background()
 
-	if _, err := service.GetDocuments(ctx, userA); err != nil {
+	if _, err := service.GetDocuments(ctx, userA, CONFLUENCE_SCOPE_ALL); err != nil {
 		t.Fatalf("unexpected error for user A: %v", err)
 	}
 	if hits := upstreamHits.Load(); hits != 1 {
 		t.Fatalf("expected 1 upstream hit for user A, got %d", hits)
 	}
 
-	if _, err := service.GetDocuments(ctx, secondaryUserID); err != nil {
+	if _, err := service.GetDocuments(ctx, secondaryUserID, CONFLUENCE_SCOPE_ALL); err != nil {
 		t.Fatalf("unexpected error for user B: %v", err)
 	}
 	if hits := upstreamHits.Load(); hits != 2 {
 		t.Errorf("expected user B to reach upstream instead of reusing user A's cache, got %d hits", hits)
 	}
 
-	if _, err := service.GetDocuments(ctx, userA); err != nil {
+	if _, err := service.GetDocuments(ctx, userA, CONFLUENCE_SCOPE_ALL); err != nil {
 		t.Fatalf("unexpected error for user A second call: %v", err)
 	}
-	if _, err := service.GetDocuments(ctx, secondaryUserID); err != nil {
+	if _, err := service.GetDocuments(ctx, secondaryUserID, CONFLUENCE_SCOPE_ALL); err != nil {
 		t.Fatalf("unexpected error for user B second call: %v", err)
 	}
 	if hits := upstreamHits.Load(); hits != 2 {

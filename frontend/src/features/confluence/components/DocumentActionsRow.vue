@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue"
+import { computed, ref, watch } from "vue"
 import type { ConfluenceDocument } from "../types"
 import { useToast } from "../../../composables/useToast"
 
@@ -10,6 +10,8 @@ interface Props {
 const props = defineProps<Props>()
 
 const { showToast } = useToast()
+
+const hasGeneratedAi = ref(false)
 
 const generateLabel = computed(() => {
   if (props.document.type === "ut") {
@@ -23,6 +25,13 @@ const generateLabel = computed(() => {
 
 const isSopDocument = computed(() => props.document.type === "sop")
 
+watch(
+  () => props.document.id,
+  () => {
+    hasGeneratedAi.value = false
+  }
+)
+
 const handleOpenConfluence = () => {
   if (!props.document.url) {
     showToast("This document has no Confluence URL yet.")
@@ -32,8 +41,10 @@ const handleOpenConfluence = () => {
 }
 
 const handleGenerate = () => {
-  showToast("AI generation is ready for backend wiring.")
+  hasGeneratedAi.value = true
+  showToast(`${generateLabel.value} completed. Actions are now available.`)
 }
+
 const handleApply = () => {
   showToast("Instant apply is ready for backend wiring.")
 }
@@ -41,14 +52,14 @@ const handleApply = () => {
 const handleCopy = async () => {
   const text = props.document.description || props.document.title || ""
   if (!navigator.clipboard?.writeText) {
-    showToast("Copy failed — clipboard unavailable.")
+    showToast("Copy failed: clipboard unavailable.")
     return
   }
   try {
     await navigator.clipboard.writeText(text)
     showToast("Description copied to clipboard.")
   } catch {
-    showToast("Copy failed — clipboard unavailable.")
+    showToast("Copy failed: clipboard unavailable.")
   }
 }
 
@@ -104,6 +115,8 @@ const handleMore = () => {
       v-if="!isSopDocument"
       class="btn btn-ghost"
       type="button"
+      data-testid="detail-apply"
+      :disabled="!hasGeneratedAi"
       @click="handleApply"
     >
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -117,6 +130,7 @@ const handleMore = () => {
       class="btn btn-ghost"
       type="button"
       data-testid="detail-copy"
+      :disabled="!hasGeneratedAi"
       @click="handleCopy"
     >
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -160,10 +174,7 @@ const handleMore = () => {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 22px;
   flex-wrap: wrap;
-  padding-bottom: 22px;
-  border-bottom: 1px solid var(--border);
 }
 
 .detail-actions .spacer {
@@ -202,7 +213,7 @@ const handleMore = () => {
 
 .btn-primary {
   background: var(--accent);
-  color: #0b0c0f;
+  color: var(--accent-contrast);
 }
 
 .btn-primary:hover {
@@ -210,14 +221,30 @@ const handleMore = () => {
 }
 
 .btn-ghost {
-  border-color: var(--border);
-  background: transparent;
-  color: #c8ced5;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
 }
 
-.btn-ghost:hover {
+.btn-ghost:hover:not(:disabled) {
   border-color: var(--border-strong);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.btn:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+  border-color: var(--border);
+  background: transparent;
+  color: var(--subtle);
+  pointer-events: auto;
+}
+
+.btn:disabled:hover {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--subtle);
 }
 
 .btn-ai {
@@ -233,11 +260,12 @@ const handleMore = () => {
 .icon-btn {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: transparent;
+  background: var(--surface);
+  color: var(--muted);
   color: var(--muted);
   cursor: pointer;
   transition:

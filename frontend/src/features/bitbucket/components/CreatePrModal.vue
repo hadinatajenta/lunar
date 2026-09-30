@@ -221,10 +221,11 @@ onUnmounted(() => {
   max-height: calc(100vh - 48px);
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border);
   border-radius: 14px;
-  background: #101217;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
   overflow: hidden;
 }
 
@@ -254,7 +255,7 @@ onUnmounted(() => {
 
 .modal-title {
   margin: 0;
-  color: #eef1f4;
+  color: var(--text);
   font-size: 15px;
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -276,7 +277,7 @@ onUnmounted(() => {
 }
 
 .modal-close:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-hover);
   border-color: var(--border-strong);
   color: var(--text);
 }
@@ -305,7 +306,7 @@ onUnmounted(() => {
   margin-bottom: 14px;
   border: 1px solid var(--border);
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.018);
+  background: var(--surface-raised);
 }
 
 .branch-flow-node {
@@ -322,10 +323,10 @@ onUnmounted(() => {
   width: 26px;
   height: 26px;
   flex: 0 0 auto;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border);
   border-radius: 7px;
-  background: var(--surface-raised);
-  color: #cfd6de;
+  background: var(--surface);
+  color: var(--text);
 }
 
 .branch-flow-icon svg {
@@ -348,7 +349,7 @@ onUnmounted(() => {
 
 .branch-flow-name {
   margin-top: 2px;
-  color: #e3e7ec;
+  color: var(--text);
   font-size: 11.5px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   white-space: nowrap;
@@ -398,7 +399,7 @@ onUnmounted(() => {
   border-radius: 8px;
   outline: 0;
   background: var(--surface-raised);
-  color: #dfe4e9;
+  color: var(--text);
   font-size: 12px;
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
@@ -420,12 +421,12 @@ onUnmounted(() => {
 .form-select:focus,
 .form-textarea:focus {
   border-color: var(--border-strong);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.03);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--text) 5%, transparent);
 }
 
 .form-input::placeholder,
 .form-textarea::placeholder {
-  color: #5d6570;
+  color: var(--subtle);
 }
 
 .field-hint {
@@ -442,7 +443,7 @@ onUnmounted(() => {
   flex-wrap: wrap;
   padding: 14px 20px;
   border-top: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.014);
+  background: var(--surface);
   flex: 0 0 auto;
 }
 
@@ -467,23 +468,23 @@ onUnmounted(() => {
 
 .btn-ghost {
   border: 1px solid var(--border);
-  background: transparent;
-  color: #c8ced5;
-}
-
-.btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-raised);
   color: var(--text);
 }
 
+.btn-ghost:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+
 .btn-primary {
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: #f0f3f6;
-  color: #0b0c0f;
+  border: 1px solid transparent;
+  background: var(--accent);
+  color: var(--accent-contrast);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #ffffff;
+  opacity: 0.9;
 }
 
 .btn-primary:disabled {

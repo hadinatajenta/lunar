@@ -216,9 +216,9 @@ h1 {
   align-items: center;
   justify-content: space-between;
   padding: 12px 18px;
-  border: 1px solid rgba(187, 169, 132, 0.3);
+  border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
   border-radius: 9px;
-  background: rgba(187, 169, 132, 0.1);
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
   color: var(--warning);
   font-size: 13px;
   margin-bottom: 24px;
@@ -229,10 +229,10 @@ h1 {
   align-items: center;
   justify-content: space-between;
   padding: 12px 18px;
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
   border-radius: 9px;
-  background: rgba(239, 68, 68, 0.08);
-  color: #ef4444;
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  color: var(--danger);
   font-size: 13px;
   margin-bottom: 24px;
 }

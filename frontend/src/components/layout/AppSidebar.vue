@@ -172,7 +172,7 @@ const handleSignOut = async () => {
   height: 25px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.23);
+  border: 1px solid var(--border-strong);
   border-radius: 50%;
 }
 
@@ -181,8 +181,8 @@ const handleSignOut = async () => {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 16px rgba(255, 255, 255, 0.22);
+  background: var(--text);
+  box-shadow: 0 0 16px rgba(125, 125, 125, 0.22);
 }
 
 .brand-name {
@@ -220,13 +220,14 @@ const handleSignOut = async () => {
 }
 
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--surface-hover);
   color: var(--text);
 }
 
 .nav-item.is-active {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-raised);
   color: var(--text);
+  font-weight: 600;
 }
 
 .nav-icon {
@@ -250,16 +251,16 @@ const handleSignOut = async () => {
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.018);
+  background: var(--surface);
 }
 
 .status-top {
   display: flex;
   align-items: center;
   gap: 7px;
-  color: var(--muted);
+  color: var(--text);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .status-dot {
@@ -272,8 +273,9 @@ const handleSignOut = async () => {
 
 .status-value {
   margin-top: 7px;
-  color: var(--text);
+  color: var(--muted);
   font-size: 12px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 
@@ -293,7 +295,7 @@ const handleSignOut = async () => {
   border: 1px solid var(--border-strong);
   border-radius: 9px;
   background: var(--surface-raised);
-  color: #d8dde4;
+  color: var(--text);
   font-size: 11px;
   font-weight: 600;
   flex-shrink: 0;
@@ -306,9 +308,9 @@ const handleSignOut = async () => {
 
 .account-name {
   overflow: hidden;
-  color: #dfe3e8;
+  color: var(--text);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -316,8 +318,9 @@ const handleSignOut = async () => {
 .account-email {
   overflow: hidden;
   margin-top: 2px;
-  color: var(--subtle);
-  font-size: 10px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -330,7 +333,7 @@ const handleSignOut = async () => {
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: var(--subtle);
+  color: var(--muted);
   cursor: pointer;
   transition: color 180ms ease, background-color 180ms ease;
   flex-shrink: 0;
@@ -342,7 +345,7 @@ const handleSignOut = async () => {
 }
 
 .logout-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-hover);
   color: var(--danger);
 }
 </style>

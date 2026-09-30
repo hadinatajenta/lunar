@@ -140,7 +140,7 @@ const emit = defineEmits<{
   padding: 2px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface-raised);
 }
 
 .bb-filter button {
@@ -156,12 +156,14 @@ const emit = defineEmits<{
 }
 
 .bb-filter button:hover {
+  background: var(--surface-hover);
   color: var(--text);
 }
 
 .bb-filter button.is-active {
-  background: rgba(255, 255, 255, 0.075);
+  background: var(--surface);
   color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .push-list {
@@ -177,8 +179,10 @@ const emit = defineEmits<{
   padding: 14px 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: rgba(16, 18, 23, 0.88);
-  transition: border-color 180ms ease;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: border-color 180ms ease, background-color 180ms ease;
 }
 
 .push-card:hover {
@@ -198,16 +202,16 @@ const emit = defineEmits<{
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border);
   border-radius: 9px;
   background: var(--surface-raised);
-  color: #d8dde4;
+  color: var(--text);
   font-size: 11px;
   font-weight: 700;
 }
 
 .push-repo {
-  color: #e3e7ec;
+  color: var(--text);
   font-size: 12px;
   font-weight: 500;
   white-space: nowrap;
@@ -230,8 +234,8 @@ const emit = defineEmits<{
   padding: 3px 7px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.025);
-  color: #a9b1bb;
+  background: var(--surface-raised);
+  color: var(--text);
   font-size: 10px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   max-width: 240px;
@@ -256,7 +260,7 @@ const emit = defineEmits<{
 }
 
 .push-sub {
-  color: var(--subtle);
+  color: var(--muted);
   font-size: 10px;
 }
 
@@ -267,7 +271,7 @@ const emit = defineEmits<{
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.018);
+  background: var(--surface-raised);
 }
 
 .ai-badge {
@@ -277,15 +281,16 @@ const emit = defineEmits<{
   height: 18px;
   flex: 0 0 auto;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.07);
-  color: #cfd6de;
+  border: 1px solid var(--border);
+  background: var(--surface-hover);
+  color: var(--text);
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
 
 .ai-text {
-  color: #b9c0c9;
+  color: var(--muted);
   font-size: 11px;
   line-height: 1.6;
 }
@@ -309,18 +314,18 @@ const emit = defineEmits<{
   font-size: 11.5px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 160ms ease;
+  transition: opacity 160ms ease, background-color 160ms ease, color 160ms ease;
   white-space: nowrap;
 }
 
 .btn-primary {
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: #f0f3f6;
-  color: #0b0c0f;
+  border: 1px solid transparent;
+  background: var(--accent);
+  color: var(--accent-contrast);
 }
 
 .btn-primary:hover {
-  background: #ffffff;
+  opacity: 0.9;
 }
 
 .btn-primary svg {
@@ -338,7 +343,8 @@ const emit = defineEmits<{
   text-align: center;
   border: 1px dashed var(--border);
   border-radius: var(--radius);
-  color: var(--subtle);
+  background: var(--surface);
+  color: var(--muted);
   font-size: 12px;
 }
 

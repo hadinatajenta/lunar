@@ -106,3 +106,14 @@ type JiraSearchResponse struct {
 	Total      int         `json:"total"`
 	Issues     []JiraIssue `json:"issues"`
 }
+
+type JiraRemoteLinkObject struct {
+	URL   string `json:"url"`
+	Title string `json:"title"`
+}
+
+type JiraRemoteLink struct {
+	ID           int                  `json:"id"`
+	Relationship string               `json:"relationship"`
+	Object       JiraRemoteLinkObject `json:"object"`
+}

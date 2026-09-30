@@ -265,7 +265,9 @@ const handleSave = async (provider: string, keyValue: string) => {
 .settings-card {
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: rgba(16, 18, 23, 0.86);
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
   overflow: hidden;
 }
 
@@ -436,17 +438,20 @@ const handleSave = async (provider: string, keyValue: string) => {
 }
 
 .action-btn {
-  height: 40px;
-  padding: 0 16px;
-  border: 1px solid var(--border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid transparent;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--text);
-  font-size: 13px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 12px;
   font-weight: 500;
+  white-space: nowrap;
   cursor: pointer;
-  transition: background-color 180ms ease, border-color 180ms ease;
-  flex-shrink: 0;
+  transition: opacity 160ms ease;
 }
 
 .action-btn:hover:not(:disabled) {

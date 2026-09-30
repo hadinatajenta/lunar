@@ -7,6 +7,7 @@ import (
 
 	"lunar/backend/internal/jira/application"
 	sharedAuth "lunar/backend/internal/shared/auth"
+	"lunar/backend/internal/shared/cache"
 	sharedErrors "lunar/backend/internal/shared/errors"
 	sharedHttp "lunar/backend/internal/shared/http"
 )
@@ -45,7 +46,7 @@ func (h *JiraHandler) writeError(w http.ResponseWriter, err error) {
 
 func (h *JiraHandler) requestContext(r *http.Request) context.Context {
 	if r.URL.Query().Get("refresh") == "1" {
-		return application.WithForceRefresh(r.Context())
+		return cache.WithForceRefresh(r.Context())
 	}
 	return r.Context()
 }
@@ -87,4 +88,17 @@ func (h *JiraHandler) GetIssueDetail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sharedHttp.WriteJSON(w, http.StatusOK, issue)
+}
+
+func (h *JiraHandler) ListIssueRemoteLinks(w http.ResponseWriter, r *http.Request) {
+	issueKey := r.URL.Query().Get("key")
+
+	userID := h.getUserID(r)
+	links, err := h.service.GetIssueRemoteLinks(r.Context(), userID, issueKey)
+	if err != nil {
+		h.writeError(w, err)
+		return
+	}
+
+	sharedHttp.WriteJSON(w, http.StatusOK, links)
 }

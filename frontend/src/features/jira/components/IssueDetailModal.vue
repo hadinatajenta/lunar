@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from "vue"
+import { useRouter } from "vue-router"
 import type { JiraIssue } from "../types"
+import { fetchIssueRemoteLinks, type JiraRemoteLink } from "../api/jira-api"
 
 interface Props {
   issue: JiraIssue | null
@@ -15,14 +17,76 @@ const emit = defineEmits<{
   (e: "close"): void
 }>()
 
+const router = useRouter()
 const isDescriptionExpanded = ref(false)
+const remoteLinks = ref<JiraRemoteLink[]>([])
+const isLoadingRemoteLinks = ref(false)
+
+const extractConfluencePageId = (rawUrl: string): string | null => {
+  if (!rawUrl) return null
+  const pagesMatch = rawUrl.match(/\/pages\/(\d+)/)
+  if (pagesMatch?.[1]) {
+    return pagesMatch[1]
+  }
+  const pageIdMatch = rawUrl.match(/[?&]pageId=(\d+)/)
+  if (pageIdMatch?.[1]) {
+    return pageIdMatch[1]
+  }
+  return null
+}
+
+const confluenceLinks = computed(() => {
+  return remoteLinks.value.filter((link) => {
+    const url = link.object?.url || ""
+    return url.includes("confluence.bri.co.id") || url.includes("/pages/")
+  })
+})
+
+const loadRemoteLinks = async (issueKey: string) => {
+  if (!issueKey) {
+    remoteLinks.value = []
+    return
+  }
+  isLoadingRemoteLinks.value = true
+  try {
+    remoteLinks.value = await fetchIssueRemoteLinks(issueKey)
+  } catch {
+    remoteLinks.value = []
+  } finally {
+    isLoadingRemoteLinks.value = false
+  }
+}
 
 watch(
   () => props.issue,
-  () => {
+  (newIssue) => {
     isDescriptionExpanded.value = false
-  }
+    if (newIssue) {
+      const key = newIssue.key || newIssue.id
+      if (key) {
+        loadRemoteLinks(key)
+      } else {
+        remoteLinks.value = []
+      }
+    } else {
+      remoteLinks.value = []
+    }
+  },
+  { immediate: true }
 )
+
+const handleWikiClick = (link: JiraRemoteLink) => {
+  const rawUrl = link.object?.url || ""
+  const pageId = extractConfluencePageId(rawUrl)
+  if (pageId) {
+    emit("close")
+    router.push(`/confluence/${encodeURIComponent(pageId)}`)
+    return
+  }
+  if (rawUrl) {
+    window.open(rawUrl, "_blank", "noopener,noreferrer")
+  }
+}
 
 const handleKeydown = (event: KeyboardEvent) => {
   if (event.key === "Escape" && props.issue) {
@@ -196,6 +260,34 @@ const openInJira = () => {
             </div>
           </div>
 
+          <div
+            v-if="confluenceLinks.length > 0"
+            class="wiki-links-section"
+            data-testid="wiki-links-section"
+          >
+            <p class="section-label">Wiki Pages</p>
+            <div class="wiki-links-list">
+              <button
+                v-for="link in confluenceLinks"
+                :key="link.id ?? link.object.url"
+                type="button"
+                class="wiki-link-item"
+                data-testid="wiki-link-item"
+                @click="handleWikiClick(link)"
+              >
+                <svg class="wiki-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"></path>
+                  <path d="M6 6h10"></path>
+                  <path d="M6 10h10"></path>
+                </svg>
+                <span class="wiki-link-title">{{ link.object.title || "Confluence Document" }}</span>
+                <svg class="wiki-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m9 18 6-6-6-6"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+
           <div v-if="issue.generated" class="ai-output">
             <div class="ai-output-head">
               <span class="ai-badge">AI</span>
@@ -364,7 +456,7 @@ const openInJira = () => {
   padding: 4px 10px;
   border: 1px solid var(--border);
   border-radius: 7px;
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--surface-raised);
   font-size: 11px;
 }
 
@@ -457,59 +549,79 @@ const openInJira = () => {
   opacity: 0.85;
 }
 
+.wiki-links-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wiki-links-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wiki-link-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.wiki-link-item:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.wiki-icon {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.wiki-link-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wiki-arrow {
+  width: 12px;
+  height: 12px;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+  color: var(--subtle);
+}
+
 .ai-output {
   padding: 14px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.018);
-}
-
-.ai-output-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.ai-badge {
-  display: grid;
-  place-items: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.07);
-  color: #cfd6de;
-  font-size: 9px;
-  font-weight: 700;
-}
-
-.ai-output pre {
-  margin: 0;
-  padding: 12px 14px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.3);
-  color: #c8ced5;
-  font-size: 11.5px;
-  line-height: 1.65;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  white-space: pre-wrap;
-  word-break: break-word;
-  max-height: 280px;
-  overflow: auto;
-}
-
-.modal-footer {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 24px;
-  border-top: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.015);
+  background: var(--surface-raised);
   flex-shrink: 0;
 }
 
@@ -549,7 +661,7 @@ const openInJira = () => {
 
 .btn-primary {
   background: var(--accent);
-  color: #0b0c0f;
+  color: var(--accent-contrast);
 }
 
 .btn-primary:hover {
@@ -557,13 +669,13 @@ const openInJira = () => {
 }
 
 .btn-ghost {
-  border-color: var(--border);
-  background: transparent;
-  color: #c8ced5;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
 }
 
 .btn-ghost:hover {
   border-color: var(--border-strong);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-hover);
 }
 </style>

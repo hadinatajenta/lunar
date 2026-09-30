@@ -51,6 +51,18 @@ export class ConfluencePage {
     return this.page.getByTestId("detail-meta")
   }
 
+  get detailLastEditor() {
+    return this.page.getByTestId("detail-last-editor")
+  }
+
+  get detailReadMore() {
+    return this.page.getByTestId("detail-read-more")
+  }
+
+  get detailBody() {
+    return this.page.getByTestId("detail-body")
+  }
+
   get detailBackButton() {
     return this.page.getByTestId("detail-back")
   }
@@ -60,7 +72,9 @@ export class ConfluencePage {
   }
 
   get instantApplyButton() {
-    return this.page.getByRole("button", { name: "Instant apply" })
+    return this.page
+      .getByTestId("detail-apply")
+      .or(this.page.getByRole("button", { name: "Instant apply" }))
   }
 
   get copyDescriptionButton() {

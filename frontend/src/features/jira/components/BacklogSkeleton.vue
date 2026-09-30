@@ -40,7 +40,7 @@
 .skeleton-sprint {
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: rgba(16, 18, 23, 0.6);
+  background: var(--surface);
   overflow: hidden;
 }
 
@@ -49,7 +49,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface-raised);
   border-bottom: 1px solid var(--border);
 }
 
@@ -57,7 +57,7 @@
   width: 190px;
   height: 14px;
   border-radius: 6px;
-  background: var(--surface-raised);
+  background: var(--surface-hover);
   animation: pulse-shimmer 1.6s ease-in-out infinite;
 }
 
@@ -65,7 +65,7 @@
   width: 140px;
   height: 12px;
   border-radius: 6px;
-  background: var(--surface-raised);
+  background: var(--surface-hover);
   animation: pulse-shimmer 1.6s ease-in-out infinite;
 }
 
@@ -80,6 +80,7 @@
   gap: 12px;
   padding: 12px 16px;
   border-bottom: 1px solid var(--border);
+  background: var(--surface);
 }
 
 .skeleton-row:last-child {
@@ -110,22 +111,21 @@
   border-radius: 4px;
   background: var(--surface-raised);
   animation: pulse-shimmer 1.6s ease-in-out infinite;
-  min-width: 100px;
 }
 
 .skeleton-issue-status {
-  width: 64px;
-  height: 16px;
-  border-radius: 4px;
+  width: 74px;
+  height: 18px;
+  border-radius: 5px;
   background: var(--surface-raised);
   animation: pulse-shimmer 1.6s ease-in-out infinite;
   flex-shrink: 0;
 }
 
 .skeleton-issue-pts {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
+  width: 24px;
+  height: 20px;
+  border-radius: 5px;
   background: var(--surface-raised);
   animation: pulse-shimmer 1.6s ease-in-out infinite;
   flex-shrink: 0;
@@ -133,16 +133,10 @@
 
 @keyframes pulse-shimmer {
   0%, 100% {
-    opacity: 0.35;
+    opacity: 0.4;
   }
   50% {
-    opacity: 0.75;
-  }
-}
-
-@media (max-width: 768px) {
-  .skeleton-issue-summary {
-    display: none;
+    opacity: 0.85;
   }
 }
 </style>

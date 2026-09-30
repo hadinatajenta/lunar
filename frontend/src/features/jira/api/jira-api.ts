@@ -1,6 +1,15 @@
 import { http } from "../../../lib/http"
 import type { JiraIssue, JiraBacklogResponse } from "../types"
 
+export interface JiraRemoteLink {
+  id?: string | number
+  relationship?: string
+  object: {
+    url: string
+    title: string
+  }
+}
+
 export async function fetchMyIssues(options?: { refresh?: boolean }): Promise<JiraIssue[]> {
   const query = options?.refresh ? "?refresh=1" : ""
   const response = await http.get<JiraIssue[] | { issues: JiraIssue[] }>(`/api/jira/issues${query}`)
@@ -31,4 +40,21 @@ export async function fetchBacklog(
 export async function fetchIssueDetail(key: string): Promise<JiraIssue> {
   const cleanKey = encodeURIComponent(key.trim())
   return http.get<JiraIssue>(`/api/jira/issues/${cleanKey}`)
+}
+
+export async function fetchIssueRemoteLinks(issueKey: string): Promise<JiraRemoteLink[]> {
+  const cleanKey = encodeURIComponent(issueKey.trim())
+  const response = await http.get<JiraRemoteLink[] | { remotelinks?: JiraRemoteLink[]; remote_links?: JiraRemoteLink[] }>(
+    `/api/jira/issues/remotelinks?key=${cleanKey}`
+  )
+  if (Array.isArray(response)) {
+    return response
+  }
+  if (response && Array.isArray(response.remotelinks)) {
+    return response.remotelinks
+  }
+  if (response && Array.isArray(response.remote_links)) {
+    return response.remote_links
+  }
+  return []
 }

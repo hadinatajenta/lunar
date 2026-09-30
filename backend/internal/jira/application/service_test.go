@@ -40,10 +40,22 @@ type mockJiraRepo struct {
 	issues      []domain.JiraIssue
 	sprints     []domain.JiraSprint
 	detail      *domain.JiraIssue
+	remoteLinks map[string][]domain.JiraRemoteLink
+	remoteErr   error
 	err         error
 	detailErr   error
 	searchCalls atomic.Int64
 	sprintCalls atomic.Int64
+}
+
+func (m *mockJiraRepo) GetIssueRemoteLinks(ctx context.Context, pat string, issueKey string) ([]domain.JiraRemoteLink, error) {
+	if pat == "invalid" {
+		return nil, fmt.Errorf("%w: invalid or expired Jira PAT", sharedErrors.ErrUnauthorized)
+	}
+	if m.remoteErr != nil {
+		return nil, m.remoteErr
+	}
+	return m.remoteLinks[issueKey], nil
 }
 
 func (m *mockJiraRepo) SearchMyIssues(ctx context.Context, pat string) ([]domain.JiraIssue, error) {
@@ -234,7 +246,7 @@ func TestJiraService_ForceRefreshBypassesCache(t *testing.T) {
 			t.Fatalf("expected repeat call to be served from cache with 1 hit, got %d", calls)
 		}
 
-		refreshedIssues, err := service.GetMyIssues(WithForceRefresh(ctx), configuredUserID)
+		refreshedIssues, err := service.GetMyIssues(cache.WithForceRefresh(ctx), configuredUserID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -257,7 +269,7 @@ func TestJiraService_ForceRefreshBypassesCache(t *testing.T) {
 			t.Fatalf("expected repeat backlog call to be served from cache with 1 hit, got %d", calls)
 		}
 
-		refreshedBacklog, err := service.GetBacklog(WithForceRefresh(ctx), configuredUserID, "all")
+		refreshedBacklog, err := service.GetBacklog(cache.WithForceRefresh(ctx), configuredUserID, "all")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

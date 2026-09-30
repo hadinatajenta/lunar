@@ -113,7 +113,7 @@ const getRemainingCount = (colKey: "open" | "progress" | "done"): number => {
   padding: 14px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: rgba(16, 18, 23, 0.5);
+  background: var(--surface-raised);
   min-height: 320px;
 }
 
@@ -130,7 +130,7 @@ const getRemainingCount = (colKey: "open" | "progress" | "done"): number => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: #dfe3e8;
+  color: var(--text);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -144,16 +144,16 @@ const getRemainingCount = (colKey: "open" | "progress" | "done"): number => {
 }
 
 .kanban-col-dot.is-open {
-  background: #7d8590;
+  background: var(--muted);
 }
 
 .kanban-col-dot.is-progress {
-  background: #bba984;
-  box-shadow: 0 0 8px rgba(187, 169, 132, 0.4);
+  background: var(--warning);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--warning) 40%, transparent);
 }
 
 .kanban-col-dot.is-done {
-  background: #9fb6a6;
+  background: var(--positive);
 }
 
 .kanban-col-count {
@@ -164,8 +164,9 @@ const getRemainingCount = (colKey: "open" | "progress" | "done"): number => {
   height: 20px;
   padding: 0 7px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--subtle);
+  background: var(--surface);
+  color: var(--muted);
+  border: 1px solid var(--border);
   font-size: 10.5px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -181,7 +182,7 @@ const getRemainingCount = (colKey: "open" | "progress" | "done"): number => {
 .kanban-empty {
   padding: 24px 12px;
   text-align: center;
-  color: var(--subtle);
+  color: var(--muted);
   font-size: 11px;
   border: 1px dashed var(--border);
   border-radius: 9px;
@@ -194,7 +195,7 @@ const getRemainingCount = (colKey: "open" | "progress" | "done"): number => {
   padding: 6px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--surface);
   color: var(--muted);
   font-size: 11px;
   font-weight: 500;
@@ -207,7 +208,7 @@ const getRemainingCount = (colKey: "open" | "progress" | "done"): number => {
 }
 
 .btn-load-more:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-hover);
   color: var(--text);
   border-color: var(--border-strong);
 }

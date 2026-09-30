@@ -197,7 +197,7 @@ h1 {
 
 .btn-primary {
   background: var(--accent);
-  color: #0b0c0f;
+  color: var(--accent-contrast);
 }
 
 .btn-primary:hover {
@@ -207,7 +207,7 @@ h1 {
 .loading-bar {
   width: 100%;
   height: 2px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--border);
   border-radius: 2px;
   overflow: hidden;
   margin-bottom: 16px;
@@ -237,10 +237,10 @@ h1 {
 }
 
 .skeleton-card {
-  height: 168px;
+  height: 140px;
   border: 1px solid var(--border);
-  border-radius: 12px;
-  background: rgba(16, 18, 23, 0.75);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
   animation: skeleton-pulse 1.4s ease-in-out infinite;
 }
 

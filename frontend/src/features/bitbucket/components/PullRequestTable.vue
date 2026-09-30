@@ -162,7 +162,7 @@ const emit = defineEmits<{
   padding: 2px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface-raised);
 }
 
 .bb-filter button {
@@ -178,18 +178,21 @@ const emit = defineEmits<{
 }
 
 .bb-filter button:hover {
+  background: var(--surface-hover);
   color: var(--text);
 }
 
 .bb-filter button.is-active {
-  background: rgba(255, 255, 255, 0.075);
+  background: var(--surface);
   color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .pr-table-wrap {
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: rgba(16, 18, 23, 0.88);
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   overflow-x: auto;
 }
 
@@ -201,8 +204,8 @@ const emit = defineEmits<{
 .pr-table thead th {
   padding: 11px 18px;
   border-bottom: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.014);
-  color: var(--subtle);
+  background: var(--surface);
+  color: var(--muted);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.09em;
@@ -218,7 +221,7 @@ const emit = defineEmits<{
 .pr-table tbody td {
   padding: 14px 18px;
   border-bottom: 1px solid var(--border);
-  color: #c8ced5;
+  color: var(--text);
   font-size: 12px;
   vertical-align: middle;
 }
@@ -228,11 +231,13 @@ const emit = defineEmits<{
 }
 
 .pr-table tbody tr {
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
   transition: background-color 150ms ease;
 }
 
 .pr-table tbody tr:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface-hover);
 }
 
 .pr-cell-content {
@@ -256,7 +261,7 @@ const emit = defineEmits<{
 }
 
 .pr-cell-name {
-  color: #e9edf1;
+  color: var(--text);
   font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
@@ -278,8 +283,8 @@ const emit = defineEmits<{
   padding: 2px 7px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.025);
-  color: #a9b1bb;
+  background: var(--surface-raised);
+  color: var(--text);
   font-size: 10px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   max-width: 260px;
@@ -316,7 +321,7 @@ const emit = defineEmits<{
   padding: 3px 9px;
   border: 1px solid var(--border);
   border-radius: 999px;
-  color: #a9b1bb;
+  color: var(--muted);
   font-size: 10px;
   font-weight: 500;
   text-transform: capitalize;
@@ -332,27 +337,27 @@ const emit = defineEmits<{
 }
 
 .status-pill.is-open {
-  color: #b5cbbd;
-  border-color: rgba(159, 182, 166, 0.3);
-  background: rgba(159, 182, 166, 0.08);
+  background: color-mix(in srgb, var(--positive) 14%, transparent);
+  color: var(--positive);
+  border: 1px solid color-mix(in srgb, var(--positive) 30%, transparent);
 }
 
 .status-pill.is-draft {
-  color: #a9b1bb;
-  border-color: var(--border);
-  background: rgba(255, 255, 255, 0.025);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
 }
 
 .status-pill.is-needs-work {
-  color: #d1b48c;
-  border-color: rgba(209, 180, 140, 0.3);
-  background: rgba(209, 180, 140, 0.08);
+  background: color-mix(in srgb, var(--warning) 14%, transparent);
+  color: var(--warning);
+  border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
 }
 
 .status-pill.is-declined {
-  color: #e09999;
-  border-color: rgba(224, 153, 153, 0.3);
-  background: rgba(224, 153, 153, 0.08);
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
 }
 
 .pr-table td.is-actions {
@@ -368,8 +373,8 @@ const emit = defineEmits<{
   padding: 0 11px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: transparent;
-  color: #c8ced5;
+  background: var(--surface-raised);
+  color: var(--text);
   font-size: 11px;
   font-weight: 500;
   cursor: pointer;
@@ -377,9 +382,8 @@ const emit = defineEmits<{
 }
 
 .review-btn:hover {
+  background: var(--surface-hover);
   border-color: var(--border-strong);
-  background: rgba(255, 255, 255, 0.035);
-  color: var(--text);
 }
 
 .review-btn svg {
@@ -397,7 +401,8 @@ const emit = defineEmits<{
   text-align: center;
   border: 1px dashed var(--border);
   border-radius: var(--radius);
-  color: var(--subtle);
+  background: var(--surface);
+  color: var(--muted);
   font-size: 12px;
 }
 </style>

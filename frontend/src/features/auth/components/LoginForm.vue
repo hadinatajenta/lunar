@@ -144,6 +144,7 @@ async function handleSubmit(): Promise<void> {
 }
 
 .login-header h2 {
+  color: var(--text);
   margin: 0;
   font-size: 28px;
   font-weight: 600;
@@ -191,8 +192,9 @@ async function handleSubmit(): Promise<void> {
 }
 
 .account-footer {
-  margin-top: 22px;
-  color: var(--subtle);
+  margin: 28px 0 0;
+  text-align: center;
+  color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
   text-align: center;

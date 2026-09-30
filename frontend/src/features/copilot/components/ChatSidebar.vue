@@ -72,7 +72,7 @@ const { sessions, activeSessionId, isDomainModalOpen, startNewChat, selectSessio
   flex-direction: column;
   height: 100%;
   border-right: 1px solid var(--border);
-  background: rgba(13, 15, 19, 0.95);
+  background: var(--sidebar);
 }
 
 .chat-history-header {
@@ -93,7 +93,8 @@ const { sessions, activeSessionId, isDomainModalOpen, startNewChat, selectSessio
   padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface);
+  color: var(--text);
   color: var(--text);
   font-size: 13px;
   font-weight: 500;
@@ -102,7 +103,7 @@ const { sessions, activeSessionId, isDomainModalOpen, startNewChat, selectSessio
 }
 
 .new-chat-btn:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-hover);
   border-color: var(--border-strong);
 }
 
@@ -118,7 +119,8 @@ const { sessions, activeSessionId, isDomainModalOpen, startNewChat, selectSessio
   place-items: center;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface);
+  color: var(--muted);
   color: var(--muted);
   cursor: pointer;
   transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease;
@@ -126,7 +128,7 @@ const { sessions, activeSessionId, isDomainModalOpen, startNewChat, selectSessio
 
 .history-settings-btn:hover {
   color: var(--text);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-hover);
   border-color: var(--border-strong);
 }
 
@@ -177,7 +179,8 @@ const { sessions, activeSessionId, isDomainModalOpen, startNewChat, selectSessio
 }
 
 .history-item:hover {
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--surface-hover);
+  color: var(--text);
   color: var(--text);
 }
 

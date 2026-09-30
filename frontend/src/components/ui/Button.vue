@@ -83,7 +83,7 @@ const variantClass = computed(() => {
   border: 0;
   border-radius: 10px;
   background: var(--accent);
-  color: #0b0c0f;
+  color: var(--accent-contrast);
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
@@ -101,8 +101,8 @@ const variantClass = computed(() => {
   min-height: 46px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: transparent;
-  color: #d9dee6;
+  background: var(--surface);
+  color: var(--text);
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
@@ -110,7 +110,7 @@ const variantClass = computed(() => {
 
 .btn-secondary:hover:not(:disabled) {
   border-color: var(--border-strong);
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--surface-hover);
 }
 
 .btn-base:disabled {

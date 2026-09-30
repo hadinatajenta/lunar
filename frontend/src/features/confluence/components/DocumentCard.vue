@@ -55,11 +55,11 @@ const emit = defineEmits<{
 .doc-card {
   display: flex;
   flex-direction: column;
-  gap: 12px;
   padding: 16px;
   border: 1px solid var(--border);
-  border-radius: 12px;
-  background: rgba(16, 18, 23, 0.75);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   text-align: left;
   cursor: pointer;
   transition:
@@ -69,8 +69,7 @@ const emit = defineEmits<{
 }
 
 .doc-card:hover {
-  border-color: var(--border-strong);
-  background: rgba(255, 255, 255, 0.028);
+  background: var(--surface-hover);
   transform: translateY(-1px);
 }
 
@@ -99,7 +98,7 @@ const emit = defineEmits<{
 }
 
 .doc-card-title {
-  color: #e3e7ec;
+  color: var(--text);
   font-size: 13.5px;
   font-weight: 500;
   line-height: 1.45;
@@ -131,10 +130,7 @@ const emit = defineEmits<{
 }
 
 .doc-card-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--subtle);
+  color: var(--muted);
   font-size: 10px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;

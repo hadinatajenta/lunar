@@ -93,7 +93,7 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	jiraHandler := jiraTransport.NewJiraHandler(jiraService)
 
 	confluenceClient := confluenceInfra.NewConfluenceClient(cfg.ConfluenceBaseURL)
-	confluenceService := confluenceApp.NewConfluenceService(confluenceClient, authService)
+	confluenceService := confluenceApp.NewConfluenceService(confluenceClient, authService, jiraService)
 	confluenceHandler := confluenceTransport.NewConfluenceHandler(confluenceService)
 
 	dashboardService := dashboardApp.NewDashboardService(jiraService, bitbucketService, copilotService, authService)
@@ -158,6 +158,7 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 
 	mux.Handle("GET /api/jira/issues", authMiddleware(http.HandlerFunc(jiraHandler.ListMyIssues)))
 	mux.Handle("GET /api/jira/backlog", authMiddleware(http.HandlerFunc(jiraHandler.GetBacklog)))
+	mux.Handle("GET /api/jira/issues/remotelinks", authMiddleware(http.HandlerFunc(jiraHandler.ListIssueRemoteLinks)))
 	mux.Handle("GET /api/jira/issues/{key}", authMiddleware(http.HandlerFunc(jiraHandler.GetIssueDetail)))
 
 	mux.Handle("GET /api/confluence/documents", authMiddleware(http.HandlerFunc(confluenceHandler.ListDocuments)))

@@ -38,10 +38,12 @@ const filteredDocuments = computed(() => {
       return true
     }
     return (
-      confluenceDocument.title.toLowerCase().includes(normalizedQuery) ||
-      confluenceDocument.id.toLowerCase().includes(normalizedQuery) ||
-      confluenceDocument.space.toLowerCase().includes(normalizedQuery) ||
-      confluenceDocument.description.toLowerCase().includes(normalizedQuery)
+      (confluenceDocument.title || "").toLowerCase().includes(normalizedQuery) ||
+      (confluenceDocument.id || "").toLowerCase().includes(normalizedQuery) ||
+      (confluenceDocument.space || "").toLowerCase().includes(normalizedQuery) ||
+      (confluenceDocument.description || "").toLowerCase().includes(normalizedQuery) ||
+      (confluenceDocument.owner || "").toLowerCase().includes(normalizedQuery) ||
+      (confluenceDocument.last_editor || "").toLowerCase().includes(normalizedQuery)
     )
   })
 })
@@ -69,7 +71,7 @@ const visibleSummary = computed(() => {
 })
 
 export function useConfluence() {
-  const { secrets } = useSettings()
+  const { secrets, fetchSettings } = useSettings()
 
   const clearError = () => {
     error.value = null
@@ -115,6 +117,12 @@ export function useConfluence() {
 
   const initialize = async () => {
     if (isLoading.value || hasLoaded.value) {
+      return
+    }
+    if (!secrets.value) {
+      await fetchSettings()
+    }
+    if (secrets.value?.has_confluence_pat === false) {
       return
     }
     await fetchData()

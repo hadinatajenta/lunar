@@ -54,6 +54,23 @@ export function routeSystemConfig(page: Page, systemAi: string[] = []) {
 export function routeStandardJira(page: Page) {
   return page.route(/\/api\/jira\//, async (route) => {
     const url = new URL(route.request().url())
+    if (url.pathname.includes("/issues/remotelinks")) {
+      const key = url.searchParams.get("key") || ""
+      await route.fulfill({
+        status: 200,
+        json: [
+          {
+            id: `link-${key}`,
+            relationship: "wiki",
+            object: {
+              url: "https://confluence.bri.co.id/pages/viewpage.action?pageId=UT-101",
+              title: `${key} Confluence Specification`
+            }
+          }
+        ]
+      })
+      return
+    }
     if (url.pathname.includes("/issues/")) {
       const key = decodeURIComponent(url.pathname.split("/issues/")[1] || "")
       const found = mockAssignedIssues.find(

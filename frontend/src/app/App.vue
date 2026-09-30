@@ -11,7 +11,7 @@ import { useAuth } from "../features/auth/composables/useAuth"
 import { useJira } from "../features/jira/composables/useJira"
 import { useConfluence } from "../features/confluence/composables/useConfluence"
 
-const { isAuthenticated } = useAuth()
+const { isAuthenticated, fetchUser } = useAuth()
 const { prefetchJiraData, resetJiraData } = useJira()
 const { resetConfluenceData } = useConfluence()
 
@@ -19,6 +19,7 @@ watch(
   isAuthenticated,
   (authenticated) => {
     if (authenticated) {
+      fetchUser()
       prefetchJiraData()
     } else {
       resetJiraData()

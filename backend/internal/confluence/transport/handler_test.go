@@ -69,7 +69,7 @@ func setupTestHandler(t *testing.T, upstream http.HandlerFunc) (*ConfluenceHandl
 
 	authService := authApp.NewAuthService(nil, vaultRepo, handlerEncryptionKey, "jwt-secret", time.Hour)
 	client := confluenceInfra.NewConfluenceClient(upstreamServer.URL)
-	service := confluenceApp.NewConfluenceService(client, authService)
+	service := confluenceApp.NewConfluenceService(client, authService, nil)
 	return NewConfluenceHandler(service), handlerConfiguredUser, handlerUnconfigured
 }
 
@@ -109,7 +109,7 @@ func TestConfluenceHandler_UnauthenticatedReturns401WithoutUpstreamHit(t *testin
 		_, _ = w.Write([]byte(handlerListUpstream))
 	})
 
-	rec := performRequest(t, handler.ListDocuments, "", "/api/confluence/documents")
+	rec := performRequest(t, handler.ListDocuments, "", "/api/confluence/documents?scope=all")
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", rec.Code)
@@ -127,7 +127,7 @@ func TestConfluenceHandler_MissingPATReturns401(t *testing.T) {
 		_, _ = w.Write([]byte(handlerListUpstream))
 	})
 
-	rec := performRequest(t, handler.ListDocuments, unconfiguredUser, "/api/confluence/documents")
+	rec := performRequest(t, handler.ListDocuments, unconfiguredUser, "/api/confluence/documents?scope=all")
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", rec.Code)
@@ -145,7 +145,7 @@ func TestConfluenceHandler_UpstreamFailureReturns502(t *testing.T) {
 		w.WriteHeader(http.StatusInternalServerError)
 	})
 
-	rec := performRequest(t, handler.ListDocuments, configuredUser, "/api/confluence/documents")
+	rec := performRequest(t, handler.ListDocuments, configuredUser, "/api/confluence/documents?scope=all")
 
 	if rec.Code != http.StatusBadGateway {
 		t.Fatalf("expected 502, got %d", rec.Code)
@@ -170,7 +170,7 @@ func TestConfluenceHandler_ListDocumentsMatchesContractShape(t *testing.T) {
 		_, _ = w.Write([]byte(handlerListUpstream))
 	})
 
-	rec := performRequest(t, handler.ListDocuments, configuredUser, "/api/confluence/documents")
+	rec := performRequest(t, handler.ListDocuments, configuredUser, "/api/confluence/documents?scope=all")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rec.Code)
 	}
@@ -179,8 +179,8 @@ func TestConfluenceHandler_ListDocumentsMatchesContractShape(t *testing.T) {
 	if err := json.NewDecoder(rec.Body).Decode(&payload); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
-	if len(payload) != 2 {
-		t.Fatalf("expected exactly documents and total keys, got %v", payload)
+	if len(payload) != 4 {
+		t.Fatalf("expected exactly documents, total, source, and degraded keys, got %v", payload)
 	}
 
 	documentsRaw, hasDocuments := payload["documents"]
@@ -190,6 +190,17 @@ func TestConfluenceHandler_ListDocumentsMatchesContractShape(t *testing.T) {
 	totalRaw, hasTotal := payload["total"]
 	if !hasTotal {
 		t.Fatal("expected total key in response")
+	}
+	sourceRaw, hasSource := payload["source"]
+	if !hasSource {
+		t.Fatal("expected source key in response")
+	}
+	var sourceValue string
+	if err := json.Unmarshal(sourceRaw, &sourceValue); err != nil {
+		t.Fatalf("expected source to be a string, got %s", string(sourceRaw))
+	}
+	if sourceValue != "cql-all" {
+		t.Errorf("expected source cql-all, got %q", sourceValue)
 	}
 
 	var documents []map[string]json.RawMessage
@@ -211,9 +222,11 @@ func TestConfluenceHandler_ListDocumentsMatchesContractShape(t *testing.T) {
 		"title":       "UT Coverage Report",
 		"status":      "open",
 		"owner":       "Jane Doe",
+		"last_editor": "Jane Doe",
 		"updated":     "2026-01-02T03:04:05.000+07:00",
 		"space":       "DEV Team",
 		"description": "",
+		"body":        "",
 		"url":         "https://confluence.example.com/display/DEV/UT-Coverage-Report",
 	}
 	if len(document) != len(expectedFields) {
@@ -242,7 +255,7 @@ func TestConfluenceHandler_ListDocumentsEmptyResultsReturnEmptyArray(t *testing.
 		_, _ = w.Write([]byte(handlerEmptyUpstream))
 	})
 
-	rec := performRequest(t, handler.ListDocuments, configuredUser, "/api/confluence/documents")
+	rec := performRequest(t, handler.ListDocuments, configuredUser, "/api/confluence/documents?scope=all")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rec.Code)
 	}

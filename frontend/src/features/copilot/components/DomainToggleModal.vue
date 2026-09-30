@@ -63,10 +63,13 @@ const { defaultDomains, isDomainModalOpen, toggleDomain, isDomainEnabled } = use
 }
 
 .modal-card {
-  width: min(100%, 520px);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  background: #11141a;
+  width: 100%;
+  max-width: 480px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
   overflow: hidden;
 }
@@ -124,11 +127,11 @@ const { defaultDomains, isDomainModalOpen, toggleDomain, isDomainEnabled } = use
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   padding: 12px 14px;
   border: 1px solid var(--border);
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.015);
+  background: var(--surface-raised);
   cursor: pointer;
   transition: background-color 180ms ease, border-color 180ms ease;
 }
@@ -195,12 +198,15 @@ const { defaultDomains, isDomainModalOpen, toggleDomain, isDomainEnabled } = use
 }
 
 .done-btn {
-  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
   padding: 0 16px;
   border: 0;
-  border-radius: 7px;
+  border-radius: 8px;
   background: var(--accent);
-  color: #0b0c0f;
+  color: var(--accent-contrast);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;

@@ -119,7 +119,7 @@ h1 {
 .settings-tab {
   display: flex;
   align-items: center;
-  width: 100%;
+  gap: 10px;
   min-height: 38px;
   padding: 0 12px;
   border: 0;
@@ -134,12 +134,15 @@ h1 {
 }
 
 .settings-tab:hover {
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--surface-hover);
+  color: var(--text);
   color: var(--text);
 }
 
 .settings-tab.is-active {
-  background: rgba(255, 255, 255, 0.07);
+  background: var(--surface-raised);
+  color: var(--text);
+  font-weight: 600;
   color: var(--text);
   font-weight: 600;
 }

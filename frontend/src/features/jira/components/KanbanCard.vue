@@ -102,18 +102,21 @@ const priorityClass = computed(() => {
   padding: 12px 13px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: var(--surface-raised);
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   cursor: pointer;
   text-align: left;
   transition:
     border-color 160ms ease,
     background-color 160ms ease,
+    box-shadow 160ms ease,
     transform 160ms ease;
 }
 
 .kanban-card:hover {
   border-color: var(--border-strong);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-hover);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
   transform: translateY(-1px);
 }
 
@@ -147,45 +150,45 @@ const priorityClass = computed(() => {
 }
 
 .item-type-badge.is-bug {
-  color: #d3a3a3;
-  border-color: rgba(198, 144, 144, 0.3);
-  background: rgba(198, 144, 144, 0.08);
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
 }
 
 .item-type-badge.is-subtask {
-  color: #b9c0c9;
-  border-color: rgba(141, 149, 159, 0.3);
-  background: rgba(141, 149, 159, 0.08);
+  color: var(--muted);
+  border-color: var(--border);
+  background: var(--surface-raised);
 }
 
 .item-type-badge.is-ut {
-  color: #b5cbbd;
-  border-color: rgba(159, 182, 166, 0.3);
-  background: rgba(159, 182, 166, 0.08);
+  color: var(--positive);
+  border-color: color-mix(in srgb, var(--positive) 30%, transparent);
+  background: color-mix(in srgb, var(--positive) 10%, transparent);
 }
 
 .item-type-badge.is-query {
-  color: #cbbb97;
-  border-color: rgba(187, 169, 132, 0.3);
-  background: rgba(187, 169, 132, 0.08);
+  color: var(--warning);
+  border-color: color-mix(in srgb, var(--warning) 30%, transparent);
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
 }
 
 .item-type-badge.is-sop {
-  color: #a9b8c9;
-  border-color: rgba(150, 170, 195, 0.3);
-  background: rgba(150, 170, 195, 0.08);
+  color: var(--muted);
+  border-color: var(--border);
+  background: var(--surface-raised);
 }
 
 .item-type-badge.is-story {
-  color: #b5cbbd;
-  border-color: rgba(159, 182, 166, 0.3);
-  background: rgba(159, 182, 166, 0.08);
+  color: var(--positive);
+  border-color: color-mix(in srgb, var(--positive) 30%, transparent);
+  background: color-mix(in srgb, var(--positive) 10%, transparent);
 }
 
 .item-type-badge.is-task {
-  color: #b9c0c9;
-  border-color: rgba(141, 149, 159, 0.3);
-  background: rgba(141, 149, 159, 0.08);
+  color: var(--muted);
+  border-color: var(--border);
+  background: var(--surface-raised);
 }
 
 .priority-dot {
@@ -196,20 +199,20 @@ const priorityClass = computed(() => {
 }
 
 .priority-dot.is-high {
-  background: #c69090;
-  box-shadow: 0 0 8px rgba(198, 144, 144, 0.5);
+  background: var(--danger);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--danger) 40%, transparent);
 }
 
 .priority-dot.is-medium {
-  background: #bba984;
+  background: var(--warning);
 }
 
 .priority-dot.is-low {
-  background: #9fb6a6;
+  background: var(--positive);
 }
 
 .kanban-card-title {
-  color: #e3e7ec;
+  color: var(--text);
   font-size: 12.5px;
   font-weight: 500;
   line-height: 1.45;
@@ -220,7 +223,7 @@ const priorityClass = computed(() => {
 }
 
 .kanban-card-sub {
-  color: var(--subtle);
+  color: var(--muted);
   font-size: 10px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   letter-spacing: 0.02em;
@@ -244,7 +247,8 @@ const priorityClass = computed(() => {
   padding: 2px 7px;
   border: 1px solid var(--border);
   border-radius: 5px;
-  color: var(--subtle);
+  background: var(--surface-raised);
+  color: var(--muted);
   font-size: 10px;
   font-weight: 600;
 }
@@ -254,10 +258,10 @@ const priorityClass = computed(() => {
   height: 20px;
   display: grid;
   place-items: center;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.03);
-  color: #b9c0c9;
+  background: var(--surface-raised);
+  color: var(--muted);
   font-size: 9px;
   font-weight: 600;
 }

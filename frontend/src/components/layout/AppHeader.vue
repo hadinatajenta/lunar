@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed } from "vue"
 import { useRoute } from "vue-router"
+import { useTheme } from "../../composables/useTheme"
 
 const route = useRoute()
+const { isDark, toggleTheme } = useTheme()
 
 const pageTitle = computed(() => {
   if (route.path.startsWith("/jira")) return "Jira BRI"
@@ -22,13 +24,38 @@ const pageTitle = computed(() => {
       <strong>{{ pageTitle }}</strong>
     </div>
 
-    <div class="command">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="8"></circle>
-        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-      </svg>
-      <span>Search issues, PRs, docs...</span>
-      <kbd class="shortcut">⌘K</kbd>
+    <div class="header-actions">
+      <div class="command">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <span>Search issues, PRs, docs...</span>
+        <kbd class="shortcut">⌘K</kbd>
+      </div>
+
+      <button
+        class="theme-toggle"
+        type="button"
+        data-testid="theme-toggle"
+        :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+        @click="toggleTheme"
+      >
+        <svg v-if="isDark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2"></path>
+          <path d="M12 20v2"></path>
+          <path d="m4.93 4.93 1.41 1.41"></path>
+          <path d="m17.66 17.66 1.41 1.41"></path>
+          <path d="M2 12h2"></path>
+          <path d="M20 12h2"></path>
+          <path d="m6.34 17.66-1.41 1.41"></path>
+          <path d="m19.07 4.93-1.41 1.41"></path>
+        </svg>
+        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+        </svg>
+      </button>
     </div>
   </header>
 </template>
@@ -45,7 +72,7 @@ const pageTitle = computed(() => {
   min-height: 64px;
   padding: 0 30px;
   border-bottom: 1px solid var(--border);
-  background: rgba(11, 12, 15, 0.87);
+  background: color-mix(in srgb, var(--bg) 87%, transparent);
   backdrop-filter: blur(18px);
 }
 
@@ -67,6 +94,12 @@ const pageTitle = computed(() => {
   font-weight: 500;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .command {
   display: flex;
   align-items: center;
@@ -76,8 +109,8 @@ const pageTitle = computed(() => {
   padding: 0 10px;
   border: 1px solid var(--border);
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.022);
-  color: var(--subtle);
+  background: var(--surface-raised);
+  color: var(--muted);
 }
 
 .command svg {
@@ -88,7 +121,7 @@ const pageTitle = computed(() => {
 
 .command span {
   flex: 1;
-  color: var(--subtle);
+  color: var(--muted);
   font-size: 12px;
 }
 
@@ -96,9 +129,36 @@ const pageTitle = computed(() => {
   padding: 3px 6px;
   border: 1px solid var(--border);
   border-radius: 5px;
-  color: #747c87;
+  color: var(--muted);
   font-size: 10px;
   font-variant-numeric: tabular-nums;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface);
+}
+
+.theme-toggle {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface-raised);
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    border-color 150ms ease;
+}
+
+.theme-toggle:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.theme-toggle svg {
+  width: 16px;
+  height: 16px;
 }
 </style>

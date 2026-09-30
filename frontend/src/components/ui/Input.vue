@@ -65,9 +65,8 @@ function handleInput(event: Event): void {
 }
 
 .field-label {
-  display: block;
-  margin-bottom: 8px;
-  color: #d8dde4;
+  color: var(--text);
+  font-weight: 500;
   font-size: 13px;
   font-weight: 500;
 }
@@ -90,7 +89,7 @@ function handleInput(event: Event): void {
 }
 
 .field-input::placeholder {
-  color: #5d6571;
+  color: var(--subtle);
 }
 
 .field-input:hover:not(:disabled) {
@@ -99,8 +98,8 @@ function handleInput(event: Event): void {
 
 .field-input:focus {
   border-color: var(--border-strong);
-  background: #181c24;
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04);
+  background: var(--surface-raised);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
 .field-input:disabled {

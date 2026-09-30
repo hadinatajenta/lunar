@@ -379,20 +379,20 @@ h1 {
 }
 
 .warning-banner {
-  border: 1px solid rgba(187, 169, 132, 0.3);
-  background: rgba(187, 169, 132, 0.1);
+  border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
   color: var(--warning);
 }
 
 .vpn-banner {
-  border: 1px solid rgba(198, 144, 144, 0.3);
-  background: rgba(198, 144, 144, 0.1);
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
   color: var(--danger);
 }
 
 .error-banner {
-  border: 1px solid rgba(198, 144, 144, 0.3);
-  background: rgba(198, 144, 144, 0.1);
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
   color: var(--danger);
 }
 
@@ -441,7 +441,7 @@ h1 {
   padding: 4px;
   border: 1px solid var(--border);
   border-radius: 11px;
-  background: rgba(16, 18, 23, 0.7);
+  background: var(--surface-raised);
   margin-bottom: 20px;
 }
 
@@ -461,17 +461,19 @@ h1 {
   border: 0;
   transition:
     background-color 160ms ease,
-    color 160ms ease;
+    color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .jira-tab:hover {
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--surface-hover);
   color: var(--text);
 }
 
 .jira-tab.is-active {
-  background: rgba(255, 255, 255, 0.075);
+  background: var(--surface);
   color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .jira-tab .count {
@@ -482,14 +484,19 @@ h1 {
   height: 18px;
   padding: 0 6px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-raised);
+  color: var(--muted);
   font-size: 10px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
 }
 
 .jira-tab.is-active .count {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--surface-hover);
+  color: var(--text);
 }
 
 .jira-panel {
@@ -511,7 +518,7 @@ h1 {
   padding: 3px;
   border: 1px solid var(--border);
   border-radius: 9px;
-  background: rgba(16, 18, 23, 0.6);
+  background: var(--surface-raised);
 }
 
 .subfilter button {
@@ -528,17 +535,19 @@ h1 {
   cursor: pointer;
   transition:
     background-color 150ms ease,
-    color 150ms ease;
+    color 150ms ease,
+    box-shadow 150ms ease;
 }
 
 .subfilter button:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-hover);
   color: var(--text);
 }
 
 .subfilter button.is-active {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--surface);
   color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .subfilter button .chip {
@@ -549,14 +558,19 @@ h1 {
   height: 16px;
   padding: 0 5px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-raised);
+  color: var(--muted);
   font-size: 9.5px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
 }
 
 .subfilter button.is-active .chip {
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--surface-hover);
+  color: var(--text);
 }
 
 .subfilter-secondary {
@@ -565,7 +579,7 @@ h1 {
   padding: 3px;
   border: 1px solid var(--border);
   border-radius: 9px;
-  background: rgba(16, 18, 23, 0.4);
+  background: var(--surface-raised);
   transition: opacity 180ms ease;
 }
 
@@ -580,23 +594,25 @@ h1 {
   cursor: pointer;
   transition:
     background-color 150ms ease,
-    color 150ms ease;
+    color 150ms ease,
+    box-shadow 150ms ease;
 }
 
 .subfilter-secondary button:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-hover);
   color: var(--text);
 }
 
 .subfilter-secondary button.is-active {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--surface);
   color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .loading-bar {
   width: 100%;
   height: 2px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--border);
   border-radius: 2px;
   overflow: hidden;
   margin-bottom: 16px;
@@ -640,14 +656,20 @@ h1 {
 }
 
 .btn-ghost {
-  border-color: var(--border);
-  background: transparent;
-  color: #c8ced5;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
 }
 
-.btn-ghost:hover {
+.btn-ghost:hover:not(:disabled) {
   border-color: var(--border-strong);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.btn-ghost:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 @media (max-width: 820px) {

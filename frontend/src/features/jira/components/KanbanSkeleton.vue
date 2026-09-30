@@ -54,7 +54,7 @@ const columns = [
   padding: 14px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: rgba(16, 18, 23, 0.5);
+  background: var(--surface-raised);
   min-height: 380px;
 }
 
@@ -70,7 +70,7 @@ const columns = [
   width: 72px;
   height: 12px;
   border-radius: 6px;
-  background: var(--surface-raised);
+  background: var(--surface-hover);
   animation: pulse-shimmer 1.6s ease-in-out infinite;
 }
 
@@ -78,7 +78,7 @@ const columns = [
   width: 22px;
   height: 18px;
   border-radius: 999px;
-  background: var(--surface-raised);
+  background: var(--surface-hover);
   animation: pulse-shimmer 1.6s ease-in-out infinite;
 }
 
@@ -96,6 +96,7 @@ const columns = [
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .skeleton-card-top {
@@ -160,10 +161,10 @@ const columns = [
 
 @keyframes pulse-shimmer {
   0%, 100% {
-    opacity: 0.35;
+    opacity: 0.4;
   }
   50% {
-    opacity: 0.75;
+    opacity: 0.85;
   }
 }
 

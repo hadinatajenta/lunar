@@ -196,7 +196,9 @@ const handleSave = async () => {
 .settings-card {
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: rgba(16, 18, 23, 0.86);
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
   overflow: hidden;
 }
 
@@ -327,12 +329,15 @@ const handleSave = async () => {
 }
 
 .save-button {
-  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
   padding: 0 18px;
-  border: 0;
+  border: 1px solid transparent;
   border-radius: 8px;
   background: var(--accent);
-  color: #0b0c0f;
+  color: var(--accent-contrast);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -357,11 +362,11 @@ const handleSave = async () => {
 .context-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
+  gap: 9px;
+  padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.015);
+  background: var(--surface-raised);
 }
 
 .context-name {

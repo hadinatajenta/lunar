@@ -160,7 +160,7 @@ const formatStatus = (rawStatus: string): string => {
   padding: 6px 8px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: rgba(16, 18, 23, 0.5);
+  background: var(--surface-raised);
 }
 
 .squad-pill {
@@ -175,25 +175,30 @@ const formatStatus = (rawStatus: string): string => {
   font-size: 11.5px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 140ms ease;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease,
+    border-color 140ms ease;
 }
 
 .squad-pill:hover {
   color: var(--text);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-hover);
 }
 
 .squad-pill.is-active {
   color: var(--text);
-  background: var(--surface-raised);
-  border-color: var(--border-strong);
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .squad-badge-mine {
   padding: 1px 5px;
   border-radius: 4px;
-  background: rgba(159, 182, 166, 0.18);
-  color: #b5cbbd;
+  background: color-mix(in srgb, var(--positive) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--positive) 25%, transparent);
+  color: var(--positive);
   font-size: 9px;
   font-weight: 600;
   text-transform: uppercase;
@@ -204,14 +209,14 @@ const formatStatus = (rawStatus: string): string => {
   text-align: center;
   border: 1px dashed var(--border);
   border-radius: 12px;
-  color: var(--subtle);
+  color: var(--muted);
   font-size: 13px;
 }
 
 .backlog-sprint {
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: rgba(16, 18, 23, 0.6);
+  background: var(--surface);
   overflow: hidden;
 }
 
@@ -221,7 +226,7 @@ const formatStatus = (rawStatus: string): string => {
   justify-content: space-between;
   gap: 16px;
   padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface-raised);
   border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
 }
@@ -230,7 +235,7 @@ const formatStatus = (rawStatus: string): string => {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #e9edf1;
+  color: var(--text);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -248,16 +253,16 @@ const formatStatus = (rawStatus: string): string => {
 }
 
 .backlog-sprint-badge.is-active {
-  color: #b5cbbd;
-  background: rgba(159, 182, 166, 0.15);
-  border: 1px solid rgba(159, 182, 166, 0.3);
+  color: var(--positive);
+  background: color-mix(in srgb, var(--positive) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--positive) 30%, transparent);
 }
 
 .backlog-sprint-meta {
   display: flex;
   align-items: center;
   gap: 12px;
-  color: var(--subtle);
+  color: var(--muted);
   font-size: 11px;
 }
 
@@ -273,6 +278,7 @@ const formatStatus = (rawStatus: string): string => {
 .backlog-issue {
   padding: 0;
   border-bottom: 1px solid var(--border);
+  background: var(--surface);
   cursor: pointer;
   transition: background-color 150ms ease;
   user-select: none;
@@ -283,7 +289,7 @@ const formatStatus = (rawStatus: string): string => {
 }
 
 .backlog-issue:hover {
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--surface-hover);
 }
 
 .backlog-issue:focus-visible {
@@ -308,47 +314,47 @@ const formatStatus = (rawStatus: string): string => {
   border-radius: 5px;
   font-size: 10px;
   font-weight: 700;
-  color: #0b0c0f;
+  color: var(--accent-contrast);
   flex: 0 0 auto;
 }
 
 .issue-type.is-story {
-  background: #9fb6a6;
+  background: var(--positive);
 }
 
 .issue-type.is-task {
-  background: #8d959f;
+  background: var(--muted);
 }
 
 .issue-type.is-bug {
-  background: #c69090;
+  background: var(--danger);
 }
 
 .issue-type.is-subtask {
-  background: #8d959f;
+  background: var(--muted);
 }
 
 .issue-type.is-ut {
-  background: #9fb6a6;
+  background: var(--positive);
 }
 
 .issue-type.is-query {
-  background: #bba984;
+  background: var(--warning);
 }
 
 .issue-type.is-sop {
-  background: #8d959f;
+  background: var(--muted);
 }
 
 .issue-id {
-  color: var(--subtle);
+  color: var(--muted);
   font-size: 11px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   letter-spacing: 0.02em;
 }
 
 .issue-title {
-  color: #dfe3e8;
+  color: var(--text);
   font-size: 12.5px;
   font-weight: 500;
   white-space: nowrap;
@@ -376,18 +382,21 @@ const formatStatus = (rawStatus: string): string => {
 }
 
 .issue-status.is-open {
-  color: #a9b1bb;
-  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
 }
 
 .issue-status.is-progress {
-  color: #cbbb97;
-  background: rgba(187, 169, 132, 0.1);
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warning) 25%, transparent);
 }
 
 .issue-status.is-done {
-  color: #b5cbbd;
-  background: rgba(159, 182, 166, 0.1);
+  color: var(--positive);
+  background: color-mix(in srgb, var(--positive) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--positive) 25%, transparent);
 }
 
 .issue-points {
@@ -396,8 +405,9 @@ const formatStatus = (rawStatus: string): string => {
   width: 24px;
   height: 24px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.05);
-  color: #c8ced5;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--muted);
   font-size: 11px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;

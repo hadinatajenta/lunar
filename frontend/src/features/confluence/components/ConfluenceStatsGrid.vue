@@ -46,7 +46,8 @@ const statEntries = [
   padding: 14px 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: rgba(16, 18, 23, 0.7);
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .stat-label {
