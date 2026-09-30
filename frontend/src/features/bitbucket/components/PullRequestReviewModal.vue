@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from "vue"
 import type { PullRequest, PRDiff, AICodeReview } from "../types"
+import { useCopilot } from "../../copilot/composables/useCopilot"
 
 const props = defineProps<{
   pr: PullRequest | null
@@ -13,13 +14,26 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "close"): void
-  (e: "trigger-ai", pr: PullRequest): void
+  (e: "trigger-ai", payload: { pr: PullRequest; model: string } | PullRequest): void
   (e: "send-comment", payload: { pr: PullRequest; comment: string }): void
   (e: "review-action", payload: { pr: PullRequest; action: string }): void
 }>()
 
 const commentText = ref("")
 const showDiffViewer = ref(false)
+
+const { configuredModels, hasConfiguredAI, refreshConfiguredProviders } = useCopilot()
+const reviewModel = ref("DeepSeek-V4 Pro (Thinking)")
+
+watch(
+  configuredModels,
+  (models) => {
+    if (models.length > 0 && !models.some((m) => m.name === reviewModel.value)) {
+      reviewModel.value = models[0].name
+    }
+  },
+  { immediate: true }
+)
 
 watch(
   () => props.pr,
@@ -63,8 +77,9 @@ const handleKeydown = (event: KeyboardEvent) => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   window.addEventListener("keydown", handleKeydown)
+  await refreshConfiguredProviders()
 })
 
 onUnmounted(() => {
@@ -159,12 +174,33 @@ onUnmounted(() => {
 
         <div class="ai-panel" data-testid="ai-panel">
           <div class="ai-panel-head">
-            <span class="ai-badge">AI</span>
-            Lunar review
+            <div class="ai-panel-title-group">
+              <span class="ai-badge">AI</span>
+              <span>Lunar review</span>
+            </div>
+
+            <div v-if="hasConfiguredAI && configuredModels.length > 0" class="pr-model-picker">
+              <label for="pr-review-model-select" class="pr-model-label">Model:</label>
+              <select
+                id="pr-review-model-select"
+                v-model="reviewModel"
+                class="pr-model-select"
+                data-testid="pr-review-model-select"
+              >
+                <option v-for="m in configuredModels" :key="m.name" :value="m.name">
+                  {{ m.name }}
+                </option>
+              </select>
+            </div>
           </div>
 
-          <div v-if="!aiReview && !loadingAI" class="ai-empty" data-testid="ai-empty">
-            Click “Review with AI” to let Lunar Copilot analyze the diff, tests, and linked issues. The generated review will appear in the comment box below, ready to send.
+          <div v-if="!hasConfiguredAI" class="ai-empty" data-testid="banner-no-ai-keys">
+            <span>No AI provider configured yet. Please configure your API key in Settings to unlock AI Code Review.</span>
+            <RouterLink to="/settings" class="settings-link" style="margin-left: 6px;">Configure in Settings →</RouterLink>
+          </div>
+
+          <div v-else-if="!aiReview && !loadingAI" class="ai-empty" data-testid="ai-empty">
+            Click “Review with AI” to let Lunar Copilot analyze the diff, tests, and linked issues using {{ reviewModel }}. The generated review will appear in the comment box below, ready to send.
           </div>
 
           <div v-if="loadingAI" class="ai-loading" data-testid="ai-loading">
@@ -246,7 +282,7 @@ onUnmounted(() => {
           type="button"
           :disabled="loadingAI"
           data-testid="btn-trigger-ai-review"
-          @click="emit('trigger-ai', pr)"
+          @click="emit('trigger-ai', { pr, model: reviewModel })"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 3v3"></path>
@@ -495,12 +531,57 @@ onUnmounted(() => {
 .ai-panel-head {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
   color: var(--muted);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.ai-panel-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pr-model-picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pr-model-label {
+  font-size: 10px;
+  color: var(--subtle, #9ca3af);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pr-model-select {
+  background: #151820;
+  border: 1px solid var(--border-subtle, #272a31);
+  color: var(--text-primary, #f3f4f6);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  outline: none;
+  cursor: pointer;
+}
+
+.pr-model-select:focus {
+  border-color: #3b82f6;
+}
+
+.settings-link {
+  color: #3b82f6;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.settings-link:hover {
+  text-decoration: underline;
 }
 
 .ai-badge {

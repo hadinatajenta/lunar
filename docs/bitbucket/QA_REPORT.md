@@ -7,7 +7,7 @@ This document provides automated end-to-end testing results and visual evidence 
 - **Target URL**: `http://localhost:5173/bitbucket`
 - **Execution Date**: 2026-09-29
 - **Browser Engine**: Google Chrome (Playwright channel)
-- **Tested User**: `hafinata19@gmail.com`
+- **Tested User**: `developer@lunar.dev`
 - **Backend Architecture**: Clean Architecture Vertical Slice (`internal/bitbucket/`) with standard library `net/http` and zero external ORM/router.
 - **Frontend Architecture**: Vue 3 + TypeScript Composition API with reactive `useBitbucket`, reusable `Toast.vue`, and feature components (`YourWorkList`, `PullRequestTable`, `CreatePrModal`, `PullRequestReviewModal`).
 

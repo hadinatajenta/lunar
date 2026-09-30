@@ -11,6 +11,8 @@ const {
   thinkingMode,
   reasoningEffort,
   isLoading,
+  configuredModels,
+  allSupportedModels,
   sendMessage
 } = useCopilot()
 
@@ -20,18 +22,10 @@ const isEffortMenuOpen = ref(false)
 const messagesContainer = ref<HTMLDivElement | null>(null)
 const expandedThoughts = ref<Record<string, boolean>>({})
 
-const availableModels = [
-  "GPT-6 Astra (Reasoning)",
-  "GPT-6 Sol",
-  "Claude Opus 5.5 (Adaptive Thinking)",
-  "Claude Sonnet 5.5",
-  "Claude Fable 5.1 (Deep Reasoning)",
-  "Gemini 3.8 Flash (Extended Thinking)",
-  "Gemini 3.1 Pro",
-  "DeepSeek-V4 Pro (Thinking)",
-  "DeepSeek Flash",
-  "Xiaomi MiMo-V2.5 Pro"
-]
+const unconfiguredModels = computed(() => {
+  const configuredNames = new Set(configuredModels.value.map((m) => m.name))
+  return allSupportedModels.filter((m) => !configuredNames.has(m.name))
+})
 
 const availableEfforts: { id: ReasoningEffort; label: string; desc: string }[] = [
   { id: "low", label: "Low effort", desc: "Fast thinking, minimal latency" },
@@ -74,6 +68,8 @@ const handleKeydown = (e: KeyboardEvent) => {
 }
 
 const selectModel = (model: string) => {
+  const isAllowed = configuredModels.value.some((m) => m.name === model)
+  if (!isAllowed) return
   selectedModel.value = model
   isModelMenuOpen.value = false
   if (model.includes("Thinking") || model.includes("Reasoning") || model.includes("Astra") || model.includes("Opus") || model.includes("Fable") || model.includes("Pro")) {
@@ -257,19 +253,38 @@ const selectEffort = (effort: ReasoningEffort) => {
               </button>
 
               <div v-if="isModelMenuOpen" class="model-menu">
-                <button
-                  v-for="model in availableModels"
-                  :key="model"
-                  class="model-option"
-                  :class="{ 'is-selected': selectedModel === model }"
-                  type="button"
-                  @click="selectModel(model)"
+                <div v-if="configuredModels.length === 0" class="model-empty-notice">
+                  <span>No AI providers configured.</span>
+                  <RouterLink to="/settings" class="model-settings-link">Configure in Settings →</RouterLink>
+                </div>
+                <template v-else>
+                  <button
+                    v-for="model in configuredModels"
+                    :key="model.name"
+                    class="model-option"
+                    :class="{ 'is-selected': selectedModel === model.name }"
+                    type="button"
+                    @click="selectModel(model.name)"
+                  >
+                    <span>{{ model.name }}</span>
+                    <svg v-if="selectedModel === model.name" class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="m5 13 4 4L19 7"></path>
+                    </svg>
+                  </button>
+                </template>
+
+                <div v-if="unconfiguredModels.length > 0" class="model-menu-divider">
+                  <span>Requires API Key in Settings</span>
+                </div>
+                <div
+                  v-for="model in unconfiguredModels"
+                  :key="model.name"
+                  class="model-option is-disabled"
+                  data-testid="model-option-disabled"
                 >
-                  <span>{{ model }}</span>
-                  <svg v-if="selectedModel === model" class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="m5 13 4 4L19 7"></path>
-                  </svg>
-                </button>
+                  <span class="disabled-name">{{ model.name }}</span>
+                  <span class="unconfigured-tag">Locked</span>
+                </div>
               </div>
             </div>
 
@@ -792,6 +807,57 @@ const selectEffort = (effort: ReasoningEffort) => {
   width: 12px;
   height: 12px;
   stroke: var(--positive);
+}
+
+.model-option.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.disabled-name {
+  color: var(--subtle, #6b7280);
+  font-size: 11px;
+}
+
+.unconfigured-tag {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  font-weight: 600;
+}
+
+.model-menu-divider {
+  padding: 6px 10px 4px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border-subtle, #272a31);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--subtle, #6b7280);
+}
+
+.model-empty-notice {
+  padding: 12px 10px;
+  font-size: 11px;
+  color: var(--muted, #9ca3af);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.model-settings-link {
+  color: #3b82f6;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.model-settings-link:hover {
+  text-decoration: underline;
 }
 
 .send-btn {

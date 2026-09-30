@@ -53,7 +53,7 @@ const mockPRs = [
     target_branch: "main",
     status: "open",
     updated_relative: "12m ago",
-    author: "Hadinata",
+    author: "Lunar Developer",
     files_count: 4,
     lines_added: 124,
     lines_deleted: 18,
@@ -181,7 +181,7 @@ function routeStandardPRs(page: import("@playwright/test").Page) {
           target_branch: payload.target_branch,
           status: "open",
           updated_relative: "Just now",
-          author: "Hadinata",
+          author: "Lunar Developer",
           files_count: 2,
           lines_added: 45,
           lines_deleted: 8,
@@ -215,7 +215,7 @@ function routeStandardPRs(page: import("@playwright/test").Page) {
           id: "comm-101",
           pr_id: "191",
           repo: "BRI/service-map",
-          author: "Hadinata",
+          author: "Lunar Developer",
           content: payload.content,
           created_at: "Just now"
         }
@@ -231,6 +231,29 @@ function routeStandardPRs(page: import("@playwright/test").Page) {
     } else {
       await route.fulfill({ json: mockPRs })
     }
+  })
+}
+
+function routeSecretsConfigured(page: import("@playwright/test").Page, providers = ["deepseek"]) {
+  return page.route(/\/api\/auth\/secrets/, async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({
+        status: 200,
+        json: {
+          user_id: "test-user-id",
+          has_jira_pat: true,
+          jira_username: "developer",
+          has_bitbucket_pat: true,
+          bitbucket_username: "developer",
+          has_confluence_pat: true,
+          has_ai_keys: providers.length > 0,
+          configured_ai_providers: providers,
+          updated_at: "Just now"
+        }
+      })
+      return
+    }
+    await route.continue()
   })
 }
 
@@ -323,9 +346,51 @@ test.describe("Bitbucket Code Review Workspace", () => {
     await expect(bitbucketPage.createPrModal).not.toBeVisible()
   })
 
+  test("engineer can see model selector in PR review modal populated with configured models", async ({ page }) => {
+    await routeStandardPushes(page)
+    await routeStandardPRs(page)
+    await routeSecretsConfigured(page, ["deepseek"])
+
+    const bitbucketPage = new BitbucketPage(page)
+    await bitbucketPage.navigateTo()
+    await bitbucketPage.reviewButton(184).click()
+    await expect(bitbucketPage.reviewModal).toBeVisible()
+
+    await expect(bitbucketPage.prReviewModelSelect).toBeVisible()
+    await expect(bitbucketPage.prReviewModelSelect).toContainText("DeepSeek-V4 Pro (Thinking)")
+    await expect(bitbucketPage.prReviewModelSelect).toContainText("DeepSeek Flash")
+
+    await bitbucketPage.prReviewModelSelect.selectOption("DeepSeek Flash")
+    await expect(bitbucketPage.prReviewModelSelect).toHaveValue("DeepSeek Flash")
+  })
+
+  test("engineer sees warning when no AI provider is configured in PR review modal", async ({ page }) => {
+    await routeStandardPushes(page)
+    await routeStandardPRs(page)
+    await page.route(/\/api\/auth\/secrets/, async (route) => {
+      await route.fulfill({
+        status: 200,
+        json: {
+          has_ai_keys: false,
+          configured_ai_providers: []
+        }
+      })
+    })
+
+    const bitbucketPage = new BitbucketPage(page)
+    await bitbucketPage.navigateTo()
+    await bitbucketPage.reviewButton(184).click()
+    await expect(bitbucketPage.reviewModal).toBeVisible()
+
+    await expect(bitbucketPage.noAiKeysBanner).toBeVisible()
+    await expect(bitbucketPage.noAiKeysBanner).toContainText("No AI provider configured yet")
+  })
+
   test("engineer can open PR review modal and inspect diff then generate AI review", async ({ page }) => {
     await routeStandardPushes(page)
     await routeStandardPRs(page)
+    await routeSecretsConfigured(page, ["deepseek"])
+
     const bitbucketPage = new BitbucketPage(page)
     await bitbucketPage.navigateTo()
     await bitbucketPage.reviewButton(184).click()
@@ -333,15 +398,63 @@ test.describe("Bitbucket Code Review Workspace", () => {
     await expect(bitbucketPage.reviewModalTitle).toContainText("LUN-421")
     await expect(bitbucketPage.aiEmptyState).toBeVisible()
     await page.screenshot({ path: path.join(EVIDENCE_DIR, "06_pr_review_modal_empty.png") })
+
     await bitbucketPage.toggleDiffButton.click()
     await expect(bitbucketPage.diffViewer).toBeVisible()
     await bitbucketPage.triggerAiReviewButton.click()
+
     await expect(bitbucketPage.aiFindings).toBeVisible({ timeout: 5000 })
     await expect(bitbucketPage.aiSummary).toContainText("Automated analysis completed")
     await expect(bitbucketPage.reviewCommentInput).toHaveValue(/Lunar Copilot review/)
     await expect(bitbucketPage.globalToast).toBeVisible()
     await expect(bitbucketPage.globalToast).toContainText("AI review generated")
     await page.screenshot({ path: path.join(EVIDENCE_DIR, "07_pr_review_ai_generated.png") })
+  })
+
+  test("engineer receives clear error toast when AI review request fails with upstream 401 Unauthorized", async ({
+    page
+  }) => {
+    await routeStandardPushes(page)
+    await routeStandardPRs(page)
+    await routeSecretsConfigured(page, ["deepseek"])
+    await page.route(/\/api\/bitbucket\/prs\/.*ai-review/, async (route) => {
+      await route.fulfill({
+        status: 401,
+        json: { error: "unauthorized: invalid or expired deepseek API key" }
+      })
+    })
+
+    const bitbucketPage = new BitbucketPage(page)
+    await bitbucketPage.navigateTo()
+    await bitbucketPage.reviewButton(184).click()
+    await expect(bitbucketPage.reviewModal).toBeVisible()
+
+    await bitbucketPage.triggerAiReviewButton.click()
+    await expect(bitbucketPage.globalToast).toBeVisible({ timeout: 5000 })
+    await expect(bitbucketPage.globalToast).toContainText("invalid or expired deepseek API key")
+  })
+
+  test("engineer receives clear error toast when AI review request fails with upstream 502 Bad Gateway", async ({
+    page
+  }) => {
+    await routeStandardPushes(page)
+    await routeStandardPRs(page)
+    await routeSecretsConfigured(page, ["deepseek"])
+    await page.route(/\/api\/bitbucket\/prs\/.*ai-review/, async (route) => {
+      await route.fulfill({
+        status: 502,
+        json: { error: "failed to contact AI provider (deepseek): connection timeout" }
+      })
+    })
+
+    const bitbucketPage = new BitbucketPage(page)
+    await bitbucketPage.navigateTo()
+    await bitbucketPage.reviewButton(184).click()
+    await expect(bitbucketPage.reviewModal).toBeVisible()
+
+    await bitbucketPage.triggerAiReviewButton.click()
+    await expect(bitbucketPage.globalToast).toBeVisible({ timeout: 5000 })
+    await expect(bitbucketPage.globalToast).toContainText("connection timeout")
   })
 
   test("engineer can approve a pull request and see review status toast", async ({ page }) => {
@@ -383,6 +496,7 @@ test.describe("Bitbucket Code Review Workspace", () => {
   test("engineer cannot access Bitbucket data when PAT is invalid or expired (401 Unauthorized)", async ({
     page
   }) => {
+    await routeSecretsConfigured(page)
     await page.route(/\/api\/bitbucket\/pushes/, (route) =>
       route.fulfill({ status: 401, json: { error: "unauthorized access: invalid or expired Bitbucket PAT" } })
     )
@@ -399,6 +513,7 @@ test.describe("Bitbucket Code Review Workspace", () => {
   test("engineer sees VPN guidance when server cannot reach Bitbucket due to network failure (502)", async ({
     page
   }) => {
+    await routeSecretsConfigured(page)
     const vpnError =
       "failed to contact Bitbucket Server (https://bitbucket.bri.co.id): please verify your BRI VPN connection"
     await page.route(/\/api\/bitbucket\/pushes/, (route) =>
@@ -416,6 +531,7 @@ test.describe("Bitbucket Code Review Workspace", () => {
   test("engineer cannot access Bitbucket data when PAT lacks repository permissions (403 Forbidden)", async ({
     page
   }) => {
+    await routeSecretsConfigured(page)
     await page.route(/\/api\/bitbucket\/pushes/, (route) =>
       route.fulfill({
         status: 403,

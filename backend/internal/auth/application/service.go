@@ -33,12 +33,27 @@ type AuthResponse struct {
 	User  domain.UserPublicProfile `json:"user"`
 }
 
+type JiraProfile struct {
+	DisplayName string `json:"display_name"`
+	Email       string `json:"email"`
+	Username    string `json:"username"`
+}
+
+type JiraVerifier interface {
+	VerifyPAT(ctx context.Context, pat string) (*JiraProfile, error)
+}
+
 type AuthService struct {
 	userRepo      domain.UserRepository
 	vaultRepo     domain.VaultRepository
+	jiraVerifier  JiraVerifier
 	encryptionKey string
 	jwtSecret     string
 	jwtTTL        time.Duration
+}
+
+func (s *AuthService) SetJiraVerifier(verifier JiraVerifier) {
+	s.jiraVerifier = verifier
 }
 
 func NewAuthService(
@@ -315,4 +330,98 @@ func (s *AuthService) GetDecryptedSecrets(ctx context.Context, userID string) (*
 	}
 
 	return decrypted, nil
+}
+
+func (s *AuthService) VerifyJiraPAT(ctx context.Context, pat string) (*JiraProfile, error) {
+	trimmedPAT := strings.TrimSpace(pat)
+	if trimmedPAT == "" {
+		return nil, fmt.Errorf("%w: Jira PAT is required", sharedErrors.ErrBadRequest)
+	}
+	if s.jiraVerifier == nil {
+		return nil, fmt.Errorf("%w: Jira verifier not configured", sharedErrors.ErrInternal)
+	}
+	return s.jiraVerifier.VerifyPAT(ctx, trimmedPAT)
+}
+
+func (s *AuthService) RegisterWithJira(ctx context.Context, pat string, password string) (*AuthResponse, error) {
+	trimmedPAT := strings.TrimSpace(pat)
+	if trimmedPAT == "" {
+		return nil, fmt.Errorf("%w: Jira PAT is required", sharedErrors.ErrBadRequest)
+	}
+	if len(password) < 6 {
+		return nil, fmt.Errorf("%w: password must be at least 6 characters", sharedErrors.ErrBadRequest)
+	}
+	if s.jiraVerifier == nil {
+		return nil, fmt.Errorf("%w: Jira verifier not configured", sharedErrors.ErrInternal)
+	}
+
+	profile, err := s.jiraVerifier.VerifyPAT(ctx, trimmedPAT)
+	if err != nil {
+		return nil, err
+	}
+
+	email := strings.TrimSpace(strings.ToLower(profile.Email))
+	if email == "" {
+		return nil, fmt.Errorf("%w: verified Jira profile has no email address", sharedErrors.ErrBadRequest)
+	}
+
+	existing, err := s.userRepo.GetUserByEmail(ctx, email)
+	if err == nil && existing != nil {
+		return nil, fmt.Errorf("%w: an account with this BRI email already exists", sharedErrors.ErrConflict)
+	}
+	if err != nil && !errors.Is(err, sharedErrors.ErrNotFound) {
+		return nil, err
+	}
+
+	salt := crypto.GenerateSalt()
+	passwordHash := crypto.HashPassword(password, salt)
+	now := time.Now().UTC()
+
+	fullName := strings.TrimSpace(profile.DisplayName)
+	if fullName == "" {
+		fullName = strings.TrimSpace(profile.Username)
+	}
+	if fullName == "" {
+		fullName = email
+	}
+
+	user := &domain.User{
+		ID:           uuid.NewString(),
+		Email:        email,
+		PasswordHash: passwordHash,
+		Salt:         salt,
+		FullName:     fullName,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}
+
+	if err := s.userRepo.CreateUser(ctx, user); err != nil {
+		return nil, err
+	}
+
+	encPAT, err := crypto.EncryptSecret(trimmedPAT, s.encryptionKey)
+	if err != nil {
+		return nil, err
+	}
+
+	secrets := &domain.UserSecrets{
+		UserID:       user.ID,
+		JiraPATEnc:   encPAT,
+		JiraUsername: profile.Username,
+		UpdatedAt:    now,
+	}
+
+	if err := s.vaultRepo.SaveSecrets(ctx, secrets); err != nil {
+		return nil, err
+	}
+
+	token, err := auth.GenerateToken(user.ID, user.Email, s.jwtSecret, s.jwtTTL)
+	if err != nil {
+		return nil, err
+	}
+
+	return &AuthResponse{
+		Token: token,
+		User:  user.ToPublic(),
+	}, nil
 }

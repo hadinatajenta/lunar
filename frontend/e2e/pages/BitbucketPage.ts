@@ -95,6 +95,14 @@ export class BitbucketPage {
     return this.page.getByTestId("input-review-comment")
   }
 
+  get prReviewModelSelect() {
+    return this.page.getByTestId("pr-review-model-select")
+  }
+
+  get noAiKeysBanner() {
+    return this.page.getByTestId("banner-no-ai-keys")
+  }
+
   get sendCommentButton() {
     return this.page.getByTestId("btn-send-comment")
   }

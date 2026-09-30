@@ -112,12 +112,25 @@ func (h *BitbucketHandler) CreatePullRequest(w http.ResponseWriter, r *http.Requ
 func (h *BitbucketHandler) GenerateAIReview(w http.ResponseWriter, r *http.Request) {
 	prID := r.PathValue("id")
 	repo := r.URL.Query().Get("repo")
+	model := r.URL.Query().Get("model")
 	userID := h.getUserID(r)
 
-	review, err := h.service.GenerateAIReview(r.Context(), userID, repo, prID)
+	var reqBody struct {
+		Model string `json:"model"`
+	}
+	_ = sharedHttp.ParseJSON(r, &reqBody)
+	if reqBody.Model != "" {
+		model = reqBody.Model
+	}
+
+	review, err := h.service.GenerateAIReview(r.Context(), userID, repo, prID, model)
 	if err != nil {
 		if errors.Is(err, sharedErrors.ErrBadRequest) {
 			sharedHttp.WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if errors.Is(err, sharedErrors.ErrUnauthorized) {
+			sharedHttp.WriteError(w, http.StatusUnauthorized, err.Error())
 			return
 		}
 		sharedHttp.WriteError(w, http.StatusInternalServerError, err.Error())

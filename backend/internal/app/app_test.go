@@ -21,9 +21,9 @@ func TestApplicationBootstrapAndSeedUser(t *testing.T) {
 		JWTTTL:           time.Hour,
 		EncryptionKey:    "test-aes-key-at-least-32-chars-long",
 		CORSOrigin:       "*",
-		SeedUserEmail:    "hafinata19@gmail.com",
+		SeedUserEmail:    "developer@lunar.dev",
 		SeedUserPassword: "12345678",
-		SeedUserName:     "Hadinata",
+		SeedUserName:     "Lunar Developer",
 	}
 
 	app, err := NewApplication(cfg)
@@ -53,11 +53,11 @@ func TestApplicationBootstrapAndSeedUser(t *testing.T) {
 		t.Fatalf("seed user not found in database: %v", err)
 	}
 
-	if email != "hafinata19@gmail.com" {
-		t.Errorf("expected email hafinata19@gmail.com, got %s", email)
+	if email != "developer@lunar.dev" {
+		t.Errorf("expected email developer@lunar.dev, got %s", email)
 	}
-	if fullName != "Hadinata" {
-		t.Errorf("expected full name Hadinata, got %s", fullName)
+	if fullName != "Lunar Developer" {
+		t.Errorf("expected full name Lunar Developer, got %s", fullName)
 	}
 
 	_ = authService

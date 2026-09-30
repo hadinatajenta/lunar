@@ -10,18 +10,25 @@ import (
 	sharedErrors "lunar/backend/internal/shared/errors"
 )
 
+type CopilotReviewer interface {
+	ReviewPullRequest(ctx context.Context, userID string, repo string, prID string, diffText string, modelName string) (*domain.AICodeReview, error)
+}
+
 type BitbucketService struct {
-	repo        domain.BitbucketRepository
-	authService *authApp.AuthService
+	repo            domain.BitbucketRepository
+	authService     *authApp.AuthService
+	copilotReviewer CopilotReviewer
 }
 
 func NewBitbucketService(
 	repo domain.BitbucketRepository,
 	authService *authApp.AuthService,
+	copilotReviewer CopilotReviewer,
 ) *BitbucketService {
 	return &BitbucketService{
-		repo:        repo,
-		authService: authService,
+		repo:            repo,
+		authService:     authService,
+		copilotReviewer: copilotReviewer,
 	}
 }
 
@@ -98,10 +105,33 @@ func (s *BitbucketService) ApplyReviewAction(ctx context.Context, userID string,
 	return s.repo.ApplyReviewAction(ctx, pat, repo, prID, normalized)
 }
 
-func (s *BitbucketService) GenerateAIReview(ctx context.Context, userID string, repo string, prID string) (*domain.AICodeReview, error) {
+func (s *BitbucketService) GenerateAIReview(ctx context.Context, userID string, repo string, prID string, model string) (*domain.AICodeReview, error) {
 	if strings.TrimSpace(prID) == "" {
 		return nil, fmt.Errorf("%w: pull request id is required", sharedErrors.ErrBadRequest)
 	}
+
+	if s.copilotReviewer != nil {
+		pat, _ := s.resolveUserPAT(ctx, userID)
+		diff, err := s.repo.GetPullRequestDiff(ctx, pat, repo, prID)
+		if err == nil && diff != nil {
+			var sb strings.Builder
+			for _, file := range diff.Files {
+				sb.WriteString(fmt.Sprintf("File: %s (+%d -%d)\n", file.NewPath, file.Additions, file.Deletions))
+				for _, hunk := range file.Hunks {
+					sb.WriteString(hunk.Header + "\n")
+					for _, line := range hunk.Lines {
+						sb.WriteString(line + "\n")
+					}
+				}
+			}
+			diffText := sb.String()
+			if strings.TrimSpace(diffText) == "" {
+				diffText = fmt.Sprintf("PR %s in %s with %d files", prID, repo, diff.TotalAdded)
+			}
+			return s.copilotReviewer.ReviewPullRequest(ctx, userID, repo, prID, diffText, model)
+		}
+	}
+
 	return s.repo.GenerateAIReview(ctx, prID, repo)
 }
 

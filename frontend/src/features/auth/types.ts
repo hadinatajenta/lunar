@@ -25,3 +25,18 @@ export interface AuthResponse {
   token: string
   user: UserProfile
 }
+
+export interface VerifyJiraPatRequest {
+  pat: string
+}
+
+export interface VerifiedJiraProfile {
+  display_name: string
+  email: string
+  username: string
+}
+
+export interface RegisterWithJiraRequest {
+  pat: string
+  password: string
+}

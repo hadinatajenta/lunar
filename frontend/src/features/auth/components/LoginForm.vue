@@ -59,8 +59,8 @@
 
     <div class="account-footer">
       Need an account?
-      <router-link to="/request-access" class="access-link">
-        Request access
+      <router-link to="/register" class="access-link">
+        Create one
       </router-link>
     </div>
 

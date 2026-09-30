@@ -31,10 +31,18 @@ export async function createPullRequest(payload: CreatePRPayload): Promise<PullR
   return http.post<PullRequest>("/api/bitbucket/prs", payload)
 }
 
-export async function generateAIReview(prId: string, repo: string): Promise<AICodeReview> {
+export async function generateAIReview(
+  prId: string,
+  repo: string,
+  model?: string
+): Promise<AICodeReview> {
   const cleanId = encodeURIComponent(prId.trim())
+  const params: Record<string, string> = { repo }
+  if (model) {
+    params.model = model
+  }
   return http.post<AICodeReview>(`/api/bitbucket/prs/${cleanId}/ai-review`, null, {
-    params: { repo },
+    params,
   })
 }
 

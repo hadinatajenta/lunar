@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from "vue-router"
 import { getStoredToken } from "@/lib/http"
 import LoginPage from "@/features/auth/pages/LoginPage.vue"
+import RegisterPage from "@/features/auth/pages/RegisterPage.vue"
 import DashboardPage from "@/features/dashboard/pages/DashboardPage.vue"
 import JiraPage from "@/features/jira/pages/JiraPage.vue"
 import BitbucketPage from "@/features/bitbucket/pages/BitbucketPage.vue"
@@ -15,6 +16,15 @@ const routes: RouteRecordRaw[] = [
     component: LoginPage,
     meta: {
       title: "Lunar - Sign in",
+      public: true
+    }
+  },
+  {
+    path: "/register",
+    name: "Register",
+    component: RegisterPage,
+    meta: {
+      title: "Lunar - Create account",
       public: true
     }
   },
@@ -76,7 +86,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: "/request-access",
-    redirect: "/login"
+    redirect: "/register"
   },
   {
     path: "/:pathMatch(.*)*",
@@ -101,7 +111,7 @@ router.beforeEach((to) => {
     return { path: "/login" }
   }
 
-  if (to.path === "/login" && token) {
+  if ((to.path === "/login" || to.path === "/register") && token) {
     return { path: "/dashboard" }
   }
 })

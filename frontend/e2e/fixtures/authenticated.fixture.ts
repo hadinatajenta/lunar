@@ -1,6 +1,6 @@
 import { test as base } from "@playwright/test"
 
-type AuthenticatedFixtures = {
+export type AuthenticatedFixtures = {
   authenticatedPage: typeof base extends (args: infer A) => unknown ? A : never
 }
 

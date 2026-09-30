@@ -82,12 +82,16 @@ const handleCloseReview = () => {
   selectedPrForReview.value = null
 }
 
-const handleTriggerAI = async (pr: PullRequest) => {
-  const result = await requestAIReview(pr.id, pr.repo)
-  if (result) {
-    showToast("AI review generated. Edit and send it as a comment.")
-  } else {
-    showToast("Failed to generate AI review")
+const handleTriggerAI = async (payload: { pr: PullRequest; model?: string } | PullRequest) => {
+  const pr = "pr" in payload ? payload.pr : payload
+  const model = "model" in payload ? payload.model : undefined
+  try {
+    const result = await requestAIReview(pr.id, pr.repo, model)
+    if (result) {
+      showToast("AI review generated. Edit and send it as a comment.")
+    }
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : "Failed to generate AI review")
   }
 }
 

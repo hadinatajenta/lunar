@@ -82,7 +82,7 @@ func TestBitbucketService(t *testing.T) {
 		diff: &domain.PRDiff{PRID: "#1", Repo: "lunar/api-gateway"},
 	}
 
-	service := NewBitbucketService(mockRepo, nil)
+	service := NewBitbucketService(mockRepo, nil, nil)
 	ctx := context.Background()
 
 	t.Run("ListPushes", func(t *testing.T) {
@@ -176,7 +176,7 @@ func TestBitbucketService(t *testing.T) {
 	})
 
 	t.Run("GenerateAIReview", func(t *testing.T) {
-		review, err := service.GenerateAIReview(ctx, "usr-1", "lunar/api-gateway", "#1")
+		review, err := service.GenerateAIReview(ctx, "usr-1", "lunar/api-gateway", "#1", "DeepSeek-V4 Pro (Thinking)")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

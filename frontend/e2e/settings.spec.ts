@@ -7,9 +7,9 @@ const EVIDENCE_DIR = "/Users/erendt/code/lunar/docs/settings/evidence"
 const mockSaveSecretsResponse = {
   user_id: "test-user",
   has_jira_pat: true,
-  jira_username: "hadinata",
+  jira_username: "developer",
   has_bitbucket_pat: true,
-  bitbucket_username: "hadinata",
+  bitbucket_username: "developer",
   has_confluence_pat: true,
   has_ai_keys: true,
   configured_ai_providers: ["deepseek", "gemini"],
@@ -40,7 +40,7 @@ test.describe("Settings & Credential Vault", () => {
     await settingsPage.navigateTo()
     await settingsPage.fillAtlassianCredentials({
       jiraPat: "jira-pat-test-token-12345",
-      bitbucketUsername: "hadinata",
+      bitbucketUsername: "developer",
       bitbucketPat: "bitbucket-pat-test-token-67890",
       confluencePat: "confluence-pat-test-token-abcde"
     })

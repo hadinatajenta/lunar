@@ -12,4 +12,5 @@ var (
 	ErrInvalidToken = errors.New("invalid token")
 	ErrTokenExpired = errors.New("token expired")
 	ErrInvalidKey   = errors.New("invalid encryption key")
+	ErrBadGateway   = errors.New("bad gateway")
 )

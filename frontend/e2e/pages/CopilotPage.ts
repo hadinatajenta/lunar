@@ -15,6 +15,18 @@ export class CopilotPage {
     return this.page.locator(".empty-title")
   }
 
+  get noAiKeysGate() {
+    return this.page.getByTestId("banner-no-ai-keys")
+  }
+
+  get goToSettingsButton() {
+    return this.page.getByTestId("btn-go-to-settings")
+  }
+
+  get disabledModelOptions() {
+    return this.page.getByTestId("model-option-disabled")
+  }
+
   get settingsGearButton() {
     return this.page.locator(".history-settings-btn")
   }

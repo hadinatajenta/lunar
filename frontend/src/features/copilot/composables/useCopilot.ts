@@ -1,5 +1,8 @@
-import { ref, watch } from "vue"
+import { computed, ref, watch } from "vue"
+import { http } from "../../../lib/http"
 import type { ChatMessage, ChatSession, ReasoningEffort, ToolDomain } from "../types"
+import { allSupportedModels, getConfiguredModels, getDefaultModel, isModelConfigured } from "../utils/models"
+import { deleteCopilotSession, sendCopilotChat } from "../api/copilot-api"
 
 const defaultDomains: ToolDomain[] = [
   {
@@ -65,7 +68,7 @@ const loadSessionMessages = (sessionId: string): ChatMessage[] => {
 }
 
 const loadSelectedModel = (): string => {
-  return localStorage.getItem("copilot_selected_model") || "Claude Opus 5.5 (Adaptive Thinking)"
+  return localStorage.getItem("copilot_selected_model") || "DeepSeek-V4 Pro (Thinking)"
 }
 
 const loadThinkingMode = (): boolean => {
@@ -84,6 +87,10 @@ const thinkingMode = ref<boolean>(loadThinkingMode())
 const reasoningEffort = ref<ReasoningEffort>(loadReasoningEffort())
 const isDomainModalOpen = ref(false)
 const isLoading = ref(false)
+const chatError = ref<string | null>(null)
+
+const configuredProviders = ref<string[]>([])
+const isCheckingProviders = ref(true)
 
 const sessions = ref<ChatSession[]>(loadSavedSessions())
 const activeSessionId = ref<string | null>(sessions.value.length > 0 ? sessions.value[0].id : null)
@@ -110,6 +117,44 @@ watch(sessions, (val) => {
 }, { deep: true })
 
 export const useCopilot = () => {
+  const refreshConfiguredProviders = async () => {
+    isCheckingProviders.value = true
+    try {
+      const [secretsResp, configResp] = await Promise.all([
+        http.get<{ configured_ai_providers?: string[]; has_ai_keys?: boolean }>("/api/auth/secrets").catch(() => null),
+        http.get<{ system_ai_providers?: string[] }>("/api/config").catch(() => null)
+      ])
+
+      const list = new Set<string>()
+      if (secretsResp?.configured_ai_providers) {
+        for (const p of secretsResp.configured_ai_providers) {
+          list.add(p.toLowerCase())
+        }
+      }
+      if (configResp?.system_ai_providers) {
+        for (const p of configResp.system_ai_providers) {
+          list.add(p.toLowerCase())
+        }
+      }
+
+      configuredProviders.value = Array.from(list)
+
+      if (!isModelConfigured(selectedModel.value, configuredProviders.value)) {
+        selectedModel.value = getDefaultModel(configuredProviders.value)
+      }
+    } catch {
+      configuredProviders.value = []
+    } finally {
+      isCheckingProviders.value = false
+    }
+  }
+
+  const hasConfiguredAI = computed(() => configuredProviders.value.length > 0)
+
+  const configuredModels = computed(() => {
+    return getConfiguredModels(configuredProviders.value)
+  })
+
   const toggleDomain = (domainId: string) => {
     const idx = enabledDomains.value.indexOf(domainId)
     if (idx >= 0) {
@@ -126,14 +171,22 @@ export const useCopilot = () => {
   const startNewChat = () => {
     activeSessionId.value = null
     messages.value = []
+    chatError.value = null
   }
 
   const selectSession = (sessionId: string) => {
     activeSessionId.value = sessionId
     messages.value = loadSessionMessages(sessionId)
+    chatError.value = null
   }
 
-  const deleteSession = (sessionId: string) => {
+  const deleteSession = async (sessionId: string) => {
+    try {
+      await deleteCopilotSession(sessionId).catch(() => null)
+    } catch {
+      return
+    }
+
     sessions.value = sessions.value.filter((s) => s.id !== sessionId)
     localStorage.removeItem(`copilot_msgs_${sessionId}`)
 
@@ -146,23 +199,16 @@ export const useCopilot = () => {
     }
   }
 
-  const formatThinkingTrace = (prompt: string, effort: ReasoningEffort, tools: string[]): string => {
-    const effortPrefix = effort === "high"
-      ? "Deep analysis initiated with high token allocation.\n"
-      : effort === "low"
-      ? "Fast reasoning pass selected for low latency response.\n"
-      : "Standard chain-of-thought reasoning activated.\n"
-
-    return `${effortPrefix}1. Parsing intent from user prompt: "${prompt.slice(0, 80)}${prompt.length > 80 ? "..." : ""}".
-2. Checking active tool integrations: [${tools.join(", ")}].
-3. Querying local knowledge graphs for repository schema and linked Atlassian entities.
-4. Synthesizing cross-system evidence and validating data consistency across active endpoints.
-5. Formulating structured, verified response.`
-  }
-
   const sendMessage = async (prompt: string) => {
     const text = prompt.trim()
     if (!text || isLoading.value) return
+
+    chatError.value = null
+
+    if (!hasConfiguredAI.value) {
+      chatError.value = "No AI provider configured: please set up an API key in Settings"
+      return
+    }
 
     let currentId = activeSessionId.value
     if (!currentId) {
@@ -196,23 +242,28 @@ export const useCopilot = () => {
       .filter((d) => enabledDomains.value.includes(d.id))
       .map((d) => d.name)
 
-    const reasoningTrace = thinkingMode.value
-      ? formatThinkingTrace(text, reasoningEffort.value, activeTools)
-      : undefined
+    try {
+      const resp = await sendCopilotChat({
+        session_id: currentId,
+        model: selectedModel.value,
+        prompt: text,
+        thinking_mode: thinkingMode.value,
+        reasoning_effort: reasoningEffort.value,
+        active_tools: activeTools
+      })
 
-    const latency = thinkingMode.value ? (reasoningEffort.value === "high" ? 1100 : 700) : 400
-
-    setTimeout(() => {
       const assistantMsg: ChatMessage = {
-        id: "a-" + Date.now(),
+        id: resp.message.id || "a-" + Date.now(),
         role: "assistant",
-        content: `Processed your inquiry using ${selectedModel.value}.\n\nActive workspace tools queried: ${activeTools.join(", ")}.\n\nAll requested contexts have been verified and integrated into your current session.`,
-        reasoning: reasoningTrace,
-        thinkingDurationMs: thinkingMode.value ? (reasoningEffort.value === "high" ? 2840 : 1420) : undefined,
-        sources: [
-          { type: "jira", label: "Jira · Sprint Scope" },
-          { type: "bitbucket", label: "Bitbucket · Active PRs" }
-        ],
+        content: resp.message.content,
+        reasoning: resp.message.reasoning,
+        thinkingDurationMs: resp.message.thinkingDurationMs,
+        sources: resp.message.sources && resp.message.sources.length > 0
+          ? resp.message.sources
+          : [
+              { type: "jira", label: "Jira BRI · Active Issues" },
+              { type: "bitbucket", label: "Bitbucket BRI · PRs & Diffs" }
+            ],
         createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
       }
 
@@ -220,8 +271,23 @@ export const useCopilot = () => {
       if (currentId) {
         localStorage.setItem(`copilot_msgs_${currentId}`, JSON.stringify(messages.value))
       }
+    } catch (err: unknown) {
+      const errText = err instanceof Error ? err.message : "Failed to obtain AI response"
+      chatError.value = errText
+
+      const errorAssistantMsg: ChatMessage = {
+        id: "err-" + Date.now(),
+        role: "assistant",
+        content: `Error: ${errText}`,
+        createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      }
+      messages.value.push(errorAssistantMsg)
+      if (currentId) {
+        localStorage.setItem(`copilot_msgs_${currentId}`, JSON.stringify(messages.value))
+      }
+    } finally {
       isLoading.value = false
-    }, latency)
+    }
   }
 
   return {
@@ -235,6 +301,13 @@ export const useCopilot = () => {
     defaultDomains,
     isDomainModalOpen,
     isLoading,
+    chatError,
+    configuredProviders,
+    isCheckingProviders,
+    hasConfiguredAI,
+    configuredModels,
+    allSupportedModels,
+    refreshConfiguredProviders,
     toggleDomain,
     isDomainEnabled,
     startNewChat,

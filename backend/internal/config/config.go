@@ -58,9 +58,7 @@ func loadDotEnv() {
 			key := strings.TrimSpace(parts[0])
 			value := strings.Trim(strings.TrimSpace(parts[1]), `"'`)
 
-			if os.Getenv(key) == "" {
-				_ = os.Setenv(key, value)
-			}
+			_ = os.Setenv(key, value)
 		}
 		_ = file.Close()
 		break
@@ -104,8 +102,8 @@ func LoadConfig() *Config {
 		SystemClaudeKey:   os.Getenv("SYSTEM_CLAUDE_KEY"),
 		SystemMimoKey:     os.Getenv("SYSTEM_MIMO_KEY"),
 		SystemMimoBaseURL: os.Getenv("SYSTEM_MIMO_BASE_URL"),
-		SeedUserEmail:     getEnvOrDefault("SEED_USER_EMAIL", "hafinata19@gmail.com"),
+		SeedUserEmail:     getEnvOrDefault("SEED_USER_EMAIL", "developer@lunar.dev"),
 		SeedUserPassword:  getEnvOrDefault("SEED_USER_PASSWORD", "12345678"),
-		SeedUserName:      getEnvOrDefault("SEED_USER_NAME", "Hadinata"),
+		SeedUserName:      getEnvOrDefault("SEED_USER_NAME", "Lunar Developer"),
 	}
 }

@@ -65,10 +65,7 @@ const handleSave = async () => {
           <div class="credential-meta">
             <div class="credential-name">Jira BRI</div>
             <div class="credential-subtitle">Tickets, sprint status, and issue context</div>
-            <span
-              class="status-tag"
-              :class="secrets?.has_jira_pat ? 'connected' : 'unconfigured'"
-            >
+            <span class="status-tag" :class="secrets?.has_jira_pat ? 'connected' : 'unconfigured'">
               {{ secrets?.has_jira_pat ? "Configured" : "Not configured" }}
             </span>
           </div>
@@ -81,13 +78,8 @@ const handleSave = async () => {
 
             <div class="field-wrap">
               <label class="field-label" for="jira-pat">Personal Access Token (PAT)</label>
-              <input
-                class="field-input"
-                id="jira-pat"
-                type="password"
-                v-model="jiraPat"
-                :placeholder="secrets?.has_jira_pat ? '•••••••••••••••• (Leave blank to keep existing)' : 'Enter Jira PAT'"
-              />
+              <input class="field-input" id="jira-pat" type="password" v-model="jiraPat"
+                :placeholder="secrets?.has_jira_pat ? '•••••••••••••••• (Leave blank to keep existing)' : 'Enter Jira PAT'" />
             </div>
           </div>
         </div>
@@ -96,10 +88,7 @@ const handleSave = async () => {
           <div class="credential-meta">
             <div class="credential-name">Bitbucket BRI</div>
             <div class="credential-subtitle">Pull requests, git diffs, and AI code review</div>
-            <span
-              class="status-tag"
-              :class="secrets?.has_bitbucket_pat ? 'connected' : 'unconfigured'"
-            >
+            <span class="status-tag" :class="secrets?.has_bitbucket_pat ? 'connected' : 'unconfigured'">
               {{ secrets?.has_bitbucket_pat ? "Configured" : "Not configured" }}
             </span>
           </div>
@@ -107,23 +96,13 @@ const handleSave = async () => {
           <div class="credential-fields">
             <div class="field-wrap">
               <label class="field-label" for="bb-user">Username</label>
-              <input
-                class="field-input"
-                id="bb-user"
-                v-model="bitbucketUsername"
-                placeholder="e.g. hadinata"
-              />
+              <input class="field-input" id="bb-user" v-model="bitbucketUsername" placeholder="e.g. 0099999" />
             </div>
 
             <div class="field-wrap">
               <label class="field-label" for="bb-pat">Personal Access Token (PAT)</label>
-              <input
-                class="field-input"
-                id="bb-pat"
-                type="password"
-                v-model="bitbucketPat"
-                :placeholder="secrets?.has_bitbucket_pat ? '•••••••••••••••• (Leave blank to keep existing)' : 'Enter Bitbucket PAT'"
-              />
+              <input class="field-input" id="bb-pat" type="password" v-model="bitbucketPat"
+                :placeholder="secrets?.has_bitbucket_pat ? '•••••••••••••••• (Leave blank to keep existing)' : 'Enter Bitbucket PAT'" />
             </div>
           </div>
         </div>
@@ -132,10 +111,7 @@ const handleSave = async () => {
           <div class="credential-meta">
             <div class="credential-name">Confluence BRI</div>
             <div class="credential-subtitle">Documentation, specs, and SQL query review</div>
-            <span
-              class="status-tag"
-              :class="secrets?.has_confluence_pat ? 'connected' : 'unconfigured'"
-            >
+            <span class="status-tag" :class="secrets?.has_confluence_pat ? 'connected' : 'unconfigured'">
               {{ secrets?.has_confluence_pat ? "Configured" : "Not configured" }}
             </span>
           </div>
@@ -148,13 +124,8 @@ const handleSave = async () => {
 
             <div class="field-wrap">
               <label class="field-label" for="conf-pat">Personal Access Token (PAT)</label>
-              <input
-                class="field-input"
-                id="conf-pat"
-                type="password"
-                v-model="confluencePat"
-                :placeholder="secrets?.has_confluence_pat ? '•••••••••••••••• (Leave blank to keep existing)' : 'Enter Confluence PAT'"
-              />
+              <input class="field-input" id="conf-pat" type="password" v-model="confluencePat"
+                :placeholder="secrets?.has_confluence_pat ? '•••••••••••••••• (Leave blank to keep existing)' : 'Enter Confluence PAT'" />
             </div>
           </div>
         </div>
@@ -416,6 +387,7 @@ const handleSave = async () => {
   .credential-row {
     grid-template-columns: 1fr;
   }
+
   .credential-fields {
     grid-template-columns: 1fr;
   }

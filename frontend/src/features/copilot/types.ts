@@ -30,3 +30,11 @@ export interface ToolDomain {
   description: string
   enabled: boolean
 }
+
+export interface ModelOption {
+  id: string
+  name: string
+  provider: "openai" | "claude" | "gemini" | "deepseek" | "mimo"
+  description: string
+  hasThinking: boolean
+}

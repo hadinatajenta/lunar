@@ -15,6 +15,14 @@ import (
 	bitbucketInfra "lunar/backend/internal/bitbucket/infrastructure"
 	bitbucketTransport "lunar/backend/internal/bitbucket/transport"
 	"lunar/backend/internal/config"
+	copilotApp "lunar/backend/internal/copilot/application"
+	copilotInfra "lunar/backend/internal/copilot/infrastructure"
+	copilotTransport "lunar/backend/internal/copilot/transport"
+	dashboardApp "lunar/backend/internal/dashboard/application"
+	dashboardTransport "lunar/backend/internal/dashboard/transport"
+	jiraApp "lunar/backend/internal/jira/application"
+	jiraInfra "lunar/backend/internal/jira/infrastructure"
+	jiraTransport "lunar/backend/internal/jira/transport"
 	sharedAuth "lunar/backend/internal/shared/auth"
 	sharedDatabase "lunar/backend/internal/shared/database"
 	sharedHttp "lunar/backend/internal/shared/http"
@@ -59,9 +67,30 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 
 	authHandler := transport.NewAuthHandler(authService)
 
+	systemAIProviders := map[string]string{
+		"deepseek": cfg.SystemDeepseekKey,
+		"gemini":   cfg.SystemGeminiKey,
+		"openai":   cfg.SystemOpenAIKey,
+		"claude":   cfg.SystemClaudeKey,
+		"mimo":     cfg.SystemMimoKey,
+	}
+
+	copilotRepo := copilotInfra.NewSQLiteCopilotRepository(db)
+	llmClient := copilotInfra.NewLLMClient(cfg.SystemDeepseekURL, cfg.SystemMimoBaseURL)
+	copilotService := copilotApp.NewCopilotService(copilotRepo, llmClient, authService, systemAIProviders)
+	copilotHandler := copilotTransport.NewCopilotHandler(copilotService)
+
 	bitbucketClient := bitbucketInfra.NewAtlassianBitbucketClient(cfg.BitbucketBaseURL)
-	bitbucketService := bitbucketApp.NewBitbucketService(bitbucketClient, authService)
+	bitbucketService := bitbucketApp.NewBitbucketService(bitbucketClient, authService, copilotService)
 	bitbucketHandler := bitbucketTransport.NewBitbucketHandler(bitbucketService)
+
+	jiraClient := jiraInfra.NewAtlassianJiraClient(cfg.JiraBaseURL)
+	authService.SetJiraVerifier(&jiraVerifierAdapter{client: jiraClient})
+	jiraService := jiraApp.NewJiraService(jiraClient, authService)
+	jiraHandler := jiraTransport.NewJiraHandler(jiraService)
+
+	dashboardService := dashboardApp.NewDashboardService(jiraService, bitbucketService, copilotService, authService)
+	dashboardHandler := dashboardTransport.NewDashboardHandler(dashboardService)
 
 	mux := http.NewServeMux()
 
@@ -97,11 +126,19 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 
 	mux.HandleFunc("POST /api/auth/register", authHandler.Register)
 	mux.HandleFunc("POST /api/auth/login", authHandler.Login)
+	mux.HandleFunc("POST /api/auth/verify-jira-pat", authHandler.VerifyJiraPAT)
+	mux.HandleFunc("POST /api/auth/register-with-jira", authHandler.RegisterWithJira)
 
 	authMiddleware := sharedAuth.RequireAuth(cfg.JWTSecret)
 	mux.Handle("GET /api/auth/me", authMiddleware(http.HandlerFunc(authHandler.Me)))
 	mux.Handle("GET /api/auth/secrets", authMiddleware(http.HandlerFunc(authHandler.GetSecrets)))
 	mux.Handle("PUT /api/auth/secrets", authMiddleware(http.HandlerFunc(authHandler.SaveSecrets)))
+
+	mux.Handle("GET /api/copilot/models", authMiddleware(http.HandlerFunc(copilotHandler.ListModels)))
+	mux.Handle("POST /api/copilot/chat", authMiddleware(http.HandlerFunc(copilotHandler.Chat)))
+	mux.Handle("GET /api/copilot/sessions", authMiddleware(http.HandlerFunc(copilotHandler.ListSessions)))
+	mux.Handle("DELETE /api/copilot/sessions/{id}", authMiddleware(http.HandlerFunc(copilotHandler.DeleteSession)))
+	mux.Handle("GET /api/copilot/sessions/{id}/messages", authMiddleware(http.HandlerFunc(copilotHandler.ListMessages)))
 
 	mux.Handle("GET /api/bitbucket/pushes", authMiddleware(http.HandlerFunc(bitbucketHandler.ListPushes)))
 	mux.Handle("GET /api/bitbucket/prs", authMiddleware(http.HandlerFunc(bitbucketHandler.ListPullRequests)))
@@ -111,6 +148,12 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	mux.Handle("POST /api/bitbucket/prs/{id}/comments", authMiddleware(http.HandlerFunc(bitbucketHandler.PostComment)))
 	mux.Handle("POST /api/bitbucket/prs/{id}/action", authMiddleware(http.HandlerFunc(bitbucketHandler.ApplyAction)))
 	mux.HandleFunc("POST /api/bitbucket/reset", bitbucketHandler.Reset)
+
+	mux.Handle("GET /api/jira/issues", authMiddleware(http.HandlerFunc(jiraHandler.ListMyIssues)))
+	mux.Handle("GET /api/jira/backlog", authMiddleware(http.HandlerFunc(jiraHandler.GetBacklog)))
+	mux.Handle("GET /api/jira/issues/{key}", authMiddleware(http.HandlerFunc(jiraHandler.GetIssueDetail)))
+
+	mux.Handle("GET /api/dashboard/summary", authMiddleware(http.HandlerFunc(dashboardHandler.GetSummary)))
 
 	handler := sharedHttp.CORSMiddleware(cfg.CORSOrigin)(loggingMiddleware(mux))
 
@@ -156,3 +199,18 @@ func seedInitialUser(userRepo domain.UserRepository, authService *application.Au
 	})
 }
 
+type jiraVerifierAdapter struct {
+	client *jiraInfra.AtlassianJiraClient
+}
+
+func (a *jiraVerifierAdapter) VerifyPAT(ctx context.Context, pat string) (*application.JiraProfile, error) {
+	u, err := a.client.VerifyPAT(ctx, pat)
+	if err != nil {
+		return nil, err
+	}
+	return &application.JiraProfile{
+		DisplayName: u.DisplayName,
+		Email:       u.EmailAddress,
+		Username:    u.Name,
+	}, nil
+}

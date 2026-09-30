@@ -1,22 +1,124 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue"
+import { computed, onMounted } from "vue"
 import PageLayout from "../../../components/layout/PageLayout.vue"
 import { useAuth } from "../../auth/composables/useAuth"
 import { useSettings } from "../../settings/composables/useSettings"
+import { useToast } from "../../../composables/useToast"
+import { useDashboard } from "../composables/useDashboard"
+import type { DashboardSummary } from "../types"
 
 const { user } = useAuth()
 const { secrets, fetchSettings } = useSettings()
-const isSyncing = ref(false)
+const { showToast } = useToast()
+const {
+  summary,
+  isLoading,
+  isSyncing,
+  errorMessage,
+  lastSyncedAt,
+  loadSummary,
+  syncWorkspace
+} = useDashboard()
+
+const PLACEHOLDER_VALUE = "—"
+
+interface MetricView {
+  value: string
+  sub: string
+  isPlaceholder: boolean
+}
 
 onMounted(() => {
   fetchSettings()
+  loadSummary()
 })
 
-const handleSync = () => {
-  isSyncing.value = true
-  setTimeout(() => {
-    isSyncing.value = false
-  }, 800)
+const pendingMetricView = computed<MetricView>(() => ({
+  value: PLACEHOLDER_VALUE,
+  sub: errorMessage.value ? "Temporarily unavailable" : "Loading workspace data",
+  isPlaceholder: true
+}))
+
+const buildJiraTicketsMetric = (currentSummary: DashboardSummary | null): MetricView => {
+  const jiraSection = currentSummary?.jira
+  if (!jiraSection) {
+    return pendingMetricView.value
+  }
+  if (jiraSection.status === "unconfigured") {
+    return { value: "0", sub: "Jira PAT not configured", isPlaceholder: false }
+  }
+  if (jiraSection.status === "error") {
+    return { value: PLACEHOLDER_VALUE, sub: "Jira data unavailable", isPlaceholder: true }
+  }
+  return {
+    value: String(jiraSection.assigned_tickets),
+    sub: jiraSection.active_sprint || "No active sprint",
+    isPlaceholder: false
+  }
+}
+
+const buildPullRequestsMetric = (currentSummary: DashboardSummary | null): MetricView => {
+  const bitbucketSection = currentSummary?.bitbucket
+  if (!bitbucketSection) {
+    return pendingMetricView.value
+  }
+  if (bitbucketSection.status === "unconfigured") {
+    return { value: "0", sub: "Bitbucket PAT not configured", isPlaceholder: false }
+  }
+  if (bitbucketSection.status === "error") {
+    return { value: PLACEHOLDER_VALUE, sub: "Bitbucket data unavailable", isPlaceholder: true }
+  }
+  return {
+    value: String(bitbucketSection.open_pull_requests),
+    sub: `${bitbucketSection.review_requested} review requested`,
+    isPlaceholder: false
+  }
+}
+
+const buildDocumentsMetric = (currentSummary: DashboardSummary | null): MetricView => {
+  const jiraSection = currentSummary?.jira
+  if (!jiraSection) {
+    return pendingMetricView.value
+  }
+  if (jiraSection.status === "unconfigured") {
+    return { value: "0", sub: "Jira PAT not configured", isPlaceholder: false }
+  }
+  if (jiraSection.status === "error") {
+    return { value: PLACEHOLDER_VALUE, sub: "Documents unavailable", isPlaceholder: true }
+  }
+  return {
+    value: String(jiraSection.technical_documents),
+    sub: "Jira & Confluence linked specs",
+    isPlaceholder: false
+  }
+}
+
+const buildCopilotToolsMetric = (currentSummary: DashboardSummary | null): MetricView => {
+  const copilotSection = currentSummary?.copilot
+  if (!copilotSection) {
+    return pendingMetricView.value
+  }
+  if (copilotSection.status === "error") {
+    return { value: PLACEHOLDER_VALUE, sub: "Copilot data unavailable", isPlaceholder: true }
+  }
+  const providerNames = copilotSection.configured_providers
+  return {
+    value: `${copilotSection.active_tools}/${copilotSection.total_tools}`,
+    sub: providerNames.length > 0 ? `Providers: ${providerNames.join(", ")}` : "No providers configured",
+    isPlaceholder: false
+  }
+}
+
+const jiraTicketsMetric = computed(() => buildJiraTicketsMetric(summary.value))
+const pullRequestsMetric = computed(() => buildPullRequestsMetric(summary.value))
+const documentsMetric = computed(() => buildDocumentsMetric(summary.value))
+const copilotToolsMetric = computed(() => buildCopilotToolsMetric(summary.value))
+
+const handleSync = async () => {
+  const didSync = await syncWorkspace()
+  if (!didSync) {
+    showToast(errorMessage.value || "Failed to sync workspace")
+  }
 }
 </script>
 
@@ -28,11 +130,20 @@ const handleSync = () => {
           <p class="eyebrow">Developer workspace</p>
           <h1>Operations Overview</h1>
           <p class="heading-copy">
-            Welcome back, {{ user?.full_name || "Hadinata" }}. Real-time context across Jira tickets, Bitbucket PR reviews, and AI Copilot.
+            Welcome back, {{ user?.full_name || "Lunar Developer" }}. Real-time context across Jira tickets, Bitbucket PR reviews, and AI Copilot.
+          </p>
+          <p v-if="lastSyncedAt" class="last-synced" data-testid="last-synced">
+            Synced {{ lastSyncedAt }}
           </p>
         </div>
 
-        <button class="heading-action" type="button" :disabled="isSyncing" @click="handleSync">
+        <button
+          class="heading-action"
+          type="button"
+          :disabled="isSyncing"
+          data-testid="btn-sync-workspace"
+          @click="handleSync"
+        >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"></path>
           </svg>
@@ -40,29 +151,66 @@ const handleSync = () => {
         </button>
       </div>
 
+      <div v-if="errorMessage" class="error-banner" data-testid="banner-dashboard-error">
+        <span>{{ errorMessage }}</span>
+        <button
+          class="banner-retry"
+          type="button"
+          :disabled="isLoading"
+          data-testid="btn-retry"
+          @click="loadSummary"
+        >
+          {{ isLoading ? "Retrying..." : "Retry" }}
+        </button>
+      </div>
+
       <div class="metrics-grid">
         <div class="metric-card">
           <div class="metric-label">Jira Assigned Tickets</div>
-          <div class="metric-value">12</div>
-          <div class="metric-sub">BRI MMS Sprint 4</div>
+          <div
+            class="metric-value"
+            :class="{ 'is-placeholder': jiraTicketsMetric.isPlaceholder }"
+            data-testid="metric-jira-tickets"
+          >
+            {{ jiraTicketsMetric.value }}
+          </div>
+          <div class="metric-sub">{{ jiraTicketsMetric.sub }}</div>
         </div>
 
         <div class="metric-card">
           <div class="metric-label">Bitbucket Pull Requests</div>
-          <div class="metric-value">4</div>
-          <div class="metric-sub">Review requested</div>
+          <div
+            class="metric-value"
+            :class="{ 'is-placeholder': pullRequestsMetric.isPlaceholder }"
+            data-testid="metric-bitbucket-prs"
+          >
+            {{ pullRequestsMetric.value }}
+          </div>
+          <div class="metric-sub">{{ pullRequestsMetric.sub }}</div>
         </div>
 
         <div class="metric-card">
           <div class="metric-label">Technical Documents</div>
-          <div class="metric-value">18</div>
-          <div class="metric-sub">Confluence linked specs</div>
+          <div
+            class="metric-value"
+            :class="{ 'is-placeholder': documentsMetric.isPlaceholder }"
+            data-testid="metric-documents"
+          >
+            {{ documentsMetric.value }}
+          </div>
+          <div class="metric-sub">{{ documentsMetric.sub }}</div>
         </div>
 
         <div class="metric-card">
           <div class="metric-label">Active Copilot Tools</div>
-          <div class="metric-value">5/5</div>
-          <div class="metric-sub">Cross-system reasoning ready</div>
+          <div
+            class="metric-value"
+            :class="{ 'is-placeholder': copilotToolsMetric.isPlaceholder }"
+            data-testid="metric-copilot-tools"
+          >
+            {{ copilotToolsMetric.value }}
+          </div>
+          <div class="metric-sub">{{ copilotToolsMetric.sub }}</div>
         </div>
       </div>
 
@@ -204,6 +352,58 @@ h1 {
   font-size: 13px;
 }
 
+.last-synced {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 24px;
+  padding: 12px 18px;
+  border: 1px solid rgba(198, 144, 144, 0.3);
+  border-radius: 9px;
+  background: rgba(198, 144, 144, 0.1);
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.banner-retry {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 180ms ease, border-color 180ms ease;
+}
+
+.banner-retry:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--border-strong);
+}
+
+.banner-retry:focus-visible {
+  outline: 2px solid var(--border-strong);
+  outline-offset: 2px;
+}
+
+.banner-retry:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .heading-action {
   display: inline-flex;
   align-items: center;
@@ -260,6 +460,10 @@ h1 {
   line-height: 1;
   letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
+}
+
+.metric-value.is-placeholder {
+  color: var(--muted);
 }
 
 .metric-sub {

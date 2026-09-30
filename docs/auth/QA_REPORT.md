@@ -7,7 +7,7 @@ This document provides automated testing results and visual evidence for the Lun
 - **Target URL**: `http://localhost:5173/login`
 - **Execution Date**: 2026-09-29
 - **Browser Engine**: Google Chrome (Playwright channel)
-- **Tested User**: `hafinata19@gmail.com`
+- **Tested User**: `developer@lunar.dev`
 
 ---
 

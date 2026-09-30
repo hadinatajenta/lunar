@@ -42,7 +42,7 @@ const navItems = [
 
 const userInitials = computed(() => {
   if (!user.value || !user.value.full_name) {
-    return "HD"
+    return "LD"
   }
   const parts = user.value.full_name.trim().split(" ")
   if (parts.length >= 2) {
@@ -51,9 +51,9 @@ const userInitials = computed(() => {
   return user.value.full_name.slice(0, 2).toUpperCase()
 })
 
-const handleSignOut = () => {
-  logout()
-  router.push("/login")
+const handleSignOut = async () => {
+  await logout()
+  await router.push("/login")
 }
 </script>
 
@@ -130,8 +130,8 @@ const handleSignOut = () => {
     <div class="account">
       <div class="avatar">{{ userInitials }}</div>
       <div class="account-copy">
-        <div class="account-name">{{ user?.full_name || "Hadinata" }}</div>
-        <div class="account-email">{{ user?.email || "hafinata19@gmail.com" }}</div>
+        <div class="account-name">{{ user?.full_name || "Lunar Developer" }}</div>
+        <div class="account-email">{{ user?.email || "developer@lunar.dev" }}</div>
       </div>
       <button class="logout-btn" type="button" title="Sign out" aria-label="Sign out" @click="handleSignOut">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">

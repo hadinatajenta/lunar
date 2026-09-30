@@ -416,7 +416,7 @@ Never hide flakiness with `test.describe.configure({ retries: 10 })`.
 ```ts
 test.describe.configure({ mode: "serial" })
 await page.waitForTimeout(...)
-page.fill('#email', 'hafinata19@gmail.com') // inside beforeEach of non-auth specs
+page.fill('#email', 'user@example.com') // inside beforeEach of non-auth specs
 ```
 
 These patterns are banned from all spec files.
