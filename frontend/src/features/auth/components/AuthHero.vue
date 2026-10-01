@@ -1,5 +1,6 @@
 <template>
   <section class="hero" aria-label="Lunar introduction">
+    <MoonBackdrop />
     <div class="hero-content">
       <div class="brand-row">
         <router-link to="/" class="brand" aria-label="Lunar home">
@@ -26,17 +27,22 @@
 </template>
 
 <script setup lang="ts">
+import MoonBackdrop from "./MoonBackdrop.vue"
 </script>
 
 <style scoped>
 .hero {
+  position: relative;
   min-width: 0;
   display: flex;
   align-items: center;
   padding: 64px clamp(40px, 8vw, 128px);
+  isolation: isolate;
 }
 
 .hero-content {
+  position: relative;
+  z-index: 1;
   width: min(100%, 680px);
 }
 
