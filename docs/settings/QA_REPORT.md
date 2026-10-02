@@ -4,7 +4,7 @@
 This document provides automated testing results and visual evidence for the Lunar Settings & Encrypted Credential Vault. Testing validates multi-tab credential management, official AI provider specifications directly scraped from production docs across all 5 major engines (OpenAI GPT-6 Astra/Sol/Luna, Anthropic Claude Opus 5.5/Sonnet 5.5/Fable 5.1/Haiku 4.5, Google Gemini 3.8 Flash/3.1 Pro/3.5 Flash-Lite, DeepSeek-V4 Pro/DeepSeek Flash, Xiaomi MiMo-V2.5 Pro), standardized placeholders, and AES-256-GCM encrypted persistence in SQLite via backend APIs.
 
 - **Status**: PASSED (100%)
-- **Target URL**: `http://localhost:5173/settings`
+- **Target URL**: `http://localhost:5174/settings`
 - **Execution Date**: 2026-09-29
 - **Execution Mode**: Parallel worker execution (Playwright on Google Chrome)
 - **Encryption Scheme**: AES-256-GCM authenticated encryption per user

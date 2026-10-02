@@ -10,7 +10,7 @@ WorkingDirectory=/opt/lunar
 ExecStart=/opt/lunar/server
 Restart=always
 RestartSec=5s
-Environment=PORT=8080
+Environment=PORT=8081
 Environment=ENV=production
 EnvironmentFile=-/opt/lunar/.env
 

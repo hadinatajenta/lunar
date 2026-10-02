@@ -4,7 +4,7 @@
 This document provides automated testing results and visual evidence for the Lunar Authentication & Session Lifecycle feature. Tests were executed end-to-end using Playwright with headless Chrome against live Go backend and Vue 3 frontend services.
 
 - **Status**: PASSED (100%)
-- **Target URL**: `http://localhost:5173/login`
+- **Target URL**: `http://localhost:5174/login`
 - **Execution Date**: 2026-09-29
 - **Browser Engine**: Google Chrome (Playwright channel)
 - **Tested User**: `developer@lunar.dev`

@@ -59,7 +59,7 @@ async function generateAuthDocx() {
         properties: {},
         children: [
           createHeading("Lunar QA Automation: Authentication Feature", HeadingLevel.TITLE),
-          createParagraph("Target: http://localhost:5173/login | Status: PASSED (100%) | Date: 2026-09-29"),
+          createParagraph("Target: http://localhost:5174/login | Status: PASSED (100%) | Date: 2026-09-29"),
           createHeading("Test Scenarios & Results", HeadingLevel.HEADING_2),
           createParagraph("1. Initial Login Screen - Passed"),
           createParagraph("2. Client-Side Field Validation on Empty Submit - Passed"),
@@ -85,7 +85,7 @@ async function generateDashboardDocx() {
         properties: {},
         children: [
           createHeading("Lunar QA Automation: Operations Overview Dashboard", HeadingLevel.TITLE),
-          createParagraph("Target: http://localhost:5173/dashboard | Status: PASSED (100%) | Date: 2026-09-29"),
+          createParagraph("Target: http://localhost:5174/dashboard | Status: PASSED (100%) | Date: 2026-09-29"),
           createHeading("Test Scenarios & Results", HeadingLevel.HEADING_2),
           createParagraph("1. Real-time Metric Cards Rendering (Tickets, PRs, Docs, Tools) - Passed"),
           createParagraph("2. Workspace Synchronization Trigger & State Transition - Passed"),
@@ -109,7 +109,7 @@ async function generateSettingsDocx() {
         properties: {},
         children: [
           createHeading("Lunar QA Automation: Settings & Credential Vault", HeadingLevel.TITLE),
-          createParagraph("Target: http://localhost:5173/settings | Status: PASSED (100%) | Date: 2026-09-29"),
+          createParagraph("Target: http://localhost:5174/settings | Status: PASSED (100%) | Date: 2026-09-29"),
           createHeading("Test Scenarios & Results", HeadingLevel.HEADING_2),
           createParagraph("1. Integrations Settings Tab Initial State - Passed"),
           createParagraph("2. Populating Jira, Bitbucket, and Confluence PATs - Passed"),
@@ -139,7 +139,7 @@ async function generateCopilotDocx() {
         properties: {},
         children: [
           createHeading("Lunar QA Automation: AI Copilot & Active Tools", HeadingLevel.TITLE),
-          createParagraph("Target: http://localhost:5173/copilot | Status: PASSED (100%) | Date: 2026-09-29"),
+          createParagraph("Target: http://localhost:5174/copilot | Status: PASSED (100%) | Date: 2026-09-29"),
           createHeading("Test Scenarios & Results", HeadingLevel.HEADING_2),
           createParagraph("1. Clean Empty History Initial State - Passed"),
           createParagraph("2. Active Copilot Tools Modal Triggered via Sidebar Gear Icon - Passed"),

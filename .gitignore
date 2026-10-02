@@ -26,3 +26,4 @@ test-results/
 playwright-report/
 playwright/.auth/
 .auth/
+.moon-evidence/

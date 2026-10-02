@@ -17,6 +17,7 @@ import LoginForm from "../components/LoginForm.vue"
 .page {
   position: relative;
   min-height: 100vh;
+  overflow: clip;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(440px, 0.68fr);
   isolation: isolate;

@@ -38,7 +38,7 @@ export default defineConfig({
     ["json", { outputFile: "test-results/results.json" }]
   ],
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:5173",
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:5174",
     headless: true,
     viewport: { width: 1360, height: 860 },
     screenshot: "only-on-failure",

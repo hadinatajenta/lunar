@@ -59,7 +59,7 @@ async function generateBitbucketDocx() {
         properties: {},
         children: [
           createHeading("Lunar QA Automation: Bitbucket Code Review Workspace", HeadingLevel.TITLE),
-          createParagraph("Target: http://localhost:5173/bitbucket | Status: PASSED (100%) | Date: 2026-09-29"),
+          createParagraph("Target: http://localhost:5174/bitbucket | Status: PASSED (100%) | Date: 2026-09-29"),
           createHeading("Test Scenarios & Results", HeadingLevel.HEADING_2),
           createParagraph("1. Bitbucket Code Review Workspace Overview Rendering - Passed"),
           createParagraph("2. Pushed Branches Filtering (Ready, Stale, All) - Passed"),

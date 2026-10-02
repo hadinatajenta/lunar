@@ -77,7 +77,7 @@ func LoadConfig() *Config {
 
 	jwtSecret := getEnvOrDefault("JWT_SECRET", "lunar-default-secret-key-change-in-production")
 	encryptionKey := getEnvOrDefault("ENCRYPTION_KEY", "0123456789abcdef0123456789abcdef")
-	port := getEnvOrDefault("PORT", "8080")
+	port := getEnvOrDefault("PORT", "8081")
 	dbPath := getEnvOrDefault("DB_PATH", "data/lunar.db")
 	corsOrigin := getEnvOrDefault("CORS_ORIGIN", "*")
 

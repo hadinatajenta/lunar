@@ -4,8 +4,8 @@
 This document provides automated testing results and visual evidence for the Lunar Operations Overview Dashboard. Coverage includes the real `GET /api/dashboard/summary` API contract (authentication and failure modes), metric card binding with placeholder/error states, workspace synchronization recovery, quick-action navigation, and credential badge rendering.
 
 - **Status**: PASSED (100%)
-- **Target URL**: `http://localhost:5173/dashboard`
-- **API Under Test**: `GET http://localhost:8080/api/dashboard/summary` (Bearer token)
+- **Target URL**: `http://localhost:5174/dashboard`
+- **API Under Test**: `GET http://localhost:8081/api/dashboard/summary` (Bearer token)
 - **Execution Date**: 2026-09-30
 - **Backend Unit Tests**: `go test -race ./...` — 51/51 top-level tests passed (0 failed, 0 skipped); 16 dashboard-specific tests
 - **E2E Dashboard Spec**: 12/12 passed (5.3s)

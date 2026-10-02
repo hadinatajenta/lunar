@@ -4,7 +4,7 @@
 This document provides automated testing results and visual evidence for the Lunar AI Copilot and Active Tools feature. Testing validates clean default history initialization, dynamic model selection, thinking mode toggling, reasoning effort controls (`low`, `medium`, `high`), collapsible Chain-of-Thought (CoT) thought process rendering, tool gating via the sidebar settings modal, and conversation session deletion on hover.
 
 - **Status**: PASSED (100%)
-- **Target URL**: `http://localhost:5173/copilot`
+- **Target URL**: `http://localhost:5174/copilot`
 - **Execution Date**: 2026-09-29
 - **Execution Mode**: Parallel worker execution (Playwright on Google Chrome)
 - **Active Systems Tested**: Jira BRI, Bitbucket BRI, Confluence BRI, Query Review, ServiceMap

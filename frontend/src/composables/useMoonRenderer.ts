@@ -14,7 +14,7 @@ export interface MoonRenderer {
 }
 
 const SPHERE_RADIUS = 1.0
-const SPHERE_DETAIL = 5
+const SPHERE_DETAIL = 8
 const CAMERA_DISTANCE = 5.4
 const CAMERA_FOV = 30
 const ROTATION_SPEED_RADIANS = 0.04
@@ -27,10 +27,14 @@ function createMoonMaterial(three: ThreeModule): ShaderMaterial {
     vertexShader: VERTEX_SHADER,
     fragmentShader: FRAGMENT_SHADER,
     uniforms: {
-      uLightDirection: { value: new three.Vector3(-0.62, 0.38, 0.68).normalize() },
-      uSurfaceColor: { value: new three.Color(0xa8aeb8) },
-      uShadowColor: { value: new three.Color(0x15181e) },
-      uAmbientStrength: { value: 0.1 }
+      uLightDirection: { value: new three.Vector3(-0.62, 0.38, 0.52).normalize() },
+      uSurfaceColor: { value: new three.Color(0x7f7a72).convertLinearToSRGB() },
+      uShadowColor: { value: new three.Color(0x1a1612).convertLinearToSRGB() },
+      uAmbientStrength: { value: 0.055 },
+      uMariaColor: { value: new three.Color(0x44413c).convertLinearToSRGB() },
+      uHighlandColor: { value: new three.Color(0x8a857c).convertLinearToSRGB() },
+      uCraterColor: { value: new three.Color(0x36332e).convertLinearToSRGB() },
+      uDepthStrength: { value: 0.34 }
     }
   })
 }
@@ -174,8 +178,8 @@ export async function createMoonRenderer(
   return {
     setSurfaceColors(surfaceColor: number, shadowColor: number): void {
       const material = mesh.material as ShaderMaterial
-      material.uniforms.uSurfaceColor.value.setHex(surfaceColor)
-      material.uniforms.uShadowColor.value.setHex(shadowColor)
+      material.uniforms.uSurfaceColor.value.setHex(surfaceColor).convertLinearToSRGB()
+      material.uniforms.uShadowColor.value.setHex(shadowColor).convertLinearToSRGB()
       material.needsUpdate = true
       renderFrame()
     },

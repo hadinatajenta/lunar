@@ -4,7 +4,7 @@
 This document provides automated end-to-end testing results and visual evidence for the Lunar Bitbucket module. Tests were executed using Playwright in headless Google Chrome against live Go backend and Vue 3 frontend services.
 
 - **Status**: PASSED (100%)
-- **Target URL**: `http://localhost:5173/bitbucket`
+- **Target URL**: `http://localhost:5174/bitbucket`
 - **Execution Date**: 2026-09-29
 - **Browser Engine**: Google Chrome (Playwright channel)
 - **Tested User**: `developer@lunar.dev`
