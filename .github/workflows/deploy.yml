@@ -79,6 +79,55 @@ jobs:
           path: backend/server
           retention-days: 1
 
+  release-helper:
+    name: Release Helper Binaries
+    needs: filter
+    if: |
+      always() &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'push' &&
+      (needs.filter.outputs.backend == 'true' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: darwin
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Runtime
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: backend/go.sum
+
+      - name: Compile Helper
+        run: |
+          cd backend
+          suffix=""
+          if [ "${{ matrix.goos }}" = "windows" ]; then suffix=".exe"; fi
+          CGO_ENABLED=0 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
+            go build -trimpath -ldflags="-s -w" \
+            -o "lunar-helper-${{ matrix.goos }}-${{ matrix.goarch }}${suffix}" ./cmd/lunar-helper
+
+      - name: Upload Helper Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lunar-helper-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: backend/lunar-helper-${{ matrix.goos }}-${{ matrix.goarch }}*
+          retention-days: 30
+
   ci-frontend:
     name: Frontend CI
     needs: filter

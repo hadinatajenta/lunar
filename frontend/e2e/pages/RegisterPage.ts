@@ -24,7 +24,7 @@ export class RegisterPage {
   }
 
   get badgeChangeButton() {
-    return this.page.locator(".badge-btn-change")
+    return this.page.locator(".change-button")
   }
 
   get passwordInput() {
@@ -36,7 +36,7 @@ export class RegisterPage {
   }
 
   get completeRegistrationButton() {
-    return this.page.getByRole("button", { name: "Complete Registration" })
+    return this.page.getByRole("button", { name: "Create Workspace Account" })
   }
 
   get errorBanner() {

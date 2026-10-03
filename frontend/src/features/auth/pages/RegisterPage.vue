@@ -30,7 +30,6 @@ import RegisterForm from "../components/RegisterForm.vue"
   padding: 40px;
   border-left: 1px solid var(--border);
   background: var(--surface);
-  backdrop-filter: blur(14px);
 }
 
 @media (max-width: 980px) {

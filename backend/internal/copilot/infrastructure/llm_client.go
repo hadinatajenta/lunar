@@ -16,7 +16,7 @@ import (
 )
 
 type LLMClient struct {
-	httpClient *http.Client
+	httpClient  *http.Client
 	deepseekURL string
 	mimoURL     string
 }

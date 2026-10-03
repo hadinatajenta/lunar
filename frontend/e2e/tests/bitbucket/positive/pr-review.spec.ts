@@ -1,6 +1,6 @@
 import { test, expect } from "../../../fixtures/authenticated.fixture"
 import { captureEvidence } from "../../../helpers/evidence"
-import { routeStandardPushes, routeStandardPRs, routeSecrets } from "../../../helpers/route-mock"
+import { routeStandardPushes, routeStandardPRs, routeSecrets, routeSystemConfig } from "../../../helpers/route-mock"
 
 test.describe("Bitbucket BRI - PR Review Positive Flows", () => {
   test.beforeEach(async ({ page }) => {
@@ -36,13 +36,14 @@ test.describe("Bitbucket BRI - PR Review Positive Flows", () => {
     },
     async ({ page, bitbucketPage }) => {
       await routeSecrets(page, { hasAiKeys: false, configuredAiProviders: [] })
+      await routeSystemConfig(page, [])
 
       await bitbucketPage.navigateTo()
       await bitbucketPage.reviewButton(184).click()
       await expect(bitbucketPage.reviewModal).toBeVisible()
 
       await expect(bitbucketPage.prReviewNoAiWarning).toBeVisible()
-      await expect(bitbucketPage.prReviewNoAiWarning).toContainText("AI Key Required for Automated Code Review")
+      await expect(bitbucketPage.prReviewNoAiWarning).toContainText("No AI provider configured yet")
       await expect(bitbucketPage.generateAiReviewButton).toBeDisabled()
     }
   )
@@ -60,6 +61,7 @@ test.describe("Bitbucket BRI - PR Review Positive Flows", () => {
       await expect(bitbucketPage.reviewModal).toBeVisible()
       await expect(bitbucketPage.reviewModalTitle).toContainText("feat(auth): LUN-421")
 
+      await bitbucketPage.toggleDiffButton.click()
       await expect(bitbucketPage.diffContainer).toBeVisible()
       await expect(bitbucketPage.diffContainer).toContainText("src/auth/session.ts")
       await captureEvidence(page, "bitbucket", "06_pr_review_modal_empty.png")
@@ -90,7 +92,7 @@ test.describe("Bitbucket BRI - PR Review Positive Flows", () => {
 
       await bitbucketPage.approvePrButton.click()
       await expect(bitbucketPage.globalToast).toBeVisible()
-      await expect(bitbucketPage.globalToast).toContainText("Pull request approved")
+      await expect(bitbucketPage.globalToast).toContainText("Review marked as approve")
       await captureEvidence(page, "bitbucket", "08_pr_review_status_action.png")
     }
   )
@@ -110,7 +112,7 @@ test.describe("Bitbucket BRI - PR Review Positive Flows", () => {
       await bitbucketPage.reviewCommentTextarea.fill("Verified SQLite FTS5 tokenization looks optimal.")
       await bitbucketPage.postCommentButton.click()
       await expect(bitbucketPage.globalToast).toBeVisible()
-      await expect(bitbucketPage.globalToast).toContainText("Review comment posted")
+      await expect(bitbucketPage.globalToast).toContainText("Review posted to the pull request as a comment")
       await captureEvidence(page, "bitbucket", "09_pr_review_comment_posted.png")
     }
   )

@@ -46,7 +46,8 @@ export default defineConfig({
     video: "off",
     launchOptions: {
       slowMo: process.env.SLOW_MO ? parseInt(process.env.SLOW_MO, 10) : 0,
-      channel: process.env.CHROME ? "chrome" : undefined
+      channel: process.env.CHROME ? "chrome" : undefined,
+      executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH || undefined
     }
   },
   projects: [

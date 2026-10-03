@@ -29,6 +29,11 @@ const navItems = [
     icon: "confluence"
   },
   {
+    name: "Microservices BRI",
+    path: "/microservices",
+    icon: "microservices"
+  },
+  {
     name: "Copilot",
     path: "/copilot",
     icon: "copilot"
@@ -95,6 +100,11 @@ const handleSignOut = async () => {
             <path d="M6 16c3-5 5-8 12-8"></path>
             <path d="M8 18c2-4 4-6 10-6"></path>
           </svg>
+          <svg v-else-if="item.icon === 'microservices'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3l9 4.5v9L12 21l-9-4.5v-9z"></path>
+            <path d="M3 7.5 12 12l9-4.5"></path>
+            <path d="M12 12v9"></path>
+          </svg>
           <svg v-else-if="item.icon === 'copilot'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
             <path d="M6 8a6 6 0 0 1 12 0v6a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4z"></path>
             <path d="M9 11h.01"></path>
@@ -118,14 +128,6 @@ const handleSignOut = async () => {
     </nav>
 
     <div class="sidebar-spacer"></div>
-
-    <div class="status-card">
-      <div class="status-top">
-        <span class="status-dot"></span>
-        <span>All systems operational</span>
-      </div>
-      <div class="status-value">BRI Production Cluster</div>
-    </div>
 
     <div class="account">
       <div class="avatar">{{ userInitials }}</div>
@@ -244,39 +246,6 @@ const handleSignOut = async () => {
 
 .sidebar-spacer {
   flex: 1;
-}
-
-.status-card {
-  margin: 10px 4px;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface);
-}
-
-.status-top {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--text);
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--positive);
-  box-shadow: 0 0 10px rgba(159, 182, 166, 0.4);
-}
-
-.status-value {
-  margin-top: 7px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
 }
 
 .account {

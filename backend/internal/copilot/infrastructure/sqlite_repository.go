@@ -140,7 +140,7 @@ func (r *SQLiteCopilotRepository) DeleteSession(ctx context.Context, userID stri
 
 func (r *SQLiteCopilotRepository) GetMessagesByChatID(ctx context.Context, chatID string) ([]domain.ChatMessage, error) {
 	query := `
-		SELECT id, chat_id, role, content, reasoning, created_at
+		SELECT id, chat_id, role, content, reasoning, thinking_duration_ms, sources, created_at
 		FROM copilot_messages
 		WHERE chat_id = ?
 		ORDER BY created_at ASC
@@ -155,9 +155,15 @@ func (r *SQLiteCopilotRepository) GetMessagesByChatID(ctx context.Context, chatI
 	for rows.Next() {
 		var m domain.ChatMessage
 		var createdAt string
-		if err := rows.Scan(&m.ID, &m.ChatID, &m.Role, &m.Content, &m.Reasoning, &createdAt); err != nil {
+		var encodedSources string
+		if err := rows.Scan(&m.ID, &m.ChatID, &m.Role, &m.Content, &m.Reasoning, &m.ThinkingDurationMs, &encodedSources, &createdAt); err != nil {
 			return nil, err
 		}
+		decodedSources, err := decodeChatSources(encodedSources)
+		if err != nil {
+			return nil, err
+		}
+		m.Sources = decodedSources
 		m.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
 		messages = append(messages, m)
 	}
@@ -170,11 +176,16 @@ func (r *SQLiteCopilotRepository) GetMessagesByChatID(ctx context.Context, chatI
 }
 
 func (r *SQLiteCopilotRepository) SaveMessage(ctx context.Context, msg *domain.ChatMessage) error {
+	encodedSources, err := encodeChatSources(msg.Sources)
+	if err != nil {
+		return err
+	}
+
 	query := `
-		INSERT INTO copilot_messages (id, chat_id, role, content, reasoning, created_at)
-		VALUES (?, ?, ?, ?, ?, ?)
+		INSERT INTO copilot_messages (id, chat_id, role, content, reasoning, thinking_duration_ms, sources, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	`
-	_, err := r.db.ExecContext(
+	_, err = r.db.ExecContext(
 		ctx,
 		query,
 		msg.ID,
@@ -182,6 +193,8 @@ func (r *SQLiteCopilotRepository) SaveMessage(ctx context.Context, msg *domain.C
 		msg.Role,
 		msg.Content,
 		msg.Reasoning,
+		msg.ThinkingDurationMs,
+		encodedSources,
 		msg.CreatedAt.Format(time.RFC3339),
 	)
 	return err

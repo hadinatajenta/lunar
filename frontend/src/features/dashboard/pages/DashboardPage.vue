@@ -202,7 +202,7 @@ const handleSync = async () => {
         </div>
 
         <div class="metric-card">
-          <div class="metric-label">Active Copilot Tools</div>
+          <div class="metric-label">AI Providers Configured</div>
           <div
             class="metric-value"
             :class="{ 'is-placeholder': copilotToolsMetric.isPlaceholder }"

@@ -7,12 +7,18 @@ const { sessions, activeSessionId, isDomainModalOpen, startNewChat, selectSessio
 <template>
   <aside class="chat-history">
     <div class="chat-history-header">
-      <button class="new-chat-btn" type="button" @click="startNewChat">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
+      <button
+        class="new-chat-btn"
+        type="button"
+        aria-keyshortcuts="Meta+Shift+O Control+Shift+O"
+        @click="startNewChat"
+      >
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h9"></path>
+          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
         </svg>
-        <span>New chat</span>
+        <span class="new-chat-label">New chat</span>
+        <kbd class="new-chat-shortcut">⌘⇧O</kbd>
       </button>
 
       <button
@@ -85,31 +91,60 @@ const { sessions, activeSessionId, isDomainModalOpen, startNewChat, selectSessio
 
 .new-chat-btn {
   flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 8px;
   height: 36px;
-  padding: 0 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--text);
-  color: var(--text);
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  background: var(--accent);
+  color: var(--accent-contrast);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
-  transition: background-color 180ms ease, border-color 180ms ease;
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .new-chat-btn:hover {
-  background: var(--surface-hover);
-  border-color: var(--border-strong);
+  background: color-mix(in srgb, var(--accent) 88%, var(--accent-contrast));
+  transform: translateY(-1px);
+}
+
+.new-chat-btn:active {
+  transform: translateY(0) scale(0.985);
+}
+
+.new-chat-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .new-chat-btn svg {
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.new-chat-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.new-chat-shortcut {
+  margin-left: auto;
+  padding: 3px 6px;
+  border: 1px solid color-mix(in srgb, var(--accent-contrast) 22%, transparent);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--accent-contrast) 10%, transparent);
+  color: color-mix(in srgb, var(--accent-contrast) 70%, transparent);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .history-settings-btn {
@@ -120,7 +155,6 @@ const { sessions, activeSessionId, isDomainModalOpen, startNewChat, selectSessio
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
-  color: var(--muted);
   color: var(--muted);
   cursor: pointer;
   transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease;
@@ -181,7 +215,6 @@ const { sessions, activeSessionId, isDomainModalOpen, startNewChat, selectSessio
 .history-item:hover {
   background: var(--surface-hover);
   color: var(--text);
-  color: var(--text);
 }
 
 .history-item.is-active {
@@ -241,5 +274,16 @@ const { sessions, activeSessionId, isDomainModalOpen, startNewChat, selectSessio
 .history-delete-btn svg {
   width: 13px;
   height: 13px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .new-chat-btn {
+    transition: none;
+  }
+
+  .new-chat-btn:hover,
+  .new-chat-btn:active {
+    transform: none;
+  }
 }
 </style>

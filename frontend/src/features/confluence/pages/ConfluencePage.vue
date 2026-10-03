@@ -4,7 +4,6 @@ import { useRouter } from "vue-router"
 import PageLayout from "../../../components/layout/PageLayout.vue"
 import { useSettings } from "../../settings/composables/useSettings"
 import { useConfluence } from "../composables/useConfluence"
-import { useToast } from "../../../composables/useToast"
 import ConfluenceErrorBanners from "../components/ConfluenceErrorBanners.vue"
 import ConfluenceStatsGrid from "../components/ConfluenceStatsGrid.vue"
 import DocumentToolbar from "../components/DocumentToolbar.vue"
@@ -13,7 +12,6 @@ import type { ConfluenceDocument } from "../types"
 
 const router = useRouter()
 const { secrets, fetchSettings } = useSettings()
-const { showToast } = useToast()
 const {
   documents,
   isLoading,
@@ -32,10 +30,6 @@ const {
   showMore,
   clearError
 } = useConfluence()
-
-const handleNewPage = () => {
-  showToast("New page is ready for backend wiring.")
-}
 
 const handleOpenDocument = (confluenceDocument: ConfluenceDocument) => {
   router.push(`/confluence/${encodeURIComponent(confluenceDocument.id)}`)
@@ -68,22 +62,6 @@ onMounted(() => {
             Lunar Copilot help generate or extract documentation on the fly.
           </p>
         </div>
-
-        <button class="btn btn-primary" type="button" @click="handleNewPage">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M12 5v14"></path>
-            <path d="M5 12h14"></path>
-          </svg>
-          <span>New page</span>
-        </button>
       </div>
 
       <ConfluenceErrorBanners
@@ -170,38 +148,6 @@ h1 {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.6;
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 34px;
-  padding: 0 12px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  font-size: 11.5px;
-  font-weight: 500;
-  white-space: nowrap;
-  cursor: pointer;
-  transition:
-    background-color 160ms ease,
-    opacity 160ms ease;
-}
-
-.btn svg {
-  width: 14px;
-  height: 14px;
-}
-
-.btn-primary {
-  background: var(--accent);
-  color: var(--accent-contrast);
-}
-
-.btn-primary:hover {
-  opacity: 0.9;
 }
 
 .loading-bar {

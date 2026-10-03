@@ -27,7 +27,7 @@ test.describe("Authentication - Registration Positive Flows", () => {
       await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible()
       await page.getByRole("link", { name: "Sign in" }).click()
       await expect(page).toHaveURL(/\/login/)
-      await expect(page.getByRole("heading", { name: "Sign in to Lunar" })).toBeVisible()
+      await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible()
     }
   )
 
@@ -50,8 +50,8 @@ test.describe("Authentication - Registration Positive Flows", () => {
       await registerPage.clickVerify()
 
       await expect(registerPage.verifiedBadge).toBeVisible()
-      await expect(page.getByText("Budi Santoso")).toBeVisible()
-      await expect(registerPage.badgeEmail).toHaveText("budi.santoso@bri.co.id")
+      await expect(page.getByText(mockVerifiedJiraProfile.display_name)).toBeVisible()
+      await expect(registerPage.badgeEmail).toHaveText(mockVerifiedJiraProfile.email)
       await expect(registerPage.passwordInput).toBeVisible()
       await expect(registerPage.confirmPasswordInput).toBeVisible()
       await expect(registerPage.completeRegistrationButton).toBeVisible()
@@ -107,8 +107,8 @@ test.describe("Authentication - Registration Positive Flows", () => {
             token: "mock-jwt-token-newly-registered",
             user: {
               id: "usr-newly-registered-id",
-              email: "budi.santoso@bri.co.id",
-              full_name: "Budi Santoso",
+              email: mockVerifiedJiraProfile.email,
+              full_name: mockVerifiedJiraProfile.display_name,
               created_at: "Just now"
             }
           })

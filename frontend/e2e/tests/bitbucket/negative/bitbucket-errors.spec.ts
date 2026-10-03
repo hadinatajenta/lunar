@@ -98,9 +98,9 @@ test.describe("Bitbucket BRI - Errors & Authorization", () => {
     },
     async ({ page, bitbucketPage }) => {
       await routeStandardPushes(page)
-      await routeStandardPRs(page)
       await routeSecrets(page, { hasAiKeys: true })
-      await page.route(/\/api\/bitbucket\/prs\/184\/ai-review/, (route) =>
+      await routeStandardPRs(page)
+      await page.route(/\/api\/bitbucket\/prs\/%23184\/ai-review/, (route) =>
         route.fulfill({
           status: 401,
           json: { error: "failed to generate review: invalid or expired deepseek API key" }
@@ -124,9 +124,9 @@ test.describe("Bitbucket BRI - Errors & Authorization", () => {
     },
     async ({ page, bitbucketPage }) => {
       await routeStandardPushes(page)
-      await routeStandardPRs(page)
       await routeSecrets(page, { hasAiKeys: true })
-      await page.route(/\/api\/bitbucket\/prs\/184\/ai-review/, (route) =>
+      await routeStandardPRs(page)
+      await page.route(/\/api\/bitbucket\/prs\/%23184\/ai-review/, (route) =>
         route.fulfill({
           status: 502,
           json: { error: "failed to contact AI provider (deepseek): connection timeout" }

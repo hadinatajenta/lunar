@@ -280,7 +280,7 @@ onUnmounted(() => {
         <button
           class="btn btn-ghost"
           type="button"
-          :disabled="loadingAI"
+          :disabled="loadingAI || !hasConfiguredAI"
           data-testid="btn-trigger-ai-review"
           @click="emit('trigger-ai', { pr, model: reviewModel })"
         >

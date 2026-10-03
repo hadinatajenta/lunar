@@ -2,11 +2,12 @@
 import { onMounted, ref } from "vue"
 import PageLayout from "../../../components/layout/PageLayout.vue"
 import IntegrationsSettings from "../components/IntegrationsSettings.vue"
+import WorkspaceSettings from "../components/WorkspaceSettings.vue"
 import AiProvidersSettings from "../components/AiProvidersSettings.vue"
 import SecuritySettings from "../components/SecuritySettings.vue"
 import { useSettings } from "../composables/useSettings"
 
-const activeTab = ref<"integrations" | "ai" | "security">("integrations")
+const activeTab = ref<"integrations" | "workspace" | "ai" | "security">("integrations")
 const { fetchSettings, isLoading } = useSettings()
 
 onMounted(() => {
@@ -37,6 +38,14 @@ onMounted(() => {
           </button>
           <button
             class="settings-tab"
+            :class="{ 'is-active': activeTab === 'workspace' }"
+            type="button"
+            @click="activeTab = 'workspace'"
+          >
+            Workspace
+          </button>
+          <button
+            class="settings-tab"
             :class="{ 'is-active': activeTab === 'ai' }"
             type="button"
             @click="activeTab = 'ai'"
@@ -59,6 +68,7 @@ onMounted(() => {
           </div>
           <div v-else>
             <IntegrationsSettings v-if="activeTab === 'integrations'" />
+            <WorkspaceSettings v-else-if="activeTab === 'workspace'" />
             <AiProvidersSettings v-else-if="activeTab === 'ai'" />
             <SecuritySettings v-else-if="activeTab === 'security'" />
           </div>

@@ -5,8 +5,11 @@ import ChatSidebar from "../components/ChatSidebar.vue"
 import ChatWindow from "../components/ChatWindow.vue"
 import DomainToggleModal from "../components/DomainToggleModal.vue"
 import { useCopilot } from "../composables/useCopilot"
+import { useCopilotShortcuts } from "../composables/useCopilotShortcuts"
 
 const { hasConfiguredAI, isCheckingProviders, refreshConfiguredProviders } = useCopilot()
+
+useCopilotShortcuts()
 
 onMounted(async () => {
   await refreshConfiguredProviders()

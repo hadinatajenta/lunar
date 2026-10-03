@@ -10,6 +10,7 @@ const pageTitle = computed(() => {
   if (route.path.startsWith("/jira")) return "Jira BRI"
   if (route.path.startsWith("/bitbucket")) return "Bitbucket BRI"
   if (route.path.startsWith("/confluence")) return "Confluence BRI"
+  if (route.path.startsWith("/microservices")) return "Microservices BRI"
   if (route.path.startsWith("/copilot")) return "AI Copilot"
   if (route.path.startsWith("/settings")) return "Settings"
   return "Dashboard"
@@ -25,15 +26,6 @@ const pageTitle = computed(() => {
     </div>
 
     <div class="header-actions">
-      <div class="command">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="8"></circle>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        </svg>
-        <span>Search issues, PRs, docs...</span>
-        <kbd class="shortcut">⌘K</kbd>
-      </div>
-
       <button
         class="theme-toggle"
         type="button"
@@ -72,8 +64,7 @@ const pageTitle = computed(() => {
   min-height: 64px;
   padding: 0 30px;
   border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--bg) 87%, transparent);
-  backdrop-filter: blur(18px);
+  background: var(--bg);
 }
 
 .breadcrumb {
@@ -98,41 +89,6 @@ const pageTitle = computed(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.command {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: min(360px, 36vw);
-  min-height: 36px;
-  padding: 0 10px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  background: var(--surface-raised);
-  color: var(--muted);
-}
-
-.command svg {
-  width: 15px;
-  height: 15px;
-  stroke: currentColor;
-}
-
-.command span {
-  flex: 1;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.shortcut {
-  padding: 3px 6px;
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  color: var(--muted);
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
-  background: var(--surface);
 }
 
 .theme-toggle {

@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from "vue"
 import { useCopilot } from "../composables/useCopilot"
+import { useCodeAgent } from "../../code-context/composables/useCodeAgent"
+import CodeCitationList from "./CodeCitationList.vue"
+import ChatMessageContent from "./ChatMessageContent.vue"
+import CodeIndexStatus from "./CodeIndexStatus.vue"
 import type { ReasoningEffort } from "../types"
 
 const {
@@ -15,6 +19,16 @@ const {
   allSupportedModels,
   sendMessage
 } = useCopilot()
+
+const {
+  streamingText,
+  streamingReasoning,
+  streamingSources,
+  activeToolCall,
+  isStreaming,
+  indexHint,
+  answerCitations
+} = useCodeAgent()
 
 const inputPrompt = ref("")
 const isModelMenuOpen = ref(false)
@@ -92,6 +106,8 @@ const selectEffort = (effort: ReasoningEffort) => {
       </div>
 
       <div class="header-right">
+        <CodeIndexStatus />
+
         <div v-if="thinkingMode" class="thinking-badge active">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 2a6 6 0 0 0-6 6c0 2.22 1.21 4.16 3 5.2V17a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-3.8c1.79-1.04 3-2.98 3-5.2a6 6 0 0 0-6-6z"></path>
@@ -154,7 +170,12 @@ const selectEffort = (effort: ReasoningEffort) => {
               </div>
             </div>
 
-            <div class="message-text">{{ msg.content }}</div>
+            <ChatMessageContent class="message-text" :content="msg.content" />
+
+            <CodeCitationList
+              v-if="answerCitations[msg.id]"
+              :sources="answerCitations[msg.id]"
+            />
 
             <div v-if="msg.sources && msg.sources.length > 0" class="source-row">
               <span
@@ -170,8 +191,27 @@ const selectEffort = (effort: ReasoningEffort) => {
 
         <div v-if="isLoading" class="message assistant">
           <div class="message-meta">Lunar Copilot</div>
-          <div class="message-bubble typing">
-            <div class="typing-indicator-wrap">
+          <div class="message-bubble" :class="{ typing: !isStreaming }">
+            <div v-if="isStreaming" class="stream-body">
+              <div v-if="streamingReasoning" class="thought-section">
+                <div class="thought-content">
+                  <pre>{{ streamingReasoning }}</pre>
+                </div>
+              </div>
+
+              <div v-if="activeToolCall" class="tool-call-row">
+                <span class="tool-call-dot" aria-hidden="true"></span>
+                <span class="tool-call-label">
+                  {{ activeToolCall.tool }}<template v-if="activeToolCall.action"> · {{ activeToolCall.action }}</template>
+                </span>
+              </div>
+
+              <div class="message-text">{{ streamingText }}</div>
+
+              <CodeCitationList v-if="streamingSources.length > 0" :sources="streamingSources" />
+            </div>
+
+            <div v-else class="typing-indicator-wrap">
               <span v-if="thinkingMode" class="thinking-text">Thinking with {{ reasoningEffort }} reasoning...</span>
               <div class="dots-wrap">
                 <span class="dot"></span>
@@ -185,6 +225,8 @@ const selectEffort = (effort: ReasoningEffort) => {
     </div>
 
     <div class="chat-input-area">
+      <div v-if="indexHint" class="index-hint" role="status">{{ indexHint }}</div>
+
       <form class="chat-composer" @submit.prevent="handleSend">
         <textarea
           v-model="inputPrompt"
@@ -328,6 +370,12 @@ const selectEffort = (effort: ReasoningEffort) => {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .chat-header-title {
@@ -567,6 +615,31 @@ const selectEffort = (effort: ReasoningEffort) => {
   padding: 12px 16px;
 }
 
+.stream-body {
+  display: grid;
+  gap: 10px;
+}
+
+.tool-call-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.tool-call-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--positive);
+  animation: pulse 1s infinite alternate;
+}
+
+.tool-call-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
 .typing-indicator-wrap {
   display: flex;
   align-items: center;
@@ -609,6 +682,18 @@ const selectEffort = (effort: ReasoningEffort) => {
   padding: 16px 24px 20px;
   border-top: 1px solid var(--border);
   background: var(--bg);
+}
+
+.index-hint {
+  max-width: 820px;
+  margin: 0 auto 10px;
+  padding: 8px 12px;
+  border: 1px solid rgba(217, 164, 65, 0.35);
+  border-radius: 8px;
+  background: rgba(217, 164, 65, 0.08);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 .chat-composer {

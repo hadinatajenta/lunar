@@ -8,25 +8,46 @@ import (
 )
 
 type Config struct {
-	Port                 string
-	DBPath               string
-	JWTSecret            string
-	JWTTTL               time.Duration
-	EncryptionKey        string
-	CORSOrigin           string
-	JiraBaseURL          string
-	BitbucketBaseURL     string
-	ConfluenceBaseURL    string
-	SystemDeepseekKey    string
-	SystemDeepseekURL    string
-	SystemGeminiKey      string
-	SystemOpenAIKey      string
-	SystemClaudeKey      string
-	SystemMimoKey        string
-	SystemMimoBaseURL    string
-	SeedUserEmail        string
-	SeedUserPassword     string
-	SeedUserName         string
+	Port                  string
+	DBPath                string
+	JWTSecret             string
+	JWTTTL                time.Duration
+	EncryptionKey         string
+	CORSOrigin            string
+	JiraBaseURL           string
+	BitbucketBaseURL      string
+	ConfluenceBaseURL     string
+	SystemDeepseekKey     string
+	SystemDeepseekURL     string
+	SystemGeminiKey       string
+	SystemOpenAIKey       string
+	SystemClaudeKey       string
+	SystemMimoKey         string
+	SystemMimoBaseURL     string
+	SeedUserEmail         string
+	SeedUserPassword      string
+	SeedUserName          string
+	WorkspaceAllowedRoots []string
+}
+
+func parseCommaSeparated(value string) []string {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+
+	parts := strings.Split(value, ",")
+	entries := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			entries = append(entries, trimmed)
+		}
+	}
+
+	if len(entries) == 0 {
+		return nil
+	}
+	return entries
 }
 
 func loadDotEnv() {
@@ -86,24 +107,25 @@ func LoadConfig() *Config {
 	confluenceBase := strings.TrimRight(getEnvOrDefault("CONFLUENCE_BASE_URL", "https://confluence.bri.co.id"), "/")
 
 	return &Config{
-		Port:              port,
-		DBPath:            dbPath,
-		JWTSecret:         jwtSecret,
-		JWTTTL:            24 * time.Hour,
-		EncryptionKey:     encryptionKey,
-		CORSOrigin:        corsOrigin,
-		JiraBaseURL:       jiraBase,
-		BitbucketBaseURL:  bitbucketBase,
-		ConfluenceBaseURL: confluenceBase,
-		SystemDeepseekKey: os.Getenv("SYSTEM_DEEPSEEK_KEY"),
-		SystemDeepseekURL: getEnvOrDefault("SYSTEM_DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
-		SystemGeminiKey:   os.Getenv("SYSTEM_GEMINI_KEY"),
-		SystemOpenAIKey:   os.Getenv("SYSTEM_OPENAI_KEY"),
-		SystemClaudeKey:   os.Getenv("SYSTEM_CLAUDE_KEY"),
-		SystemMimoKey:     os.Getenv("SYSTEM_MIMO_KEY"),
-		SystemMimoBaseURL: os.Getenv("SYSTEM_MIMO_BASE_URL"),
-		SeedUserEmail:     getEnvOrDefault("SEED_USER_EMAIL", "developer@lunar.dev"),
-		SeedUserPassword:  getEnvOrDefault("SEED_USER_PASSWORD", "12345678"),
-		SeedUserName:      getEnvOrDefault("SEED_USER_NAME", "Lunar Developer"),
+		Port:                  port,
+		DBPath:                dbPath,
+		JWTSecret:             jwtSecret,
+		JWTTTL:                24 * time.Hour,
+		EncryptionKey:         encryptionKey,
+		CORSOrigin:            corsOrigin,
+		JiraBaseURL:           jiraBase,
+		BitbucketBaseURL:      bitbucketBase,
+		ConfluenceBaseURL:     confluenceBase,
+		SystemDeepseekKey:     os.Getenv("SYSTEM_DEEPSEEK_KEY"),
+		SystemDeepseekURL:     getEnvOrDefault("SYSTEM_DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
+		SystemGeminiKey:       os.Getenv("SYSTEM_GEMINI_KEY"),
+		SystemOpenAIKey:       os.Getenv("SYSTEM_OPENAI_KEY"),
+		SystemClaudeKey:       os.Getenv("SYSTEM_CLAUDE_KEY"),
+		SystemMimoKey:         os.Getenv("SYSTEM_MIMO_KEY"),
+		SystemMimoBaseURL:     os.Getenv("SYSTEM_MIMO_BASE_URL"),
+		SeedUserEmail:         getEnvOrDefault("SEED_USER_EMAIL", "developer@lunar.dev"),
+		SeedUserPassword:      getEnvOrDefault("SEED_USER_PASSWORD", "12345678"),
+		SeedUserName:          getEnvOrDefault("SEED_USER_NAME", "Lunar Developer"),
+		WorkspaceAllowedRoots: parseCommaSeparated(os.Getenv("LUNAR_WORKSPACE_ALLOWED_ROOTS")),
 	}
 }

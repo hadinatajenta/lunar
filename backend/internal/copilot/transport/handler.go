@@ -3,6 +3,7 @@ package transport
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"lunar/backend/internal/copilot/application"
 	"lunar/backend/internal/copilot/domain"
@@ -75,6 +76,82 @@ func (h *CopilotHandler) Chat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sharedHttp.WriteJSON(w, http.StatusOK, res)
+}
+
+type providerKeyResponse struct {
+	Provider string `json:"provider"`
+	APIKey   string `json:"api_key"`
+	BaseURL  string `json:"base_url"`
+	Model    string `json:"model"`
+}
+
+func (h *CopilotHandler) ProviderKey(w http.ResponseWriter, r *http.Request) {
+	userID := h.getUserID(r)
+	if userID == "" {
+		sharedHttp.WriteError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	model := strings.TrimSpace(r.URL.Query().Get("model"))
+	if model == "" {
+		sharedHttp.WriteError(w, http.StatusBadRequest, "a model is required")
+		return
+	}
+
+	credentials, err := h.service.ResolveProviderCredentials(r.Context(), userID, model)
+	if err != nil {
+		if errors.Is(err, sharedErrors.ErrBadRequest) {
+			sharedHttp.WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if errors.Is(err, sharedErrors.ErrUnauthorized) {
+			sharedHttp.WriteError(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
+		sharedHttp.WriteError(w, http.StatusInternalServerError, "cannot resolve the provider credentials")
+		return
+	}
+
+	sharedHttp.WriteJSON(w, http.StatusOK, providerKeyResponse{
+		Provider: credentials.Provider,
+		APIKey:   credentials.APIKey,
+		BaseURL:  credentials.BaseURL,
+		Model:    credentials.Model,
+	})
+}
+
+func (h *CopilotHandler) SaveTranscript(w http.ResponseWriter, r *http.Request) {
+	userID := h.getUserID(r)
+	if userID == "" {
+		sharedHttp.WriteError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	var req domain.TranscriptRequest
+	if err := sharedHttp.ParseJSON(r, &req); err != nil {
+		sharedHttp.WriteError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	res, err := h.service.SaveTranscript(r.Context(), userID, req)
+	if err != nil {
+		if errors.Is(err, sharedErrors.ErrBadRequest) {
+			sharedHttp.WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if errors.Is(err, sharedErrors.ErrNotFound) {
+			sharedHttp.WriteError(w, http.StatusNotFound, "session not found")
+			return
+		}
+		if errors.Is(err, sharedErrors.ErrForbidden) {
+			sharedHttp.WriteError(w, http.StatusForbidden, "access denied")
+			return
+		}
+		sharedHttp.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	sharedHttp.WriteJSON(w, http.StatusCreated, res)
 }
 
 func (h *CopilotHandler) ListSessions(w http.ResponseWriter, r *http.Request) {

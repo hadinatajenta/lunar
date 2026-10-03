@@ -22,6 +22,8 @@ data/
 *.db-shm
 *.db-wal
 backend/server
+backend/lunar-helper
+backend/lunar-helper-*
 test-results/
 playwright-report/
 playwright/.auth/

@@ -29,6 +29,9 @@ import (
 	sharedAuth "lunar/backend/internal/shared/auth"
 	sharedDatabase "lunar/backend/internal/shared/database"
 	sharedHttp "lunar/backend/internal/shared/http"
+	workspaceApp "lunar/backend/internal/workspace/application"
+	workspaceInfra "lunar/backend/internal/workspace/infrastructure"
+	workspaceTransport "lunar/backend/internal/workspace/transport"
 )
 
 type Application struct {
@@ -99,6 +102,18 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	dashboardService := dashboardApp.NewDashboardService(jiraService, bitbucketService, copilotService, authService)
 	dashboardHandler := dashboardTransport.NewDashboardHandler(dashboardService)
 
+	workspaceRepo := workspaceInfra.NewSQLiteWorkspaceRepository(db)
+	workspaceSelectionRepo := workspaceInfra.NewSQLiteSelectionRepository(db)
+	workspaceGitReader := workspaceInfra.NewGitInspector(cfg.WorkspaceAllowedRoots)
+	workspaceService := workspaceApp.NewWorkspaceService(
+		workspaceRepo,
+		workspaceSelectionRepo,
+		workspaceGitReader,
+		cfg.WorkspaceAllowedRoots,
+		cfg.EncryptionKey,
+	)
+	workspaceHandler := workspaceTransport.NewWorkspaceHandler(workspaceService)
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
@@ -143,6 +158,8 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 
 	mux.Handle("GET /api/copilot/models", authMiddleware(http.HandlerFunc(copilotHandler.ListModels)))
 	mux.Handle("POST /api/copilot/chat", authMiddleware(http.HandlerFunc(copilotHandler.Chat)))
+	mux.Handle("POST /api/copilot/transcript", authMiddleware(http.HandlerFunc(copilotHandler.SaveTranscript)))
+	mux.Handle("GET /api/copilot/provider-key", authMiddleware(http.HandlerFunc(copilotHandler.ProviderKey)))
 	mux.Handle("GET /api/copilot/sessions", authMiddleware(http.HandlerFunc(copilotHandler.ListSessions)))
 	mux.Handle("DELETE /api/copilot/sessions/{id}", authMiddleware(http.HandlerFunc(copilotHandler.DeleteSession)))
 	mux.Handle("GET /api/copilot/sessions/{id}/messages", authMiddleware(http.HandlerFunc(copilotHandler.ListMessages)))
@@ -165,6 +182,12 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	mux.Handle("GET /api/confluence/documents/{id}", authMiddleware(http.HandlerFunc(confluenceHandler.GetDocument)))
 
 	mux.Handle("GET /api/dashboard/summary", authMiddleware(http.HandlerFunc(dashboardHandler.GetSummary)))
+
+	mux.Handle("GET /api/workspace", authMiddleware(http.HandlerFunc(workspaceHandler.GetWorkspace)))
+	mux.Handle("PUT /api/workspace", authMiddleware(http.HandlerFunc(workspaceHandler.SaveWorkspace)))
+	mux.Handle("GET /api/workspace/repositories", authMiddleware(http.HandlerFunc(workspaceHandler.ListRepositories)))
+	mux.Handle("GET /api/workspace/services", authMiddleware(http.HandlerFunc(workspaceHandler.ListServices)))
+	mux.Handle("PUT /api/workspace/selections", authMiddleware(http.HandlerFunc(workspaceHandler.ReplaceSelections)))
 
 	handler := sharedHttp.CORSMiddleware(cfg.CORSOrigin)(loggingMiddleware(mux))
 

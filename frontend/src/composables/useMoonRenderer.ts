@@ -1,6 +1,5 @@
 import type {
   Mesh,
-  PerspectiveCamera,
   ShaderMaterial,
   WebGLRenderer
 } from "three"
@@ -17,8 +16,8 @@ const SPHERE_RADIUS = 1.0
 const SPHERE_DETAIL = 8
 const CAMERA_DISTANCE = 5.4
 const CAMERA_FOV = 30
-const ROTATION_SPEED_RADIANS = 0.04
-const MAX_PIXEL_RATIO = 2
+const ROTATION_SPEED_RADIANS = 0.14
+const MAX_PIXEL_RATIO = 1
 const RESIZE_DEBOUNCE_MS = 140
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)"
 
@@ -49,24 +48,10 @@ function createRenderer(three: ThreeModule, canvas: HTMLCanvasElement): WebGLRen
     canvas,
     antialias: true,
     alpha: true,
-    powerPreference: "low-power"
+    powerPreference: "high-performance"
   })
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO))
   return renderer
-}
-
-function applyCanvasSize(
-  renderer: WebGLRenderer,
-  camera: PerspectiveCamera,
-  width: number,
-  height: number
-): void {
-  if (width === 0 || height === 0) {
-    return
-  }
-  renderer.setSize(width, height, false)
-  camera.aspect = width / height
-  camera.updateProjectionMatrix()
 }
 
 function prefersReducedMotion(): boolean {
@@ -86,19 +71,32 @@ export async function createMoonRenderer(
   scene.add(mesh)
 
   const container = canvas.parentElement
+  let appliedWidth = 0
+  let appliedHeight = 0
   let animationFrameId = 0
   let resizeTimerId = 0
   let isIntersecting = true
   let isDocumentVisible = !document.hidden
   let isDisposed = false
 
+  function syncCanvasSize(): void {
+    const width = canvas.clientWidth
+    const height = canvas.clientHeight
+    if (width === 0 || height === 0) {
+      return
+    }
+    if (width === appliedWidth && height === appliedHeight) {
+      return
+    }
+    appliedWidth = width
+    appliedHeight = height
+    renderer.setSize(width, height, false)
+    camera.aspect = width / height
+    camera.updateProjectionMatrix()
+  }
+
   function renderFrame(): void {
-    applyCanvasSize(
-      renderer,
-      camera,
-      canvas.clientWidth,
-      canvas.clientHeight
-    )
+    syncCanvasSize()
     renderer.render(scene, camera)
   }
 

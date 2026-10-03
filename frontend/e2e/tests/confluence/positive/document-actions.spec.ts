@@ -9,18 +9,6 @@ test.describe("Confluence BRI - Document Actions Positive Flows", () => {
   })
 
   test(
-    "CONF-ACT-001 New page button triggers placeholder toast",
-    {
-      tag: ["@confluence", "@positive", "@actions", "@p1"]
-    },
-    async ({ page, confluencePage }) => {
-      await confluencePage.navigateTo()
-      await page.getByRole("button", { name: "New page" }).click()
-      await expect(confluencePage.globalToast).toContainText("New page is ready for backend wiring.")
-    }
-  )
-
-  test(
     "CONF-ACT-002 AI generate button triggers action toast for document type and enables gated actions",
     {
       tag: ["@confluence", "@positive", "@actions", "@ai"]

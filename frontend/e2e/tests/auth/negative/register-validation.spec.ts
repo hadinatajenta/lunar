@@ -33,7 +33,7 @@ test.describe("Authentication - Registration Validation & Errors", () => {
       await registerPage.clickVerify()
 
       await expect(registerPage.errorBanner).toBeVisible()
-      await expect(registerPage.errorBanner).toContainText("invalid or expired Jira")
+      await expect(registerPage.errorBanner).toContainText("Invalid or expired Jira Personal Access Token")
     }
   )
 
@@ -56,7 +56,7 @@ test.describe("Authentication - Registration Validation & Errors", () => {
       await registerPage.clickVerify()
 
       await expect(registerPage.errorBanner).toBeVisible()
-      await expect(registerPage.errorBanner).toContainText("corporate VPN")
+      await expect(registerPage.errorBanner).toContainText("verify your VPN or network connection")
     }
   )
 

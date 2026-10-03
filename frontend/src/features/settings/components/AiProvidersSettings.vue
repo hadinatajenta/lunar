@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref } from "vue"
 import { useSettings } from "../composables/useSettings"
+import { useTheme } from "../../../composables/useTheme"
 
 const { secrets, config, isSaving, saveSuccess, errorMessage, save } = useSettings()
+const { isDark } = useTheme()
 
 const openAiKey = ref("")
 const claudeKey = ref("")
@@ -34,7 +36,7 @@ const handleSave = async (provider: string, keyValue: string) => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6" :class="{ 'is-light': !isDark }">
     <div v-if="saveSuccess" class="toast-banner success">
       AI provider key saved and encrypted successfully.
     </div>
@@ -338,6 +340,19 @@ const handleSave = async (provider: string, keyValue: string) => {
 
 .provider-icon.mimo .provider-img {
   filter: brightness(0) invert(1);
+}
+
+.is-light .provider-icon.openai .provider-img {
+  filter: none;
+}
+
+.is-light .provider-icon.mimo .provider-img {
+  filter: none;
+}
+
+.is-light .provider-icon.openai,
+.is-light .provider-icon.mimo {
+  background: #ffffff;
 }
 
 .provider-icon.claude .provider-img {
