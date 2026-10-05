@@ -131,6 +131,12 @@ defineExpose({ clearDrafts })
   border-radius: 12px;
   background: var(--surface);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.chat-composer:focus-within {
+  border-color: var(--border-strong);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent), 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .chat-composer textarea {
@@ -148,12 +154,6 @@ defineExpose({ clearDrafts })
 
 .chat-composer textarea::placeholder {
   color: var(--subtle);
-}
-
-.chat-composer textarea:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: 4px;
 }
 
 .composer-notice {
@@ -216,6 +216,7 @@ defineExpose({ clearDrafts })
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .chat-composer,
   .send-btn {
     transition: none;
   }

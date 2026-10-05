@@ -82,6 +82,37 @@ test.describe("AI Copilot - Composer, Model and Effort Controls", () => {
   )
 
   test(
+    "CP-COMPOSER-003 the focused composer input draws no outline and marks focus on the container instead",
+    {
+      tag: ["@copilot", "@positive", "@composer"]
+    },
+    async ({ page, copilotPage }) => {
+      await copilotPage.navigateTo()
+
+      const restingBorder = await page.locator(".chat-composer").evaluate(
+        (element) => window.getComputedStyle(element).borderColor
+      )
+
+      await copilotPage.composerInput.click()
+
+      const focusState = await copilotPage.composerInput.evaluate((element) => {
+        const style = window.getComputedStyle(element)
+        return {
+          outlineStyle: style.outlineStyle
+        }
+      })
+
+      expect(focusState.outlineStyle).toBe("none")
+
+      await expect
+        .poll(() =>
+          page.locator(".chat-composer").evaluate((element) => window.getComputedStyle(element).borderColor)
+        )
+        .not.toBe(restingBorder)
+    }
+  )
+
+  test(
     "CP-THINK-001 thinking mode is always on and offers no control to switch it off",
     {
       tag: ["@copilot", "@positive", "@controls"]
