@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import AppSidebar from "./AppSidebar.vue"
 import AppHeader from "./AppHeader.vue"
+import { useMainSidebar } from "./useMainSidebar"
+
+const { isMenuCollapsed } = useMainSidebar()
 </script>
 
 <template>
-  <div class="shell">
+  <div class="shell" :class="{ 'is-sidebar-collapsed': isMenuCollapsed }">
     <AppSidebar />
     <div class="main-column">
       <AppHeader />
@@ -23,6 +26,10 @@ import AppHeader from "./AppHeader.vue"
   background: var(--bg);
 }
 
+.shell.is-sidebar-collapsed {
+  grid-template-columns: 72px minmax(0, 1fr);
+}
+
 .main-column {
   min-width: 0;
   display: flex;
@@ -38,9 +45,10 @@ import AppHeader from "./AppHeader.vue"
     var(--bg);
 }
 
-@media (max-width: 980px) {
-  .shell {
-    grid-template-columns: 1fr;
+@media (max-width: 768px) {
+  .shell,
+  .shell.is-sidebar-collapsed {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

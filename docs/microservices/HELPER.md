@@ -78,7 +78,7 @@ To use the helper from Lunar:
 
 1. Run the helper
 2. Open Settings, then the Workspace tab
-3. Keep the source on **Local helper**
+3. Set the source to **On this computer**
 4. Select **Connect helper**. The browser fetches the token from the helper automatically, so there is
    nothing to copy by hand
 5. Set the **Repository root folder**, for example `/Users/you/repositories`

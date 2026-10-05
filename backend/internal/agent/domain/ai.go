@@ -9,8 +9,9 @@ import (
 type ContentPartType string
 
 const (
-	ContentPartTypeText ContentPartType = "text"
-	ContentPartTypeFile ContentPartType = "file"
+	ContentPartTypeText  ContentPartType = "text"
+	ContentPartTypeFile  ContentPartType = "file"
+	ContentPartTypeImage ContentPartType = "image_url"
 )
 
 type ContentPart interface {
@@ -30,6 +31,17 @@ type FilePart struct {
 }
 
 func (FilePart) isContentPart() {}
+
+type ImageURL struct {
+	URL string `json:"url"`
+}
+
+type ImagePart struct {
+	Type     ContentPartType `json:"type"`
+	ImageURL ImageURL        `json:"image_url"`
+}
+
+func (ImagePart) isContentPart() {}
 
 type MessageContent struct {
 	String *string
@@ -79,6 +91,12 @@ func (mc *MessageContent) UnmarshalJSON(data []byte) error {
 				return err
 			}
 			mc.Parts[index] = filePart
+		case ContentPartTypeImage:
+			var imagePart ImagePart
+			if err := json.Unmarshal(raw, &imagePart); err != nil {
+				return err
+			}
+			mc.Parts[index] = imagePart
 		default:
 			return nil
 		}

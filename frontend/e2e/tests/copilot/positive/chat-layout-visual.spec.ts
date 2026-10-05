@@ -2,28 +2,7 @@ import { test, expect } from "../../../fixtures/authenticated.fixture"
 import { routeSecrets, routeSystemConfig } from "../../../helpers/route-mock"
 import { mockChatSuccessResponse } from "../../../data/copilot.data"
 import { captureEvidence } from "../../../helpers/evidence"
-
-function getLuminance(r: number, g: number, b: number): number {
-  const [rs, gs, bs] = [r, g, b].map((c) => {
-    const val = c / 255
-    return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4)
-  })
-  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs
-}
-
-function getContrast(rgb1: [number, number, number], rgb2: [number, number, number]): number {
-  const l1 = getLuminance(...rgb1)
-  const l2 = getLuminance(...rgb2)
-  const lighter = Math.max(l1, l2)
-  const darker = Math.min(l1, l2)
-  return (lighter + 0.05) / (darker + 0.05)
-}
-
-function parseRgb(colorStr: string): [number, number, number] | null {
-  const match = colorStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
-  if (!match) return null
-  return [parseInt(match[1], 10), parseInt(match[2], 10), parseInt(match[3], 10)]
-}
+import { contrastRatio, parseColor } from "../../../helpers/contrast"
 
 test.describe("AI Copilot - Visual Layout & Contrast Audit", () => {
   test.beforeEach(async ({ page }) => {
@@ -56,7 +35,7 @@ test.describe("AI Copilot - Visual Layout & Contrast Audit", () => {
       await copilotPage.messageTextarea.fill("Audit pull request #184 layout")
       await copilotPage.sendButton.click()
 
-      await expect(copilotPage.thoughtSection).toBeVisible({ timeout: 10000 })
+      await expect(copilotPage.reasoningPanel).toBeVisible({ timeout: 10000 })
       await page.waitForTimeout(300)
       await captureEvidence(page, "copilot", "10_copilot_resolved_layout_contrast.png")
 
@@ -66,9 +45,9 @@ test.describe("AI Copilot - Visual Layout & Contrast Audit", () => {
         const textarea = document.querySelector(".chat-composer textarea") as HTMLElement | null
         const sendBtn = document.querySelector(".send-btn") as HTMLElement | null
         const thinkingToggle = document.querySelector(".thinking-toggle") as HTMLElement | null
-        const thoughtSection = document.querySelector(".thought-section") as HTMLElement | null
-        const thoughtToggle = document.querySelector(".thought-toggle") as HTMLElement | null
-        const thoughtDuration = document.querySelector(".thought-duration") as HTMLElement | null
+        const reasoningPanel = document.querySelector(".reasoning-panel") as HTMLElement | null
+        const reasoningToggle = document.querySelector(".reasoning-toggle") as HTMLElement | null
+        const reasoningDuration = document.querySelector(".reasoning-duration") as HTMLElement | null
 
         const errors: string[] = []
 
@@ -90,12 +69,12 @@ test.describe("AI Copilot - Visual Layout & Contrast Audit", () => {
           }
         }
 
-        if (!thoughtToggle) {
-          errors.push("Missing .thought-toggle")
+        if (!reasoningToggle) {
+          errors.push("Missing .reasoning-toggle")
         } else {
-          const cs = window.getComputedStyle(thoughtToggle)
+          const cs = window.getComputedStyle(reasoningToggle)
           if (cs.display !== "flex") {
-            errors.push(`thought-toggle display is "${cs.display}", expected "flex"`)
+            errors.push(`reasoning-toggle display is "${cs.display}", expected "flex"`)
           }
         }
 
@@ -123,9 +102,9 @@ test.describe("AI Copilot - Visual Layout & Contrast Audit", () => {
           }
         }
 
-        if (thoughtDuration && thoughtSection) {
-          const csDuration = window.getComputedStyle(thoughtDuration)
-          const csSection = window.getComputedStyle(thoughtSection)
+        if (reasoningDuration && reasoningPanel) {
+          const csDuration = window.getComputedStyle(reasoningDuration)
+          const csSection = window.getComputedStyle(reasoningPanel)
           return {
             errors,
             durationColor: csDuration.color,
@@ -143,11 +122,10 @@ test.describe("AI Copilot - Visual Layout & Contrast Audit", () => {
       expect(layoutAudit.errors).toEqual([])
 
       if (layoutAudit.durationColor && layoutAudit.sectionBg) {
-        const fg = parseRgb(layoutAudit.durationColor)
-        const bg = parseRgb(layoutAudit.sectionBg)
+        const fg = parseColor(layoutAudit.durationColor)
+        const bg = parseColor(layoutAudit.sectionBg)
         if (fg && bg) {
-          const ratio = getContrast(fg, bg)
-          expect(ratio).toBeGreaterThanOrEqual(4.5)
+          expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(4.5)
         }
       }
     }

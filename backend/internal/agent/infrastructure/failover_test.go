@@ -207,7 +207,7 @@ func TestFailover_StripsFilePartsForSecondary(t *testing.T) {
 	if _, err := client.RunToolCall(context.Background(), messages, nil, "deepseek-chat", "auto"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if hasFileParts(secondary.lastMessages) {
+	if hasNonTextParts(secondary.lastMessages) {
 		t.Error("file parts must be stripped for the secondary provider")
 	}
 	if secondary.lastMessages[0].Content.Text() != "explain this file" {

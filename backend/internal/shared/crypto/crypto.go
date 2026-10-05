@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	ErrEmptyKey       = errors.New("empty encryption key")
+	ErrEmptyKey        = errors.New("empty encryption key")
 	ErrCiphertextShort = errors.New("ciphertext too short")
 )
 

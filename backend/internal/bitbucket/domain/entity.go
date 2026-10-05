@@ -31,12 +31,12 @@ type PullRequest struct {
 }
 
 type DiffHunk struct {
-	Header    string   `json:"header"`
-	OldStart  int      `json:"old_start"`
-	OldLines  int      `json:"old_lines"`
-	NewStart  int      `json:"new_start"`
-	NewLines  int      `json:"new_lines"`
-	Lines     []string `json:"lines"`
+	Header   string   `json:"header"`
+	OldStart int      `json:"old_start"`
+	OldLines int      `json:"old_lines"`
+	NewStart int      `json:"new_start"`
+	NewLines int      `json:"new_lines"`
+	Lines    []string `json:"lines"`
 }
 
 type DiffFile struct {

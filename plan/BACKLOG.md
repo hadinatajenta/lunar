@@ -52,3 +52,52 @@ deciding it requires.
 - [ ] **B.8 `enabled` field in the Copilot `defaultDomains` is dead data.**
   It is never read anywhere. It should either be consumed by `loadEnabledDomains()` or removed, so
   setting it to `false` cannot silently do nothing.
+
+- [ ] **B.9 The Jira seed fallback is disabled but still present.**
+  `fallbackEnabled` is now `false`, which makes the fallback path unreachable. That leaves three
+  things dead: the 13 `if c.fallbackEnabled` branches, the `seedIssues` and `seedSprints` fields, and
+  the helpers `buildSeedIssues`, `buildSeedSprints`, `findSeedIssue`, `filterMySeedIssues`, and
+  `SetFallbackEnabled`, all in `backend/internal/jira/infrastructure/`. `seed.go` alone is 13 KB of
+  fabricated BRI tickets. It must not be able to resurface, so either delete it and the branches, or
+  turn the fallback into an explicit opt-in whose responses carry a visible marker. Deleting is
+  preferred.
+
+- [ ] **B.10 The tool-call trail is not kept after an answer completes.**
+  The trail renders while streaming, then disappears when the answer is persisted, because
+  `ChatMessage` has no `toolCalls` field and `copilot_messages` has no column for it. The helper
+  already emits every `tool_call` with its round, so the data exists; persisting it needs a column, a
+  migration, and a field on the transcript contract.
+
+- [x] **B.11 `ChatWindow.vue` is 702 lines.** Closed on 2026-10-05.
+  Reduced from 999 by extracting `ChatMessage`, `ChatStreamingMessage`, `ChatReasoningPanel`,
+  `ChatToolCalls`, `ChatStreamingIndicator`, and `ChatMessageActions`. The composer is now
+  `ChatComposer.vue` with its model menu in `ModelPicker.vue`, so `ChatWindow.vue` is 196 lines.
+
+- [ ] **B.12 The reasoning panel depends on the model returning reasoning text.**
+  When the provider returns none, the panel does not render. That is correct behaviour, but there is
+  no visible indication that thinking mode produced nothing, so a user cannot tell the difference
+  between "no reasoning" and "reasoning not displayed".
+
+- [x] **B.13 Diagram navigation did nothing.** FIXED.
+  Two separate causes. The central gallery was recreated when the streaming message was replaced by
+  the persisted message, resetting its index. Then, after diagrams moved in place, the element
+  registry was keyed by the segment index while the lookup used the diagram index, so only the first
+  card matched, and only by coincidence. Both are resolved: diagrams render in place, and the
+  registry is keyed by the diagram index. Verified per card: next moves 1 to 2 and 2 to 3, previous
+  moves 3 to 2 and 2 to 1, and the end buttons are disabled.
+
+- [ ] **B.14 Diagram rendering depends on what the model emits.**
+  `deepseek-chat` follows the strengthened prompt and emits `mermaid`; `deepseek-reasoner`, which is
+  the model the app selects for thinking mode, emits `flow` and is converted instead. A model that
+  emits neither produces no diagram. This is a prompt-adherence limit, not a renderer limit.
+
+- [ ] **B.15 Three Copilot e2e tests mock an endpoint the app no longer calls.**
+  `chat-conversation.spec.ts` and `chat-layout-visual.spec.ts` intercept `/api/copilot/chat`, but the
+  Copilot answer path moved to `/agent/ask` through the local helper. The mock therefore never
+  applies, the real helper answers, and the assertions fail on `.reasoning-panel` not existing.
+  Two follow-on faults were found and fixed while investigating: the specs also referenced four
+  class names that never existed in the current components (`.thought-section`, `.thought-toggle`,
+  `.thought-content`, `.thought-title`, now `.reasoning-panel`, `.reasoning-toggle`,
+  `.reasoning-body`, `.reasoning-title`). The remaining fix belongs in test infrastructure: abort the
+  helper connection in the route mock so the mocked backend path is deterministic, or point the mock
+  at the helper.

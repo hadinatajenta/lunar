@@ -86,10 +86,10 @@ func (c *ChatClient) setHeaders(req *http.Request) {
 	}
 }
 
-func hasFileParts(messages []domain.ChatMessage) bool {
+func hasNonTextParts(messages []domain.ChatMessage) bool {
 	for _, message := range messages {
 		for _, part := range message.Content.Parts {
-			if filePart, ok := part.(domain.FilePart); ok && filePart.Type == domain.ContentPartTypeFile {
+			if _, ok := part.(domain.TextPart); !ok {
 				return true
 			}
 		}
@@ -97,7 +97,7 @@ func hasFileParts(messages []domain.ChatMessage) bool {
 	return false
 }
 
-func stripFileParts(messages []domain.ChatMessage) []domain.ChatMessage {
+func stripNonTextParts(messages []domain.ChatMessage) []domain.ChatMessage {
 	stripped := make([]domain.ChatMessage, len(messages))
 	for index, message := range messages {
 		cloned := message

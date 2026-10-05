@@ -70,8 +70,6 @@ var domainExpertise = map[string]string{
 - Report the database, table, and action type for every reviewed statement.`,
 }
 
-const defaultSynthesisPrompt = `Based on all the code and dependency analysis above, produce a comprehensive, structured, and accurate answer. Include service names, endpoints, broker topics, and the request flow step by step. When relevant, add a sequence diagram using mermaid syntax. Do not use LaTeX mathematical notation; use '->' or the arrow character instead.`
-
 func BuildSystemPrompt(domains []string, dynamicContext string) string {
 	sections := []string{baseSystemPrompt}
 
@@ -130,7 +128,7 @@ func buildInitialMessages(question codeindexdomain.AgentQuestion) []domain.ChatM
 		messages = append(messages, domain.ChatMessage{Role: role, Content: domain.TextMessage(content)})
 	}
 
-	messages = append(messages, domain.ChatMessage{Role: userRole, Content: domain.TextMessage(question.Question)})
+	messages = append(messages, buildUserMessage(question))
 	return messages
 }
 

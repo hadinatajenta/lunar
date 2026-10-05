@@ -104,7 +104,10 @@ func fetchProviderCredentials(ctx context.Context, backendURL string, sessionTok
 	return credentials, nil
 }
 
-func (s *helperServer) buildAgent(workspaceRoot string, credentials providerCredentials) *agentapplication.Agent {
+func (s *helperServer) buildAgent(
+	workspaceRoot string,
+	credentials providerCredentials,
+) (*agentapplication.Agent, *agentinfrastructure.ChatClient) {
 	client := agentinfrastructure.NewChatClient(agentinfrastructure.ProviderConfig{
 		Provider: credentials.Provider,
 		APIKey:   credentials.APIKey,
@@ -117,5 +120,5 @@ func (s *helperServer) buildAgent(workspaceRoot string, credentials providerCred
 	registry := agentapplication.NewMapToolRegistry()
 	registry.RegisterAll(agenttools.NewTools(s.indexStore, reader)...)
 
-	return agentapplication.NewAgent(client, registry)
+	return agentapplication.NewAgent(client, registry), client
 }

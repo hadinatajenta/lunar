@@ -105,10 +105,10 @@ func (f *FailoverAIClient) triggerFailover(ctx context.Context, reason string, t
 }
 
 func (f *FailoverAIClient) secondaryMessages(messages []domain.ChatMessage) []domain.ChatMessage {
-	if !hasFileParts(messages) {
+	if !hasNonTextParts(messages) {
 		return messages
 	}
-	return stripFileParts(messages)
+	return stripNonTextParts(messages)
 }
 
 func runToolCallOn(
@@ -137,7 +137,7 @@ func (f *FailoverAIClient) RunToolCall(
 		if f.secondary == nil {
 			return nil, fmt.Errorf("failover: secondary provider is not configured for model %q", modelOption)
 		}
-		if hasFileParts(messages) {
+		if hasNonTextParts(messages) {
 			return nil, fmt.Errorf("failover: file content parts are not supported by the secondary provider")
 		}
 		return f.secondary.RunToolCall(ctx, messages, tools, modelOption, toolChoice)
@@ -179,7 +179,7 @@ func (f *FailoverAIClient) RunToolCallStream(
 		if f.secondary == nil {
 			return nil, fmt.Errorf("failover: secondary provider is not configured for model %q", modelOption)
 		}
-		if hasFileParts(messages) {
+		if hasNonTextParts(messages) {
 			return nil, fmt.Errorf("failover: file content parts are not supported by the secondary provider")
 		}
 		return runToolCallOn(f.secondary, ctx, messages, tools, modelOption, toolChoice, callbacks)
@@ -232,7 +232,7 @@ func (f *FailoverAIClient) StreamAnswerWithReasoning(
 		if f.secondary == nil {
 			return fmt.Errorf("failover: secondary provider is not configured for model %q", modelOption)
 		}
-		if hasFileParts(messages) {
+		if hasNonTextParts(messages) {
 			return fmt.Errorf("failover: file content parts are not supported by the secondary provider")
 		}
 		return streamAnswerOn(f.secondary, ctx, messages, modelOption, onReasoning, onChunk)

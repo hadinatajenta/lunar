@@ -1,4 +1,4 @@
-import type { AgentSource } from "./types"
+import type { AgentSource, ChatHistoryTurn } from "./types"
 
 export interface ActiveToolCall {
   tool: string
@@ -14,6 +14,8 @@ export interface CodeAgentRequest {
   model: string
   thinkingMode: boolean
   reasoningEffort: string
+  history: ChatHistoryTurn[]
+  attachments?: string[]
 }
 
 export interface CodeAgentAnswer {

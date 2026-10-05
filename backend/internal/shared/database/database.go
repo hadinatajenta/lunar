@@ -61,6 +61,22 @@ CREATE TABLE IF NOT EXISTS copilot_messages (
 
 CREATE INDEX IF NOT EXISTS idx_copilot_messages_chat ON copilot_messages(chat_id);
 
+CREATE TABLE IF NOT EXISTS copilot_attachments (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    content_type TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    preview TEXT NOT NULL DEFAULT '',
+    text_content TEXT NOT NULL DEFAULT '',
+    content BLOB NOT NULL,
+    created_at DATETIME NOT NULL,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_copilot_attachments_user ON copilot_attachments(user_id);
+
 CREATE TABLE IF NOT EXISTS workspaces (
     user_id          TEXT PRIMARY KEY,
     source           TEXT NOT NULL,

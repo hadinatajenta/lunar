@@ -1,7 +1,28 @@
 <script setup lang="ts">
+import { computed, ref } from "vue"
 import { useCopilot } from "../composables/useCopilot"
+import ConfirmDialog from "../../../components/ui/ConfirmDialog.vue"
 
 const { sessions, activeSessionId, isDomainModalOpen, startNewChat, selectSession, deleteSession } = useCopilot()
+
+const pendingDeletionId = ref<string | null>(null)
+
+const pendingDeletion = computed(
+  () => sessions.value.find((session) => session.id === pendingDeletionId.value) ?? null
+)
+
+const requestDeletion = (sessionId: string): void => {
+  pendingDeletionId.value = sessionId
+}
+
+const cancelDeletion = (): void => {
+  pendingDeletionId.value = null
+}
+
+const confirmDeletion = (): void => {
+  if (pendingDeletionId.value !== null) deleteSession(pendingDeletionId.value)
+  pendingDeletionId.value = null
+}
 </script>
 
 <template>
@@ -59,7 +80,7 @@ const { sessions, activeSessionId, isDomainModalOpen, startNewChat, selectSessio
           type="button"
           aria-label="Delete conversation"
           title="Delete conversation"
-          @click.stop="deleteSession(session.id)"
+          @click.stop="requestDeletion(session.id)"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 6h18"></path>
@@ -69,6 +90,17 @@ const { sessions, activeSessionId, isDomainModalOpen, startNewChat, selectSessio
         </button>
       </div>
     </div>
+
+    <ConfirmDialog
+      :open="pendingDeletion !== null"
+      tone="danger"
+      title="Delete conversation?"
+      :message="`\u201c${pendingDeletion?.title ?? ''}\u201d and its messages will be removed permanently. This cannot be undone.`"
+      confirm-label="Delete"
+      cancel-label="Keep it"
+      @confirm="confirmDeletion"
+      @cancel="cancelDeletion"
+    />
   </aside>
 </template>
 

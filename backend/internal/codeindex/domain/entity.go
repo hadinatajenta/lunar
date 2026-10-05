@@ -76,10 +76,12 @@ type Glossary struct {
 }
 
 type AgentQuestion struct {
-	Question string            `json:"question"`
-	Model    string            `json:"model,omitempty"`
-	Domains  []string          `json:"domains,omitempty"`
-	History  []ChatHistoryItem `json:"history,omitempty"`
+	Question        string            `json:"question"`
+	Model           string            `json:"model,omitempty"`
+	Domains         []string          `json:"domains,omitempty"`
+	History         []ChatHistoryItem `json:"history,omitempty"`
+	AttachmentBlock string            `json:"-"`
+	ImageDataURLs   []string          `json:"-"`
 }
 
 type ChatHistoryItem struct {

@@ -59,7 +59,7 @@ func NewAtlassianJiraClient(baseURL string) *AtlassianJiraClient {
 				ForceAttemptHTTP2:     true,
 			},
 		},
-		fallbackEnabled: true,
+		fallbackEnabled: false,
 		seedIssues:      issues,
 		seedSprints:     sprints,
 	}

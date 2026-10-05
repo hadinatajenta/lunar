@@ -44,6 +44,13 @@ export interface AgentAskRequest {
   session_token: string
   thinking_mode: boolean
   reasoning_effort: string
+  history: ChatHistoryTurn[]
+  attachments?: string[]
+}
+
+export interface ChatHistoryTurn {
+  role: "user" | "assistant"
+  content: string
 }
 
 export type AgentEventType =

@@ -179,3 +179,55 @@ Code must maintain a clean Maintainability Rating (Grade A) and zero code smells
   - Commits: Conventional Commits (`feat(auth): ...`, `fix(api): ...`).
   - Never commit without running verification tests first.
   - Never push, hard reset, or discard unstaged work without explicit user request.
+
+---
+
+## 10. DOCUMENTATION SYNC (MANDATORY)
+
+`guide.md` at the repository root is the authoritative inventory of every feature and subfeature in
+this application. It is part of the definition of done, not optional documentation.
+
+**Any change that creates, modifies, or removes a feature, a subfeature, or a flow MUST update
+`guide.md` in the same change.** A feature that exists in code but not in `guide.md` is considered
+undocumented. An entry in `guide.md` that no longer exists in code is considered a defect.
+
+### 10.1 What counts as a feature change
+
+- A new page, route, or navigation entry, or the removal of one.
+- A new endpoint, or a changed request or response shape.
+- A new background capability, such as indexing, an agent tool, or a scheduled job.
+- A new or changed user-facing control that alters what an existing feature can do.
+- A change to a user-visible flow, including its steps, its failure modes, or its defaults.
+- Disabling or removing any of the above.
+
+### 10.2 How to update it
+
+1. Edit the section that owns the feature.
+2. Add a line to the change log at the bottom, newest first, with the date and a one-line summary.
+3. If the change introduces something not yet working, put it in the "Not yet implemented" section
+   rather than describing it as available.
+
+### 10.3 Planning requirement
+
+Non-trivial features are planned before implementation, under `plan/<feature>/`, following the
+existing convention:
+
+```text
+plan/<feature>/implementation_plan.md   objective, findings, contracts, stages, verification, risks
+plan/<feature>/task.md                  checkbox checklist, updated as work completes
+plan/<feature>/subagent_workstreams.md  file ownership and handoff rules when work is parallelised
+```
+
+When a plan is fully implemented and verified, it is pruned and any still-open item is moved to
+`plan/BACKLOG.md` so it is not lost.
+
+### 10.4 Documentation map
+
+| Document | Covers |
+|---|---|
+| `guide.md` | Every feature and subfeature, and the change log |
+| `AGENTS.md` | This operating manual |
+| `SKILLS.md` | Index of skills, rules, and agents available in this repository |
+| `docs/microservices/HELPER.md` | Helper installation, endpoints, and troubleshooting |
+| `plan/BACKLOG.md` | Open items carried across features |
+| `.agents/` | Specialized agent definitions, rules, and skills |

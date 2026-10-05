@@ -101,24 +101,25 @@ onMounted(async () => {
 
       <div class="settings-card-body">
         <div class="field-wrap">
-          <span class="field-label">Source</span>
+          <span class="field-label">Where are your repositories?</span>
           <div class="source-choice" role="radiogroup" aria-label="Repository source">
             <button class="source-option" :class="{ 'is-active': source === 'helper' }" type="button"
               role="radio" :aria-checked="source === 'helper'" @click="selectSource('helper')">
-              <span class="source-name">Local helper</span>
-              <span class="source-note">Reads repositories on this machine. Recommended default.</span>
+              <span class="source-name">On this computer</span>
+              <span class="source-note">Reads the folder on this computer, through the local helper. Your code stays on your machine and works without a network connection. Recommended.</span>
             </button>
             <button class="source-option" :class="{ 'is-active': source === 'server' }" type="button"
               role="radio" :aria-checked="source === 'server'" @click="selectSource('server')">
-              <span class="source-name">Lunar backend</span>
-              <span class="source-note">Reads repositories on the machine that runs the backend.</span>
+              <span class="source-name">On the server</span>
+              <span class="source-note">Reads the folder on the machine running the Lunar backend. Choose this only when the repositories live on that server.</span>
             </button>
           </div>
         </div>
 
         <div v-if="source === 'server'" class="source-warning">
-          The backend reads this path on its own machine. When the backend runs on a server and your repositories are
-          on your laptop, the backend cannot see them. Keep the local helper as the source for laptop repositories.
+          This path is read on the machine running the Lunar backend, not on this computer. If your repositories are
+          on this laptop and the backend runs elsewhere, that machine cannot see them. Choose "On this computer"
+          instead.
         </div>
 
         <div class="field-wrap">

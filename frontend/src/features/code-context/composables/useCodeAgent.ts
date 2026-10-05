@@ -40,10 +40,10 @@ const streamingText = ref("")
 const streamingReasoning = ref("")
 const streamingSources = ref<AgentSource[]>([])
 const activeToolCall = ref<ActiveToolCall | null>(null)
+const streamingToolCalls = ref<ActiveToolCall[]>([])
 const streamError = ref<string | null>(null)
 const isStreaming = ref(false)
 const transcriptError = ref<string | null>(null)
-const answerCitations = ref<Record<string, AgentSource[]>>({})
 
 const indexStatus = ref<CodeIndexStatus | null>(null)
 const indexStatusError = ref<string | null>(null)
@@ -141,11 +141,8 @@ export const resetCodeAgentStream = (): void => {
   streamingReasoning.value = ""
   streamingSources.value = []
   activeToolCall.value = null
+  streamingToolCalls.value = []
   streamError.value = null
-}
-
-export const storeAnswerCitations = (messageId: string, sources: AgentSource[]): void => {
-  answerCitations.value = { ...answerCitations.value, [messageId]: sources }
 }
 
 const appendStreamingSource = (source: AgentSource): void => {
@@ -174,11 +171,13 @@ const applyAgentEvent = (event: AgentEvent): void => {
     return
   }
   if (event.type === "tool_call") {
-    activeToolCall.value = {
+    const call: ActiveToolCall = {
       tool: event.tool ?? "tool",
       action: event.action ?? "",
       round: event.round ?? 0
     }
+    activeToolCall.value = call
+    streamingToolCalls.value = [...streamingToolCalls.value, call]
     return
   }
   if (event.type === "tool_result") {
@@ -230,7 +229,8 @@ export const askCodeAgent = async (request: CodeAgentRequest): Promise<CodeAgent
     backend_url: resolveBackendURL(),
     session_token: resolveSessionApiKey(),
     thinking_mode: request.thinkingMode,
-    reasoning_effort: request.reasoningEffort
+    reasoning_effort: request.reasoningEffort,
+    history: request.history
   }
 
   isStreaming.value = true
@@ -276,11 +276,11 @@ export function useCodeAgent() {
     streamingText,
     streamingReasoning,
     streamingSources,
+    streamingToolCalls,
     activeToolCall,
     streamError,
     isStreaming,
     transcriptError,
-    answerCitations,
     indexStatus,
     indexStatusError,
     indexHint,
@@ -291,6 +291,5 @@ export function useCodeAgent() {
     startIndexBuild,
     askCodeAgent,
     resetCodeAgentStream,
-    storeAnswerCitations
   }
 }

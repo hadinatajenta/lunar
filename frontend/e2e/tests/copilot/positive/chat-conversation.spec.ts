@@ -42,8 +42,8 @@ test.describe("AI Copilot - Chat & Conversation", () => {
       await copilotPage.messageTextarea.fill("Analyze pull request #184")
       await copilotPage.sendButton.click()
 
-      await expect(copilotPage.thoughtSection).toBeVisible({ timeout: 12000 })
-      await expect(copilotPage.thoughtContent).toContainText("Deep reasoning pass initiated")
+      await expect(copilotPage.reasoningPanel).toBeVisible({ timeout: 12000 })
+      await expect(copilotPage.reasoningContent).toContainText("Deep reasoning pass initiated")
       await expect(copilotPage.lastAssistantMessage).toContainText("Analyzed pull request #184")
       await expect(copilotPage.firstSourceChip).toBeVisible()
 
@@ -70,12 +70,12 @@ test.describe("AI Copilot - Chat & Conversation", () => {
       await copilotPage.messageTextarea.fill("Analyze pending pull requests")
       await copilotPage.sendButton.click()
 
-      await expect(copilotPage.thoughtSection).toBeVisible({ timeout: 12000 })
-      await copilotPage.thoughtToggle.click()
-      await expect(copilotPage.thoughtContent).not.toBeVisible()
+      await expect(copilotPage.reasoningPanel).toBeVisible({ timeout: 12000 })
+      await copilotPage.reasoningToggle.click()
+      await expect(copilotPage.reasoningContent).not.toBeVisible()
 
-      await copilotPage.thoughtToggle.click()
-      await expect(copilotPage.thoughtContent).toBeVisible()
+      await copilotPage.reasoningToggle.click()
+      await expect(copilotPage.reasoningContent).toBeVisible()
     }
   )
 })

@@ -7,6 +7,9 @@ import (
 	"net/http"
 	"time"
 
+	attachmentApp "lunar/backend/internal/attachment/application"
+	attachmentInfra "lunar/backend/internal/attachment/infrastructure"
+	attachmentTransport "lunar/backend/internal/attachment/transport"
 	"lunar/backend/internal/auth/application"
 	"lunar/backend/internal/auth/domain"
 	"lunar/backend/internal/auth/infrastructure"
@@ -86,6 +89,10 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	copilotService := copilotApp.NewCopilotService(copilotRepo, llmClient, authService, systemAIProviders)
 	copilotHandler := copilotTransport.NewCopilotHandler(copilotService)
 
+	attachmentStore := attachmentInfra.NewSQLiteStore(db)
+	attachmentService := attachmentApp.NewService(attachmentStore)
+	attachmentHandler := attachmentTransport.NewAttachmentHandler(attachmentService)
+
 	bitbucketClient := bitbucketInfra.NewAtlassianBitbucketClient(cfg.BitbucketBaseURL)
 	bitbucketService := bitbucketApp.NewBitbucketService(bitbucketClient, authService, copilotService)
 	bitbucketHandler := bitbucketTransport.NewBitbucketHandler(bitbucketService)
@@ -163,6 +170,8 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	mux.Handle("GET /api/copilot/sessions", authMiddleware(http.HandlerFunc(copilotHandler.ListSessions)))
 	mux.Handle("DELETE /api/copilot/sessions/{id}", authMiddleware(http.HandlerFunc(copilotHandler.DeleteSession)))
 	mux.Handle("GET /api/copilot/sessions/{id}/messages", authMiddleware(http.HandlerFunc(copilotHandler.ListMessages)))
+	mux.Handle("POST /api/copilot/attachments", authMiddleware(http.HandlerFunc(attachmentHandler.Upload)))
+	mux.Handle("GET /api/copilot/attachments/{id}", authMiddleware(http.HandlerFunc(attachmentHandler.Get)))
 
 	mux.Handle("GET /api/bitbucket/pushes", authMiddleware(http.HandlerFunc(bitbucketHandler.ListPushes)))
 	mux.Handle("GET /api/bitbucket/prs", authMiddleware(http.HandlerFunc(bitbucketHandler.ListPullRequests)))

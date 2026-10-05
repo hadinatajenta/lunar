@@ -1,69 +1,49 @@
-import { computed, ref, watch } from "vue"
-import { http } from "../../../lib/http"
-import type { ChatMessage, ChatSession, ReasoningEffort, ToolDomain } from "../types"
-import { allSupportedModels, getConfiguredModels, getDefaultModel, isModelConfigured } from "../utils/models"
+import { ref, watch } from "vue"
+import type { ChatMessage, ChatSession, ReasoningEffort } from "../types"
+import { allSupportedModels } from "../utils/models"
+import { defaultDomains } from "../utils/domains"
 import { deleteCopilotSession, sendCopilotChat } from "../api/copilot-api"
-import { askCodeAgent, resetCodeAgentStream, storeAnswerCitations } from "../../code-context/composables/useCodeAgent"
+import { askCodeAgent, resetCodeAgentStream } from "../../code-context/composables/useCodeAgent"
+import type { ChatHistoryTurn } from "../../code-context/types"
+import { useProviderConfiguration } from "./useProviderConfiguration"
+import {
+  clearStoredKey,
+  loadEnabledDomains,
+  loadReasoningEffort,
+  loadSavedSessions,
+  loadSelectedModel,
+  loadSessionMessages,
+  loadSidebarCollapsed,
+  loadThinkingMode,
+  storeBoolean,
+  storeJson,
+  storeText
+} from "../utils/copilot-storage"
 
-const defaultDomains: ToolDomain[] = [
-  { id: "jira", name: "Jira BRI", description: "Search issues, fetch active sprint status and assigned tickets", enabled: true },
-  { id: "bitbucket", name: "Bitbucket BRI", description: "Inspect pull requests, fetch git diffs and review commits", enabled: true },
-  { id: "confluence", name: "Confluence BRI", description: "Preview technical specifications and architecture documents", enabled: true },
-  { id: "queryreview", name: "Query Review Assistant", description: "Extract SQL statements from query review documents", enabled: true },
-  { id: "servicemap", name: "ServiceMap & Architecture", description: "Inspect workspace microservices, branches and changed files", enabled: true }
-]
-
-const loadStoredJson = <T>(key: string, fallback: T): T => {
-  try {
-    const raw = localStorage.getItem(key)
-    return raw ? (JSON.parse(raw) as T) : fallback
-  } catch {
-    return fallback
-  }
-}
-
-const loadEnabledDomains = (): string[] => loadStoredJson("copilot_enabled_domains", defaultDomains.map((d) => d.id))
-
-const loadSavedSessions = (): ChatSession[] => loadStoredJson("copilot_user_sessions", [])
-
-const loadSessionMessages = (sessionId: string): ChatMessage[] => loadStoredJson(`copilot_msgs_${sessionId}`, [])
-
-const loadSelectedModel = (): string =>
-  localStorage.getItem("copilot_selected_model") || "DeepSeek-V4 Pro (Thinking)"
-
-const loadThinkingMode = (): boolean => {
-  const val = localStorage.getItem("copilot_thinking_mode")
-  return val === null ? true : val === "true"
-}
-
-const loadReasoningEffort = (): ReasoningEffort => {
-  const val = localStorage.getItem("copilot_reasoning_effort") as ReasoningEffort
-  return val === "low" || val === "high" ? val : "medium"
-}
-
-const enabledDomains = ref<string[]>(loadEnabledDomains())
+const enabledDomains = ref<string[]>(loadEnabledDomains(defaultDomains.map((domain) => domain.id)))
 const selectedModel = ref<string>(loadSelectedModel())
 const thinkingMode = ref<boolean>(loadThinkingMode())
 const reasoningEffort = ref<ReasoningEffort>(loadReasoningEffort())
+const isSidebarCollapsed = ref<boolean>(loadSidebarCollapsed())
 const isDomainModalOpen = ref(false)
 const isLoading = ref(false)
 const chatError = ref<string | null>(null)
 
-const configuredProviders = ref<string[]>([])
-const isCheckingProviders = ref(true)
-
 const sessions = ref<ChatSession[]>(loadSavedSessions())
 const activeSessionId = ref<string | null>(sessions.value.length > 0 ? sessions.value[0].id : null)
+const historyTurnLimit = 10
+
 const messages = ref<ChatMessage[]>(activeSessionId.value ? loadSessionMessages(activeSessionId.value) : [])
 
-watch(enabledDomains, (val) => { localStorage.setItem("copilot_enabled_domains", JSON.stringify(val)) }, { deep: true })
-watch(selectedModel, (val) => { localStorage.setItem("copilot_selected_model", val) })
-watch(thinkingMode, (val) => { localStorage.setItem("copilot_thinking_mode", String(val)) })
-watch(reasoningEffort, (val) => { localStorage.setItem("copilot_reasoning_effort", val) })
-watch(sessions, (val) => { localStorage.setItem("copilot_user_sessions", JSON.stringify(val)) }, { deep: true })
+const { configuredProviders, isCheckingProviders, hasConfiguredAI, configuredModels, refreshConfiguredProviders } =
+  useProviderConfiguration(selectedModel)
 
-const collectProviderNames = (...sources: Array<string[] | undefined>): string[] =>
-  Array.from(new Set(sources.flatMap((source) => source ?? []).map((name) => name.toLowerCase())))
+watch(enabledDomains, (storedDomains) => { storeJson("copilot_enabled_domains", storedDomains) }, { deep: true })
+watch(selectedModel, (storedModel) => { storeText("copilot_selected_model", storedModel) })
+watch(thinkingMode, (storedThinkingMode) => { storeBoolean("copilot_thinking_mode", storedThinkingMode) })
+watch(reasoningEffort, (storedEffort) => { storeText("copilot_reasoning_effort", storedEffort) })
+watch(isSidebarCollapsed, (storedCollapsed) => { storeBoolean("copilot_sidebar_collapsed", storedCollapsed) })
+watch(sessions, (storedSessions) => { storeJson("copilot_user_sessions", storedSessions) }, { deep: true })
 
 const formatClockTime = (): string => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 
@@ -71,7 +51,7 @@ const resolveProviderForModel = (modelName: string): string =>
   allSupportedModels.find((model) => model.name === modelName || model.id === modelName)?.provider ?? "deepseek"
 
 const persistMessages = (sessionId: string): void => {
-  localStorage.setItem(`copilot_msgs_${sessionId}`, JSON.stringify(messages.value))
+  storeJson(`copilot_msgs_${sessionId}`, messages.value)
 }
 
 const ensureActiveSession = (text: string): string => {
@@ -94,29 +74,9 @@ const ensureActiveSession = (text: string): string => {
 }
 
 export const useCopilot = () => {
-  const refreshConfiguredProviders = async () => {
-    isCheckingProviders.value = true
-    try {
-      const [secretsResp, configResp] = await Promise.all([
-        http.get<{ configured_ai_providers?: string[]; has_ai_keys?: boolean }>("/api/auth/secrets").catch(() => null),
-        http.get<{ system_ai_providers?: string[] }>("/api/config").catch(() => null)
-      ])
-
-      configuredProviders.value = collectProviderNames(secretsResp?.configured_ai_providers, configResp?.system_ai_providers)
-
-      if (!isModelConfigured(selectedModel.value, configuredProviders.value)) {
-        selectedModel.value = getDefaultModel(configuredProviders.value)
-      }
-    } catch {
-      configuredProviders.value = []
-    } finally {
-      isCheckingProviders.value = false
-    }
+  const toggleSidebarCollapsed = () => {
+    isSidebarCollapsed.value = !isSidebarCollapsed.value
   }
-
-  const hasConfiguredAI = computed(() => configuredProviders.value.length > 0)
-
-  const configuredModels = computed(() => getConfiguredModels(configuredProviders.value))
 
   const toggleDomain = (domainId: string) => {
     const idx = enabledDomains.value.indexOf(domainId)
@@ -150,8 +110,8 @@ export const useCopilot = () => {
       return
     }
 
-    sessions.value = sessions.value.filter((s) => s.id !== sessionId)
-    localStorage.removeItem(`copilot_msgs_${sessionId}`)
+    sessions.value = sessions.value.filter((session) => session.id !== sessionId)
+    clearStoredKey(`copilot_msgs_${sessionId}`)
 
     if (activeSessionId.value === sessionId) {
       if (sessions.value.length > 0) selectSession(sessions.value[0].id)
@@ -206,6 +166,49 @@ export const useCopilot = () => {
     persistMessages(sessionId)
   }
 
+  const buildHistory = (currentQuestion: string): ChatHistoryTurn[] => {
+    const turns = messages.value
+      .filter((message) => message.role === "user" || message.role === "assistant")
+      .map((message) => ({ role: message.role as "user" | "assistant", content: message.content }))
+
+    const lastTurn = turns[turns.length - 1]
+    if (lastTurn !== undefined && lastTurn.role === "user" && lastTurn.content === currentQuestion) {
+      turns.pop()
+    }
+
+    return turns.slice(-historyTurnLimit)
+  }
+
+  const requestAnswer = async (currentId: string, text: string): Promise<void> => {
+    const agentAnswer = await askCodeAgent({
+      sessionId: currentId,
+      question: text,
+      history: buildHistory(text),
+      domainIds: enabledDomains.value,
+      provider: resolveProviderForModel(selectedModel.value),
+      model: selectedModel.value,
+      thinkingMode: thinkingMode.value,
+      reasoningEffort: reasoningEffort.value
+    })
+
+    if (agentAnswer !== null) {
+      const assistantMsg: ChatMessage = {
+        id: "a-" + Date.now(),
+        role: "assistant",
+        content: agentAnswer.answer,
+        reasoning: agentAnswer.reasoning.length > 0 ? agentAnswer.reasoning : undefined,
+        thinkingDurationMs: agentAnswer.durationMs,
+        createdAt: formatClockTime()
+      }
+
+      messages.value.push(assistantMsg)
+      persistMessages(currentId)
+      return
+    }
+
+    await requestBackendAnswer(currentId, text)
+  }
+
   const sendMessage = async (prompt: string) => {
     const text = prompt.trim()
     if (!text || isLoading.value) return
@@ -232,33 +235,29 @@ export const useCopilot = () => {
     isLoading.value = true
 
     try {
-      const agentAnswer = await askCodeAgent({
-        sessionId: currentId,
-        question: text,
-        domainIds: enabledDomains.value,
-        provider: resolveProviderForModel(selectedModel.value),
-        model: selectedModel.value,
-        thinkingMode: thinkingMode.value,
-        reasoningEffort: reasoningEffort.value
-      })
+      await requestAnswer(currentId, text)
+    } catch (err: unknown) {
+      registerChatError(currentId, err)
+    } finally {
+      resetCodeAgentStream()
+      isLoading.value = false
+    }
+  }
 
-      if (agentAnswer !== null) {
-        const assistantMsg: ChatMessage = {
-          id: "a-" + Date.now(),
-          role: "assistant",
-          content: agentAnswer.answer,
-          reasoning: agentAnswer.reasoning.length > 0 ? agentAnswer.reasoning : undefined,
-          thinkingDurationMs: agentAnswer.durationMs,
-          createdAt: formatClockTime()
-        }
+  const regenerateMessage = async (messageId: string): Promise<void> => {
+    if (isLoading.value) return
+    const index = messages.value.findIndex((message) => message.id === messageId)
+    if (index < 1) return
+    const question = messages.value[index - 1]
+    if (question.role !== "user") return
+    const currentId = activeSessionId.value
+    if (currentId === null) return
 
-        messages.value.push(assistantMsg)
-        storeAnswerCitations(assistantMsg.id, agentAnswer.sources)
-        persistMessages(currentId)
-        return
-      }
+    messages.value = messages.value.filter((message) => message.id !== messageId)
+    isLoading.value = true
 
-      await requestBackendAnswer(currentId, text)
+    try {
+      await requestAnswer(currentId, question.content)
     } catch (err: unknown) {
       registerChatError(currentId, err)
     } finally {
@@ -270,10 +269,12 @@ export const useCopilot = () => {
   return {
     messages,
     sessions,
+    regenerateMessage,
     activeSessionId,
     selectedModel,
     thinkingMode,
     reasoningEffort,
+    isSidebarCollapsed,
     enabledDomains,
     defaultDomains,
     isDomainModalOpen,
@@ -285,6 +286,7 @@ export const useCopilot = () => {
     configuredModels,
     allSupportedModels,
     refreshConfiguredProviders,
+    toggleSidebarCollapsed,
     toggleDomain,
     isDomainEnabled,
     enableAllDomains,

@@ -15,16 +15,16 @@ export class ChatWindow {
     return this.page.locator(".send-btn")
   }
 
-  get thoughtSection() {
-    return this.page.locator(".thought-section")
+  get reasoningPanel() {
+    return this.page.locator(".reasoning-panel")
   }
 
-  get thoughtContent() {
-    return this.page.locator(".thought-content")
+  get reasoningContent() {
+    return this.page.locator(".reasoning-body")
   }
 
-  get thoughtToggle() {
-    return this.page.locator(".thought-toggle")
+  get reasoningToggle() {
+    return this.page.locator(".reasoning-toggle")
   }
 
   get lastAssistantMessage() {

@@ -19,18 +19,47 @@ const (
 	agentRequestTimeout   = 5 * time.Minute
 	maxQuestionCharacters = 8000
 	maxDomains            = 8
+	maxHistoryItems       = 10
 )
 
 type agentAskRequest struct {
-	Question        string   `json:"question"`
-	Root            string   `json:"root"`
-	Domains         []string `json:"domains"`
-	Provider        string   `json:"provider"`
-	Model           string   `json:"model"`
-	BackendURL      string   `json:"backend_url"`
-	SessionToken    string   `json:"session_token"`
-	ThinkingMode    bool     `json:"thinking_mode"`
-	ReasoningEffort string   `json:"reasoning_effort"`
+	Question        string                            `json:"question"`
+	Root            string                            `json:"root"`
+	Domains         []string                          `json:"domains"`
+	Provider        string                            `json:"provider"`
+	Model           string                            `json:"model"`
+	BackendURL      string                            `json:"backend_url"`
+	SessionToken    string                            `json:"session_token"`
+	ThinkingMode    bool                              `json:"thinking_mode"`
+	ReasoningEffort string                            `json:"reasoning_effort"`
+	History         []codeindexdomain.ChatHistoryItem `json:"history"`
+	Attachments     []string                          `json:"attachments"`
+}
+
+func sanitizeHistory(items []codeindexdomain.ChatHistoryItem) ([]codeindexdomain.ChatHistoryItem, error) {
+	if len(items) == 0 {
+		return nil, nil
+	}
+
+	trimmed := items
+	if len(trimmed) > maxHistoryItems {
+		trimmed = trimmed[len(trimmed)-maxHistoryItems:]
+	}
+
+	history := make([]codeindexdomain.ChatHistoryItem, 0, len(trimmed))
+	for _, entry := range trimmed {
+		role := strings.ToLower(strings.TrimSpace(entry.Role))
+		if role != "user" && role != "assistant" {
+			continue
+		}
+		content := strings.TrimSpace(entry.Content)
+		if content == "" {
+			continue
+		}
+		history = append(history, codeindexdomain.ChatHistoryItem{Role: role, Content: content})
+	}
+
+	return history, nil
 }
 
 type agentSourcePayload struct {
@@ -78,6 +107,11 @@ func (s *helperServer) handleAgentAsk(w http.ResponseWriter, r *http.Request) {
 		sharedHttp.WriteError(w, http.StatusBadRequest, "too many tool domains requested")
 		return
 	}
+	history, historyError := sanitizeHistory(request.History)
+	if historyError != nil {
+		sharedHttp.WriteError(w, http.StatusBadRequest, historyError.Error())
+		return
+	}
 
 	backendURL := strings.TrimRight(strings.TrimSpace(request.BackendURL), "/")
 	sessionToken := strings.TrimSpace(request.SessionToken)
@@ -91,6 +125,24 @@ func (s *helperServer) handleAgentAsk(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.logger.Warn("cannot fetch provider credentials", "error", err)
 		sharedHttp.WriteError(w, http.StatusBadGateway, "cannot fetch the provider credentials from the backend")
+		return
+	}
+
+	attachmentBlock, imageDataURLs, err := loadAttachmentContext(
+		r.Context(),
+		backendURL,
+		sessionToken,
+		request.Attachments,
+	)
+	if err != nil {
+		s.logger.Warn("cannot load attachments", "error", err)
+		sharedHttp.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	agent, chatClient := s.buildAgent(request.Root, credentials)
+	if imageError := validateImageAttachments(model, credentials.Model, len(imageDataURLs), chatClient); imageError != nil {
+		sharedHttp.WriteError(w, http.StatusBadRequest, imageError.Error())
 		return
 	}
 
@@ -128,14 +180,15 @@ func (s *helperServer) handleAgentAsk(w http.ResponseWriter, r *http.Request) {
 	agentContext, cancel := context.WithTimeout(r.Context(), agentRequestTimeout)
 	defer cancel()
 
-	agent := s.buildAgent(request.Root, credentials)
-
 	answer, runError := agent.Run(
 		agentContext,
 		codeindexdomain.AgentQuestion{
-			Question: question,
-			Model:    credentials.Model,
-			Domains:  request.Domains,
+			Question:        question,
+			Model:           credentials.Model,
+			Domains:         request.Domains,
+			History:         history,
+			AttachmentBlock: attachmentBlock,
+			ImageDataURLs:   imageDataURLs,
 		},
 		func(event agentapplication.Event) error {
 			translated, isTranslatable := translateAgentEvent(event)

@@ -47,16 +47,32 @@ export class CopilotPage {
     return this.page.locator(".thinking-toggle")
   }
 
-  get effortTrigger() {
-    return this.page.locator(".effort-trigger")
+  get effortControl() {
+    return this.page.locator(".effort-control")
   }
 
-  get effortMenu() {
-    return this.page.locator(".effort-menu")
+  get effortOptions() {
+    return this.page.locator(".effort-options")
+  }
+
+  get effortRequirement() {
+    return this.page.locator(".effort-requirement")
   }
 
   effortOption(label: string) {
     return this.page.locator(`.effort-option:has-text("${label}")`)
+  }
+
+  get composer() {
+    return this.page.locator(".chat-composer")
+  }
+
+  get composerInput() {
+    return this.page.getByTestId("composer-input")
+  }
+
+  get composerSendButton() {
+    return this.page.getByTestId("composer-send")
   }
 
   get modelTrigger() {
@@ -83,20 +99,20 @@ export class CopilotPage {
     return this.page.locator(".send-btn")
   }
 
-  get thoughtSection() {
-    return this.page.locator(".thought-section")
+  get reasoningPanel() {
+    return this.page.locator(".reasoning-panel")
   }
 
-  get thoughtTitle() {
-    return this.page.locator(".thought-title")
+  get reasoningTitle() {
+    return this.page.locator(".reasoning-title")
   }
 
-  get thoughtContent() {
-    return this.page.locator(".thought-content")
+  get reasoningContent() {
+    return this.page.locator(".reasoning-body")
   }
 
-  get thoughtToggle() {
-    return this.page.locator(".thought-toggle")
+  get reasoningToggle() {
+    return this.page.locator(".reasoning-toggle")
   }
 
   get lastAssistantMessage() {
