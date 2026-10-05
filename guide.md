@@ -175,12 +175,15 @@ Repository intelligence for the services a squad owns.
 | Service table | Services derived from the repositories in the workspace, with search and filters |
 | Service detail panel | Branch, last commit, changed files, and file list for a service |
 | Repository picker | Modal to choose which repositories are displayed, with name search and checkboxes |
+| Branch picker | Clicking a service's branch opens a picker that pins the current branch, lists up to five rows in a scroll view, filters by name, and switches the repository to the chosen branch with `git checkout`. It opens downward or upward depending on the room below the row, closes on `Escape`, an outside click, or a selection, and returns focus to the trigger |
+| Repository actions | A kebab menu per service offers Pull, Fetch, Stash changes local, Discard changes, and Details. Discard asks for confirmation first, cancellable by Cancel, `Escape`, or a backdrop click, and restores tracked files only. The row shows a busy state while an action runs |
 | Model picker | Chooses the AI model used for service analysis |
 | Workspace state panel | Explains what is missing when nothing can be shown |
 | Helper connection fields | Helper URL, token, connection test, and one-click connect |
 | Helper setup guide | Instructions shown when the helper is not running |
 | Health and version | Reports whether the helper is online and which version it runs |
-| Metadata only | Reads git metadata: branch, changed files, last commit. Not file contents |
+| Write operations | Pull, fetch, stash, discard, and branch switching run on whichever side holds the working tree, the helper or the server, through the same hardened git runner: fixed binary, argument array, no shell, and no credential prompt. A branch name must be an existing local branch, so a revision expression such as `HEAD` or a commit SHA is refused rather than silently detaching `HEAD`. Switching branch is refused while tracked files are modified, while untracked files are left alone because git carries them across |
+| Destructive operation safety | Destructive git actions are refused unless `LUNAR_WORKSPACE_ALLOWED_ROOTS` is set and contains the workspace root. Reads and configuration are unaffected, so an operator opts in explicitly before the workspace can modify repositories |
 
 Source: `frontend/src/features/microservices/`.
 
@@ -390,6 +393,7 @@ Newest first. Every feature change adds a line here.
 
 | Date | Change |
 |---|---|
+| 2026-10-05 | Microservices: the Branch column becomes a picker and the Action column becomes a kebab menu over five git operations, on both the helper and the server. Branch switching validates the name and then confirms it against `refs/heads`, so a tag or commit SHA is refused with 404 instead of detaching `HEAD`; the dirty guard counts tracked changes only, because stash does not cover untracked files and git carries them across a checkout. Network operations get a 90 second git deadline and a per-request HTTP write deadline, since the backend's 15 second and the client's 8 second defaults truncated a fetch or pull. Destructive actions now require `LUNAR_WORKSPACE_ALLOWED_ROOTS` to contain the workspace root, closing a gap where a session could aim the workspace at any directory and then modify repositories inside it |
 | 2026-10-05 | Settings and Copilot: OpenCode Go joins as a sixth AI provider, reaching `https://opencode.ai/zen/go/v1` and offering DeepSeek V4.1 Flash (Go), MiMo V2.6 Flash (Go), and Space Bunny Free (Go). Because every one of those speaks OpenAI chat completions, no new transport was needed. Model resolution now matches the OpenCode Go catalogue exactly before the legacy substring rule, which would otherwise have sent `deepseek-v4.1-flash` to the personal DeepSeek provider as `deepseek-chat`. Outbound provider requests now identify themselves with `lunar/1.0`, and the code agent sends `x-opencode-session` carrying the conversation id, both required by the Go terms. The AI providers settings screen is rebuilt around a reusable `AiProviderRow`, taking `AiProvidersSettings.vue` from 493 to 170 lines, and the Playwright provider locator now matches the provider name exactly instead of any text in the row. The provider row uses the OpenCode mark shipped as `frontend/public/icons/opencode.svg`, drawn as a white silhouette in dark mode like the other monochrome marks and left in its original two-tone artwork on white in light mode |
 | 2026-10-05 | Copilot: the composer input no longer draws a focus outline, which resolved to near black in light mode. Focus is marked on the composer container through its border and a soft ring instead, so the field stays visibly focused without the hard outline |
 | 2026-10-05 | Copilot: the code index chip moves out of the composer control bar into the slim header, centred between the breadcrumb and the new chat button. The composer area now holds only the composer and its optional hint |

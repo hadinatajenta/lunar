@@ -58,7 +58,7 @@ func (i *GitInspector) CheckoutBranch(ctx context.Context, rootPath string, repo
 		return "", err
 	}
 
-	repositoryPath, err := i.resolveOperationRepository(ctx, rootPath, repoName)
+	repositoryPath, err := i.resolveWritableRepository(ctx, rootPath, repoName)
 	if err != nil {
 		return "", err
 	}
@@ -98,7 +98,7 @@ func requireLocalBranch(ctx context.Context, repositoryPath string, branchName s
 }
 
 func (i *GitInspector) FetchRepository(ctx context.Context, rootPath string, repoName string) (domain.SyncStatus, error) {
-	repositoryPath, err := i.resolveOperationRepository(ctx, rootPath, repoName)
+	repositoryPath, err := i.resolveWritableRepository(ctx, rootPath, repoName)
 	if err != nil {
 		return domain.SyncStatus{}, err
 	}
@@ -120,7 +120,7 @@ func (i *GitInspector) FetchRepository(ctx context.Context, rootPath string, rep
 }
 
 func (i *GitInspector) PullRepository(ctx context.Context, rootPath string, repoName string) (domain.PullResult, error) {
-	repositoryPath, err := i.resolveOperationRepository(ctx, rootPath, repoName)
+	repositoryPath, err := i.resolveWritableRepository(ctx, rootPath, repoName)
 	if err != nil {
 		return domain.PullResult{}, err
 	}
@@ -143,7 +143,7 @@ func (i *GitInspector) PullRepository(ctx context.Context, rootPath string, repo
 }
 
 func (i *GitInspector) StashRepository(ctx context.Context, rootPath string, repoName string) (int, error) {
-	repositoryPath, err := i.resolveOperationRepository(ctx, rootPath, repoName)
+	repositoryPath, err := i.resolveWritableRepository(ctx, rootPath, repoName)
 	if err != nil {
 		return 0, err
 	}
@@ -161,7 +161,7 @@ func (i *GitInspector) StashRepository(ctx context.Context, rootPath string, rep
 }
 
 func (i *GitInspector) DiscardRepository(ctx context.Context, rootPath string, repoName string) (int, error) {
-	repositoryPath, err := i.resolveOperationRepository(ctx, rootPath, repoName)
+	repositoryPath, err := i.resolveWritableRepository(ctx, rootPath, repoName)
 	if err != nil {
 		return 0, err
 	}
@@ -176,6 +176,14 @@ func (i *GitInspector) DiscardRepository(ctx context.Context, rootPath string, r
 	}
 
 	return restoredCount, nil
+}
+
+func (i *GitInspector) resolveWritableRepository(ctx context.Context, rootPath string, repoName string) (string, error) {
+	if len(i.allowedRoots) == 0 {
+		return "", domain.ErrWritesRequireAllowlist
+	}
+
+	return i.resolveOperationRepository(ctx, rootPath, repoName)
 }
 
 func (i *GitInspector) resolveOperationRepository(ctx context.Context, rootPath string, repoName string) (string, error) {

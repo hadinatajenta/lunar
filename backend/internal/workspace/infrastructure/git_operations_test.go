@@ -168,6 +168,35 @@ func TestGitInspectorCheckoutBranchRejectsNamesThatAreNotLocalBranches(t *testin
 	}
 }
 
+func TestGitInspectorRefusesDestructiveOperationsWithoutAnAllowedRootList(t *testing.T) {
+	rootPath, _ := newScratchWorkspace(t)
+	inspector := NewGitInspector(nil)
+	ctx := context.Background()
+
+	operations := []struct {
+		name string
+		run  func() error
+	}{
+		{"checkout", func() error { _, err := inspector.CheckoutBranch(ctx, rootPath, "scratch", "main"); return err }},
+		{"fetch", func() error { _, err := inspector.FetchRepository(ctx, rootPath, "scratch"); return err }},
+		{"pull", func() error { _, err := inspector.PullRepository(ctx, rootPath, "scratch"); return err }},
+		{"stash", func() error { _, err := inspector.StashRepository(ctx, rootPath, "scratch"); return err }},
+		{"discard", func() error { _, err := inspector.DiscardRepository(ctx, rootPath, "scratch"); return err }},
+	}
+
+	for _, operation := range operations {
+		t.Run(operation.name, func(t *testing.T) {
+			if err := operation.run(); !errors.Is(err, domain.ErrWritesRequireAllowlist) {
+				t.Fatalf("expected ErrWritesRequireAllowlist, got %v", err)
+			}
+		})
+	}
+
+	if _, err := inspector.ListBranches(ctx, rootPath, "scratch"); err != nil {
+		t.Fatalf("expected reads to keep working without an allow list, got %v", err)
+	}
+}
+
 func TestGitInspectorStashRepositoryCreatesEntryAndLeavesTreeClean(t *testing.T) {
 	rootPath, repositoryPath := newScratchWorkspace(t)
 	inspector := NewGitInspector([]string{rootPath})

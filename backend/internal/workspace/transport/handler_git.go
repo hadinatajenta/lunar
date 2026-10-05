@@ -20,6 +20,7 @@ const (
 	gitNetworkMessage        = "the remote git operation failed; check network connectivity and credentials"
 	gitDeadlineMessage       = "the request deadline could not be extended for the git operation"
 	branchNotFoundMessage    = "the branch does not exist in this repository"
+	writeAllowlistMessage    = "destructive git operations are disabled until LUNAR_WORKSPACE_ALLOWED_ROOTS names the workspace root"
 )
 
 func (h *WorkspaceHandler) ListBranches(w http.ResponseWriter, r *http.Request) {
@@ -162,6 +163,8 @@ func workspaceGitErrorResponse(err error) (int, string, bool) {
 		return http.StatusBadRequest, branchNameMessage, true
 	case errors.Is(err, domain.ErrBranchNotFound):
 		return http.StatusNotFound, branchNotFoundMessage, true
+	case errors.Is(err, domain.ErrWritesRequireAllowlist):
+		return http.StatusForbidden, writeAllowlistMessage, true
 	case errors.Is(err, domain.ErrInvalidRepoName):
 		return http.StatusBadRequest, repositoryNameMessage, true
 	case errors.Is(err, domain.ErrInvalidRoot),
