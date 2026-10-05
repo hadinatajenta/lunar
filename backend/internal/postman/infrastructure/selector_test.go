@@ -5,7 +5,9 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 
 	"lunar/backend/internal/postman/domain"
 )
@@ -177,6 +179,105 @@ func TestSelectorSkipsBinariesSymlinksAndOversizedFiles(t *testing.T) {
 	}
 	if selection.SkippedFileCount != 2 {
 		t.Fatalf("expected 2 skipped files, received %d", selection.SkippedFileCount)
+	}
+}
+
+func TestSelectorExcludesDeniedDirectoriesRegardlessOfCase(t *testing.T) {
+	root := t.TempDir()
+	writeFixtureFile(t, root, "src/routes/api.ts", "export const routes = []\n")
+
+	for _, denied := range []string{"Node_Modules", "DIST", "TARGET", "PUBLIC", "Assets", "Tests", "Mocks", "Logs", "Storage", "Coverage", "Vendor", "Dist"} {
+		writeFixtureFile(t, root, denied+"/pkg/routes/thing.js", "module.exports = {}\n")
+	}
+	writeFixtureFile(t, root, "src/Vendor/routes/kept.go", "package kept\n")
+
+	selection, err := NewSelector().Select(root, "case")
+	if err != nil {
+		t.Fatalf("select: %v", err)
+	}
+
+	paths := selectedPaths(selection)
+	for _, denied := range []string{"Node_Modules", "DIST", "TARGET", "PUBLIC", "Assets", "Tests", "Mocks", "Logs", "Storage", "Coverage", "Vendor", "Dist"} {
+		for _, selected := range paths {
+			if strings.HasPrefix(selected, denied+"/") {
+				t.Fatalf("expected %s to be excluded, got %v", denied, paths)
+			}
+		}
+	}
+
+	if !containsPath(paths, "src/Vendor/routes/kept.go") {
+		t.Fatalf("expected src/Vendor to be treated as first party code, got %v", paths)
+	}
+}
+
+func TestSelectorIgnoresASymlinkedPackageJSON(t *testing.T) {
+	root := t.TempDir()
+	outside := t.TempDir()
+	writeFixtureFile(t, root, "src/routes/api.ts", "export const routes = []\n")
+
+	secretPath := filepath.Join(outside, "outside-secret.json")
+	writeFixtureFile(t, outside, "outside-secret.json", "{\"name\":\"outside-secret\"}\n")
+	if err := os.Symlink(secretPath, filepath.Join(root, "package.json")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	selection, err := NewSelector().Select(root, "symlink")
+	if err != nil {
+		t.Fatalf("select: %v", err)
+	}
+	if selection.HasPackageJSON {
+		t.Fatal("expected a symlinked package.json to be ignored")
+	}
+	if strings.Contains(selection.PackageJSONContent, "outside-secret") {
+		t.Fatal("expected no content to be read through the symlink")
+	}
+}
+
+func TestSelectorIgnoresASymlinkedDirectoryMarker(t *testing.T) {
+	root := t.TempDir()
+	outside := t.TempDir()
+	writeFixtureFile(t, root, "src/routes/api.ts", "export const routes = []\n")
+	if err := os.MkdirAll(filepath.Join(outside, "application"), 0o755); err != nil {
+		t.Fatalf("prepare outside: %v", err)
+	}
+	if err := os.Symlink(filepath.Join(outside, "application"), filepath.Join(root, "application")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	selection, err := NewSelector().Select(root, "symlink-dir")
+	if err != nil {
+		t.Fatalf("select: %v", err)
+	}
+	if selection.HasApplicationDirectory {
+		t.Fatal("expected a symlinked application directory not to count as the marker")
+	}
+}
+
+func TestSelectorSkipsNonRegularFilesWithoutBlocking(t *testing.T) {
+	root := t.TempDir()
+	writeFixtureFile(t, root, "src/routes/api.ts", "export const routes = []\n")
+
+	fifoPath := filepath.Join(root, "src", "routes", "hang.go")
+	if err := syscall.Mkfifo(fifoPath, 0o600); err != nil {
+		t.Skipf("fifos unavailable: %v", err)
+	}
+
+	done := make(chan domain.Selection, 1)
+	go func() {
+		selection, err := NewSelector().Select(root, "fifo")
+		if err != nil {
+			t.Errorf("select: %v", err)
+		}
+		done <- selection
+	}()
+
+	select {
+	case selection := <-done:
+		if containsPath(selectedPaths(selection), "src/routes/hang.go") {
+			t.Fatal("expected a fifo to be skipped")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("expected the selector to skip a fifo instead of blocking on it")
 	}
 }
 

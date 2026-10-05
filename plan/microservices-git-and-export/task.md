@@ -59,45 +59,45 @@ Nothing is implemented yet. `[ ]` not started, `[~]` in progress, `[x]` done and
 
 ## Phase 2 - Export pipeline  [IN PROGRESS]
 
-### 2A backend  [~]
+### 2A backend  [DONE]
 
-- [ ] `selector.go` implementing the include and exclude rules
-- [ ] `src/vendor` includes `panama/src/vendor`
-- [ ] root `vendor/`, `node_modules/`, and `library/vendor/` excluded
-- [ ] `*_test.go`, `test/`, `tests/`, and `mocks/` excluded so routes are not duplicated
-- [ ] `wire.go` and `wire_gen.go` included
-- [ ] file count and byte caps with an explicit refusal when exceeded
-- [ ] `classifier.go` returning include or exclude plus a reason
-- [ ] refuses `mms` as a CodeIgniter monolith
-- [ ] refuses `fe-mms` as a Vue frontend with no server framework
-- [ ] refuses a repository with no discoverable route
-- [ ] prompt pack with the shared system prompt and one appendix per framework
-- [ ] the eight stacks detected: Go net/http, Gin, Fiber, Echo, PHP, Laravel, Lumen, Node.js
-- [ ] Wire appendix instructing the model to read `wire_gen.go`
-- [ ] prompt states keys are mandatory and unknown values are empty strings
-- [ ] provider call reusing the agent credential path, effort fixed to `medium`
-- [ ] `normaliser.go` filling structural keys without inventing data
-- [ ] `validator.go` refusing zero requests and incomplete requests
-- [ ] fence unwrapping, then strict unmarshal into Postman v2.1
-- [ ] SSE endpoint with stage and result events, on the helper and on the backend
-- [ ] the response carries no write to disk anywhere
-- [ ] unit tests for selector, classifier, prompt assembly, normaliser, and validator
+- [x] `selector.go` implementing the include and exclude rules
+- [x] `src/vendor` includes `panama/src/vendor`
+- [x] root `vendor/`, `node_modules/`, and `library/vendor/` excluded
+- [x] `*_test.go`, `test/`, `tests/`, and `mocks/` excluded so routes are not duplicated
+- [x] `wire.go` and `wire_gen.go` included
+- [x] file count and byte caps with an explicit refusal when exceeded
+- [x] `classifier.go` returning include or exclude plus a reason
+- [x] refuses `mms` as a CodeIgniter monolith
+- [x] refuses `fe-mms` as a Vue frontend with no server framework
+- [x] refuses a repository with no discoverable route
+- [x] prompt pack with the shared system prompt and one appendix per framework
+- [x] the eight stacks detected: Go net/http, Gin, Fiber, Echo, PHP, Laravel, Lumen, Node.js
+- [x] Wire appendix instructing the model to read `wire_gen.go`
+- [x] prompt states keys are mandatory and unknown values are empty strings
+- [x] provider call reusing the agent credential path, effort fixed to `medium`
+- [x] `normaliser.go` filling structural keys without inventing data
+- [x] `validator.go` refusing zero requests and incomplete requests
+- [x] fence unwrapping, then strict unmarshal into Postman v2.1
+- [x] SSE endpoint with stage and result events, on the helper and on the backend
+- [x] the response carries no write to disk anywhere
+- [x] unit tests for selector, classifier, prompt assembly, normaliser, and validator
 
-### 2B frontend  [~]
+### 2B frontend  [DONE]
 
-- [ ] modal lists models from the configured provider catalogue, not the old provider list
-- [ ] free models such as `space-bunny-free` badged
-- [ ] with no provider key the export control is disabled with a reason and a Settings link
-- [ ] no effort control and no effort wording anywhere in the modal
-- [ ] `Export collection` enabled only with a usable model selected
-- [ ] SSE progress rendered as stages, not a frozen spinner
-- [ ] result opens a download modal offering `<service>-postman-collection.json`
-- [ ] the request count is shown so a hollow result is obvious
-- [ ] object URL revoked after download
-- [ ] failure keeps the modal open with a readable reason and a retry
-- [ ] repository model preference preserved
+- [x] modal lists models from the configured provider catalogue, not the old provider list
+- [x] free models such as `space-bunny-free` badged
+- [x] with no provider key the export control is disabled with a reason and a Settings link
+- [x] no effort control and no effort wording anywhere in the modal
+- [x] `Export collection` enabled only with a usable model selected
+- [x] SSE progress rendered as stages, not a frozen spinner
+- [x] result opens a download modal offering `<service>-postman-collection.json`
+- [x] the request count is shown so a hollow result is obvious
+- [x] object URL revoked after download
+- [x] failure keeps the modal open with a readable reason and a retry
+- [x] repository model preference preserved
 
-### 2Q QA
+### 2Q QA  [~ RUNNING]
 
 - [ ] selector verified against panama, merchant-service-laravel, micro-user-mms, mocash_api, and fe-mms
 - [ ] `mms` and `fe-mms` refused with a reason

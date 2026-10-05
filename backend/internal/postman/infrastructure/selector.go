@@ -150,23 +150,25 @@ func isIncludedDirectory(relativePath string, name string) bool {
 	if strings.HasPrefix(name, ".") {
 		return false
 	}
-	if excludedDirectories[name] {
+	lowerName := strings.ToLower(name)
+	lowerPath := strings.ToLower(relativePath)
+	if excludedDirectories[lowerName] {
 		return false
 	}
-	if name == "vendor" {
-		return relativePath == "src/vendor"
+	if lowerName == "vendor" {
+		return lowerPath == "src/vendor"
 	}
-	if name == "views" {
-		return path.Dir(relativePath) != "resources"
+	if lowerName == "views" {
+		return path.Dir(lowerPath) != "resources"
 	}
-	if name == "cache" {
-		return path.Dir(relativePath) != "bootstrap"
+	if lowerName == "cache" {
+		return path.Dir(lowerPath) != "bootstrap"
 	}
 	return true
 }
 
 func isSelectableFile(relativePath string, entry fs.DirEntry) bool {
-	if entry.Type()&fs.ModeSymlink != 0 {
+	if !entry.Type().IsRegular() {
 		return false
 	}
 	name := entry.Name()
@@ -224,7 +226,7 @@ func isNodeEquivalent(relativePath string) bool {
 }
 
 func isDirectory(candidatePath string) bool {
-	info, err := os.Stat(candidatePath)
+	info, err := os.Lstat(candidatePath)
 	if err != nil {
 		return false
 	}
@@ -233,14 +235,14 @@ func isDirectory(candidatePath string) bool {
 
 func readRootPackageJSON(repoPath string) (string, bool, error) {
 	packageJSONPath := filepath.Join(repoPath, "package.json")
-	info, err := os.Stat(packageJSONPath)
+	info, err := os.Lstat(packageJSONPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return "", false, nil
 		}
 		return "", false, fmt.Errorf("stat package.json: %w", err)
 	}
-	if info.IsDir() {
+	if !info.Mode().IsRegular() {
 		return "", false, nil
 	}
 
