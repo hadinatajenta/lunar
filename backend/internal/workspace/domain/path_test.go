@@ -212,6 +212,39 @@ func TestValidateRepoNameRejectsEncodedAndUnusualCharacters(t *testing.T) {
 	}
 }
 
+func TestValidateBranchNameRejectsUnsafeNames(t *testing.T) {
+	cases := []string{
+		"", "-x", "a b", "a;b", "a..b", "a\nb", "a$b", "a&b", "a|b", "a`b", "a\x00b",
+		".", "..", "...", "@{upstream}", "a//b", "/a", "a/", "a*b", "a:b", "a~b",
+	}
+
+	for _, testCase := range cases {
+		t.Run(testCase, func(t *testing.T) {
+			if _, err := ValidateBranchName(testCase); !errors.Is(err, ErrInvalidBranchName) {
+				t.Fatalf("expected ErrInvalidBranchName for %q, got %v", testCase, err)
+			}
+		})
+	}
+}
+
+func TestValidateBranchNameAcceptsRealBranchNames(t *testing.T) {
+	cases := []string{
+		"feat/ok", "release-1.2_x", "main", "feature/LUNAR-123_checkout", "release-1.2.3",
+	}
+
+	for _, testCase := range cases {
+		t.Run(testCase, func(t *testing.T) {
+			got, err := ValidateBranchName(testCase)
+			if err != nil {
+				t.Fatalf("expected %q to be accepted, got %v", testCase, err)
+			}
+			if got != testCase {
+				t.Fatalf("expected %q, got %q", testCase, got)
+			}
+		})
+	}
+}
+
 func TestValidateRepoNameAcceptsRealRepositoryNames(t *testing.T) {
 	cases := []string{
 		"everest", "mms-api", "ganges-mms", "micro_user", "service.qris",

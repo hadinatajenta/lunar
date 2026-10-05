@@ -1,18 +1,35 @@
 import { ApiError, http } from "../../../lib/http"
 import type {
+  BranchCheckoutResponse,
+  BranchListResponse,
+  RepositoryDiscardResponse,
+  RepositoryFetchResponse,
   RepositoryListResponse,
+  RepositoryPullResponse,
+  RepositoryStashResponse,
   SelectionUpdateRequest,
   SelectionUpdateResponse,
   ServiceListResponse,
   WorkspaceSettings,
   WorkspaceSettingsInput
 } from "../types"
-import { RequestTimeoutError, VM_REQUEST_TIMEOUT_MS, withRequestTimeout } from "./request-timeout"
+import {
+  GIT_ACTION_TIMEOUT_MS,
+  RequestTimeoutError,
+  VM_REQUEST_TIMEOUT_MS,
+  withRequestTimeout
+} from "./request-timeout"
 
 const WORKSPACE_PATH = "/api/workspace"
 const WORKSPACE_REPOSITORIES_PATH = "/api/workspace/repositories"
 const WORKSPACE_SERVICES_PATH = "/api/workspace/services"
 const WORKSPACE_SELECTIONS_PATH = "/api/workspace/selections"
+const WORKSPACE_BRANCHES_PATH = "/api/workspace/branches"
+const WORKSPACE_CHECKOUT_PATH = "/api/workspace/checkout"
+const WORKSPACE_FETCH_PATH = "/api/workspace/fetch"
+const WORKSPACE_PULL_PATH = "/api/workspace/pull"
+const WORKSPACE_STASH_PATH = "/api/workspace/stash"
+const WORKSPACE_DISCARD_PATH = "/api/workspace/discard"
 
 const BACKEND_UNREACHABLE_MESSAGE =
   "Failed to reach the Lunar backend. Check your connection and try again."
@@ -35,9 +52,12 @@ function mapBackendError(thrownError: unknown): ApiError {
   return new ApiError(BACKEND_UNREACHABLE_MESSAGE, 0, thrownError)
 }
 
-async function requestBackend<T>(run: (signal: AbortSignal) => Promise<T>): Promise<T> {
+async function requestBackend<T>(
+  run: (signal: AbortSignal) => Promise<T>,
+  timeoutMs: number = VM_REQUEST_TIMEOUT_MS
+): Promise<T> {
   try {
-    return await withRequestTimeout(VM_REQUEST_TIMEOUT_MS, run)
+    return await withRequestTimeout(timeoutMs, run)
   } catch (thrownError) {
     throw mapBackendError(thrownError)
   }
@@ -63,3 +83,42 @@ export const saveWorkspaceSelections = (repos: string[]): Promise<SelectionUpdat
     http.put<SelectionUpdateResponse>(WORKSPACE_SELECTIONS_PATH, requestBody, { signal })
   )
 }
+
+export const fetchWorkspaceBranches = (repositoryName: string): Promise<BranchListResponse> =>
+  requestBackend((signal) =>
+    http.get<BranchListResponse>(WORKSPACE_BRANCHES_PATH, { signal, params: { name: repositoryName } })
+  )
+
+export const checkoutWorkspaceBranch = (
+  repositoryName: string,
+  branch: string
+): Promise<BranchCheckoutResponse> =>
+  requestBackend(
+    (signal) =>
+      http.post<BranchCheckoutResponse>(WORKSPACE_CHECKOUT_PATH, { name: repositoryName, branch }, { signal }),
+    GIT_ACTION_TIMEOUT_MS
+  )
+
+export const runWorkspaceFetch = (repositoryName: string): Promise<RepositoryFetchResponse> =>
+  requestBackend(
+    (signal) => http.post<RepositoryFetchResponse>(WORKSPACE_FETCH_PATH, { name: repositoryName }, { signal }),
+    GIT_ACTION_TIMEOUT_MS
+  )
+
+export const runWorkspacePull = (repositoryName: string): Promise<RepositoryPullResponse> =>
+  requestBackend(
+    (signal) => http.post<RepositoryPullResponse>(WORKSPACE_PULL_PATH, { name: repositoryName }, { signal }),
+    GIT_ACTION_TIMEOUT_MS
+  )
+
+export const runWorkspaceStash = (repositoryName: string): Promise<RepositoryStashResponse> =>
+  requestBackend(
+    (signal) => http.post<RepositoryStashResponse>(WORKSPACE_STASH_PATH, { name: repositoryName }, { signal }),
+    GIT_ACTION_TIMEOUT_MS
+  )
+
+export const runWorkspaceDiscard = (repositoryName: string): Promise<RepositoryDiscardResponse> =>
+  requestBackend(
+    (signal) => http.post<RepositoryDiscardResponse>(WORKSPACE_DISCARD_PATH, { name: repositoryName }, { signal }),
+    GIT_ACTION_TIMEOUT_MS
+  )

@@ -2,11 +2,13 @@ package infrastructure
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 
 	"lunar/backend/internal/workspace/domain"
 )
@@ -32,7 +34,11 @@ var hardenedGitEnvironmentKeys = map[string]struct{}{
 }
 
 func runGit(ctx context.Context, repositoryPath string, args ...string) (string, error) {
-	commandContext, cancel := context.WithTimeout(ctx, domain.GitCommandTimeout)
+	return runGitWithTimeout(ctx, repositoryPath, domain.GitCommandTimeout, args...)
+}
+
+func runGitWithTimeout(ctx context.Context, repositoryPath string, timeout time.Duration, args ...string) (string, error) {
+	commandContext, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	commandArguments := append([]string{"--no-optional-locks", "-C", repositoryPath}, args...)
@@ -41,6 +47,9 @@ func runGit(ctx context.Context, repositoryPath string, args ...string) (string,
 
 	output, err := command.Output()
 	if err != nil {
+		if errors.Is(commandContext.Err(), context.DeadlineExceeded) {
+			return "", fmt.Errorf("%w: git %s exceeded %s", domain.ErrGitTimeout, args[0], timeout)
+		}
 		return "", fmt.Errorf("git %s: %w", args[0], err)
 	}
 	return string(output), nil
@@ -87,6 +96,21 @@ func readDirtyCount(ctx context.Context, repositoryPath string) (int, error) {
 		return 0, err
 	}
 	return len(parsePorcelainStatus(output)), nil
+}
+
+func readTrackedChangeCount(ctx context.Context, repositoryPath string) (int, error) {
+	output, err := runGit(ctx, repositoryPath, "status", "--porcelain=v1")
+	if err != nil {
+		return 0, err
+	}
+
+	count := 0
+	for _, entry := range parsePorcelainStatus(output) {
+		if entry.Status != domain.StatusUntracked {
+			count++
+		}
+	}
+	return count, nil
 }
 
 func readLastCommitOrEmpty(ctx context.Context, repositoryPath string) domain.CommitInfo {

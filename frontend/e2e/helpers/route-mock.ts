@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test"
+import type { Page, Route } from "@playwright/test"
 import { mockAssignedIssues, mockBacklogResponse } from "../data/jira.data"
 import { mockPushes, mockPRs, mockDiff, mockAIReview } from "../data/bitbucket.data"
 import { mockConfluenceDocuments } from "../data/confluence.data"
@@ -199,4 +199,57 @@ export function routeStandardConfluence(page: Page, documents = mockConfluenceDo
     }
     await route.fulfill({ status: 404, json: { error: "Not found" } })
   })
+}
+
+export type WorkspaceGitAction = "checkout" | "fetch" | "pull" | "stash" | "discard"
+
+export interface WorkspaceGitActionCall {
+  action: WorkspaceGitAction
+  repositoryName: string
+  branch?: string
+}
+
+export interface WorkspaceGitActionRecorder {
+  calls: WorkspaceGitActionCall[]
+  registration: Promise<unknown>
+  callsFor: (action: WorkspaceGitAction) => WorkspaceGitActionCall[]
+  countFor: (action: WorkspaceGitAction) => number
+}
+
+const WORKSPACE_GIT_ACTION_PATTERN = /\/api\/workspace\/(checkout|fetch|pull|stash|discard)$/
+
+const buildGitActionResponse = (action: WorkspaceGitAction, branch: string) => {
+  if (action === "checkout") return { branch }
+  if (action === "fetch") return { ahead: 2, behind: 1 }
+  if (action === "pull") return { branch: "development", updated_relative: "Just now" }
+  if (action === "stash") return { stash_count: 1 }
+  return { restored_count: 3 }
+}
+
+export function routeWorkspaceGitActions(page: Page): WorkspaceGitActionRecorder {
+  const calls: WorkspaceGitActionCall[] = []
+
+  const routeHandler = async (route: Route) => {
+    const request = route.request()
+    const action = new URL(request.url()).pathname.split("/").pop() as WorkspaceGitAction
+    const requestBody = JSON.parse(request.postData() ?? "{}") as { name?: string; branch?: string }
+    const recordedCall: WorkspaceGitActionCall = {
+      action,
+      repositoryName: requestBody.name ?? ""
+    }
+    if (requestBody.branch !== undefined) {
+      recordedCall.branch = requestBody.branch
+    }
+    calls.push(recordedCall)
+    await route.fulfill({ status: 200, json: buildGitActionResponse(action, requestBody.branch ?? "") })
+  }
+
+  const registration = page.route(WORKSPACE_GIT_ACTION_PATTERN, routeHandler)
+
+  return {
+    calls,
+    registration,
+    callsFor: (action) => calls.filter((call) => call.action === action),
+    countFor: (action) => calls.filter((call) => call.action === action).length
+  }
 }

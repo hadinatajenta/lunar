@@ -1,5 +1,6 @@
 export const VM_REQUEST_TIMEOUT_MS = 15000
 export const HELPER_REQUEST_TIMEOUT_MS = 8000
+export const GIT_ACTION_TIMEOUT_MS = 120000
 
 export class RequestTimeoutError extends Error {
   readonly timeoutMs: number

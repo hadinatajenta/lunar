@@ -13,10 +13,12 @@ const (
 )
 
 const (
-	MaxParallelScans       = 4
-	MaxChangedFiles        = 200
-	GitCommandTimeout      = 5 * time.Second
-	RepositoryListCacheTTL = 5 * time.Second
+	MaxParallelScans         = 4
+	MaxChangedFiles          = 200
+	GitCommandTimeout        = 5 * time.Second
+	GitNetworkCommandTimeout = 90 * time.Second
+	GitWriteDeadline         = 100 * time.Second
+	RepositoryListCacheTTL   = 5 * time.Second
 )
 
 type ChangeStatus string
@@ -81,10 +83,35 @@ type RepositoryDetail struct {
 	Error           string
 }
 
+type Branch struct {
+	Name            string
+	IsCurrent       bool
+	UpdatedRelative string
+}
+
+type SyncStatus struct {
+	Ahead  int
+	Behind int
+}
+
+type PullResult struct {
+	Branch          string
+	UpdatedRelative string
+}
+
 type GitReader interface {
 	ListRepositories(ctx context.Context, rootPath string) ([]RepositorySummary, error)
 	ReadRepositories(ctx context.Context, rootPath string, names []string) ([]RepositoryDetail, error)
 	ValidateRoot(ctx context.Context, rootPath string) error
+}
+
+type GitOperator interface {
+	ListBranches(ctx context.Context, rootPath string, repoName string) ([]Branch, error)
+	CheckoutBranch(ctx context.Context, rootPath string, repoName string, branchName string) (string, error)
+	FetchRepository(ctx context.Context, rootPath string, repoName string) (SyncStatus, error)
+	PullRepository(ctx context.Context, rootPath string, repoName string) (PullResult, error)
+	StashRepository(ctx context.Context, rootPath string, repoName string) (int, error)
+	DiscardRepository(ctx context.Context, rootPath string, repoName string) (int, error)
 }
 
 type WorkspaceRepository interface {

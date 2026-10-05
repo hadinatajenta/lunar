@@ -1,8 +1,11 @@
 import { computed, ref } from "vue"
 import { ApiError, getStoredToken } from "../../../lib/http"
 import type {
+  BranchOption,
   HelperConnection,
   HelperConnectionStatus,
+  RepositoryActionKind,
+  RepositoryActionState,
   RepositoryDetail,
   RepositorySummary,
   WorkspaceSettings
@@ -49,6 +52,19 @@ export const isSaving = ref(false)
 export const error = ref<string | null>(null)
 export const helperStatus = ref<HelperConnectionStatus>("unknown")
 export const helperVersion = ref("")
+export const repositoryActionStates = ref<Record<string, RepositoryActionState>>({})
+export const branchCache = ref<Record<string, BranchCacheEntry>>({})
+export const actionNotice = ref<string | null>(null)
+
+export const BRANCH_CACHE_TTL_MS = 15000
+
+interface BranchCacheEntry {
+  branches: BranchOption[]
+  fetchedAt: number
+}
+
+const IDLE_REPOSITORY_ACTION_STATE: RepositoryActionState = { status: "idle", kind: null, message: "" }
+
 const helperToken = ref(readStoredHelperToken())
 export const hasHelperToken = computed(() => helperToken.value.length > 0)
 
@@ -64,6 +80,9 @@ function clearMicroservicesState(): void {
   error.value = null
   helperStatus.value = "unknown"
   helperVersion.value = ""
+  repositoryActionStates.value = {}
+  branchCache.value = {}
+  actionNotice.value = null
 }
 
 export function storeHelperToken(token: string): void {
@@ -134,4 +153,58 @@ export function requireHelperConnection(): HelperConnection {
 
 export function hasConfiguredRoot(settings: WorkspaceSettings): boolean {
   return settings.root_path.trim().length > 0
+}
+
+export function readRepositoryActionState(repositoryName: string): RepositoryActionState {
+  return repositoryActionStates.value[repositoryName] ?? IDLE_REPOSITORY_ACTION_STATE
+}
+
+export function startRepositoryAction(repositoryName: string, kind: RepositoryActionKind): void {
+  actionNotice.value = null
+  repositoryActionStates.value = {
+    ...repositoryActionStates.value,
+    [repositoryName]: { status: "running", kind, message: "" }
+  }
+}
+
+export function failRepositoryAction(
+  repositoryName: string,
+  kind: RepositoryActionKind,
+  message: string
+): void {
+  repositoryActionStates.value = {
+    ...repositoryActionStates.value,
+    [repositoryName]: { status: "failed", kind, message }
+  }
+}
+
+export function settleRepositoryAction(repositoryName: string): void {
+  const nextStates = { ...repositoryActionStates.value }
+  delete nextStates[repositoryName]
+  repositoryActionStates.value = nextStates
+}
+
+export function announceRepositoryAction(message: string): void {
+  actionNotice.value = message
+}
+
+export function clearActionNotice(): void {
+  actionNotice.value = null
+}
+
+export function readBranchCache(repositoryName: string): BranchCacheEntry | null {
+  return branchCache.value[repositoryName] ?? null
+}
+
+export function storeBranchCache(repositoryName: string, branches: BranchOption[]): void {
+  branchCache.value = {
+    ...branchCache.value,
+    [repositoryName]: { branches, fetchedAt: Date.now() }
+  }
+}
+
+export function dropBranchCache(repositoryName: string): void {
+  const nextCache = { ...branchCache.value }
+  delete nextCache[repositoryName]
+  branchCache.value = nextCache
 }

@@ -119,7 +119,7 @@ func (f *fakeGitReader) ValidateRoot(ctx context.Context, rootPath string) error
 }
 
 func newTestWorkspaceService(workspaceRepo domain.WorkspaceRepository, selectionRepo domain.SelectionRepository, gitReader domain.GitReader, allowedRoots []string) *WorkspaceService {
-	return NewWorkspaceService(workspaceRepo, selectionRepo, gitReader, allowedRoots, testEncryptKey)
+	return NewWorkspaceService(workspaceRepo, selectionRepo, gitReader, nil, allowedRoots, testEncryptKey)
 }
 
 func TestWorkspaceService_GetWorkspaceDefaultsToHelperWhenUnset(t *testing.T) {

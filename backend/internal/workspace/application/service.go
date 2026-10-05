@@ -16,6 +16,7 @@ type WorkspaceService struct {
 	workspaceRepo domain.WorkspaceRepository
 	selectionRepo domain.SelectionRepository
 	gitReader     domain.GitReader
+	gitOperator   domain.GitOperator
 	allowedRoots  []string
 	encryptionKey string
 }
@@ -24,6 +25,7 @@ func NewWorkspaceService(
 	workspaceRepo domain.WorkspaceRepository,
 	selectionRepo domain.SelectionRepository,
 	gitReader domain.GitReader,
+	gitOperator domain.GitOperator,
 	allowedRoots []string,
 	encryptionKey string,
 ) *WorkspaceService {
@@ -31,6 +33,7 @@ func NewWorkspaceService(
 		workspaceRepo: workspaceRepo,
 		selectionRepo: selectionRepo,
 		gitReader:     gitReader,
+		gitOperator:   gitOperator,
 		allowedRoots:  allowedRoots,
 		encryptionKey: encryptionKey,
 	}

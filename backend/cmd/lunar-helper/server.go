@@ -22,6 +22,12 @@ const (
 	servicesPath     = "/services"
 	validatePathPath = "/validate-path"
 	tokenPath        = "/token"
+	branchesPath     = "/branches"
+	checkoutPath     = "/checkout"
+	fetchPath        = "/fetch"
+	pullPath         = "/pull"
+	stashPath        = "/stash"
+	discardPath      = "/discard"
 
 	authorizationHeader = "Authorization"
 	bearerScheme        = "Bearer"
@@ -41,6 +47,7 @@ var defaultHelperOrigins = []string{"http://localhost:5174", "http://127.0.0.1:5
 
 type helperServer struct {
 	reader       domain.GitReader
+	operator     domain.GitOperator
 	indexStore   codeindexdomain.IndexStore
 	indexer      *codeindexapplication.Indexer
 	allowedRoots []string
@@ -54,6 +61,7 @@ type helperServer struct {
 
 type helperDependencies struct {
 	reader         domain.GitReader
+	operator       domain.GitOperator
 	indexStore     codeindexdomain.IndexStore
 	indexer        *codeindexapplication.Indexer
 	allowedRoots   []string
@@ -67,6 +75,7 @@ func newHelperHandler(dependencies helperDependencies) (http.Handler, func()) {
 	buildContext, buildCancel := context.WithCancel(context.Background())
 	server := &helperServer{
 		reader:       dependencies.reader,
+		operator:     dependencies.operator,
 		indexStore:   dependencies.indexStore,
 		indexer:      dependencies.indexer,
 		allowedRoots: dependencies.allowedRoots,
@@ -83,6 +92,12 @@ func newHelperHandler(dependencies helperDependencies) (http.Handler, func()) {
 	mux.Handle("GET "+repositoriesPath, requireToken(dependencies.token, http.HandlerFunc(server.handleRepositories)))
 	mux.Handle("GET "+servicesPath, requireToken(dependencies.token, http.HandlerFunc(server.handleServices)))
 	mux.Handle("POST "+validatePathPath, requireToken(dependencies.token, http.HandlerFunc(server.handleValidatePath)))
+	mux.Handle("GET "+branchesPath, requireToken(dependencies.token, http.HandlerFunc(server.handleBranches)))
+	mux.Handle("POST "+checkoutPath, requireToken(dependencies.token, http.HandlerFunc(server.handleCheckout)))
+	mux.Handle("POST "+fetchPath, requireToken(dependencies.token, http.HandlerFunc(server.handleFetch)))
+	mux.Handle("POST "+pullPath, requireToken(dependencies.token, http.HandlerFunc(server.handlePull)))
+	mux.Handle("POST "+stashPath, requireToken(dependencies.token, http.HandlerFunc(server.handleStash)))
+	mux.Handle("POST "+discardPath, requireToken(dependencies.token, http.HandlerFunc(server.handleDiscard)))
 	mux.Handle("GET "+indexStatusPath, requireToken(dependencies.token, http.HandlerFunc(server.handleIndexStatus)))
 	mux.Handle("POST "+indexBuildPath, requireToken(dependencies.token, http.HandlerFunc(server.handleIndexBuild)))
 	mux.Handle("GET "+searchPath, requireToken(dependencies.token, http.HandlerFunc(server.handleSearch)))

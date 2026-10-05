@@ -1,13 +1,24 @@
 import { ApiError } from "../../../lib/http"
 import type {
+  BranchCheckoutResponse,
+  BranchListResponse,
   HelperConnection,
   HelperHealth,
+  RepositoryDiscardResponse,
+  RepositoryFetchResponse,
   RepositoryListResponse,
+  RepositoryPullResponse,
+  RepositoryStashResponse,
   ServiceListResponse,
   ValidatePathRequest,
   ValidatePathResponse
 } from "../types"
-import { HELPER_REQUEST_TIMEOUT_MS, RequestTimeoutError, withRequestTimeout } from "./request-timeout"
+import {
+  GIT_ACTION_TIMEOUT_MS,
+  HELPER_REQUEST_TIMEOUT_MS,
+  RequestTimeoutError,
+  withRequestTimeout
+} from "./request-timeout"
 
 export const DEFAULT_HELPER_URL = "http://127.0.0.1:5199"
 
@@ -42,6 +53,7 @@ interface HelperRequestOptions {
   method: "GET" | "POST"
   body?: unknown
   params?: Record<string, string>
+  timeoutMs?: number
 }
 
 function normalizeHelperUrl(helperUrl: string): string {
@@ -130,7 +142,7 @@ async function requestHelper<T>(
 
   let response: Response
   try {
-    response = await withRequestTimeout(HELPER_REQUEST_TIMEOUT_MS, (signal) =>
+    response = await withRequestTimeout(options.timeoutMs ?? HELPER_REQUEST_TIMEOUT_MS, (signal) =>
       fetch(endpoint, {
         method: options.method,
         headers,
@@ -207,3 +219,70 @@ export const validateHelperPath = (
     body: requestBody
   })
 }
+
+export const fetchHelperBranches = (
+  connection: HelperConnection,
+  rootPath: string,
+  repositoryName: string
+): Promise<BranchListResponse> =>
+  requestHelper<BranchListResponse>(connection, "/branches", {
+    method: "GET",
+    params: { root: rootPath, name: repositoryName }
+  })
+
+export const checkoutHelperBranch = (
+  connection: HelperConnection,
+  rootPath: string,
+  repositoryName: string,
+  branch: string
+): Promise<BranchCheckoutResponse> =>
+  requestHelper<BranchCheckoutResponse>(connection, "/checkout", {
+    method: "POST",
+    params: { root: rootPath, name: repositoryName },
+    body: { branch },
+    timeoutMs: GIT_ACTION_TIMEOUT_MS
+  })
+
+export const runHelperFetch = (
+  connection: HelperConnection,
+  rootPath: string,
+  repositoryName: string
+): Promise<RepositoryFetchResponse> =>
+  requestHelper<RepositoryFetchResponse>(connection, "/fetch", {
+    method: "POST",
+    params: { root: rootPath, name: repositoryName },
+    timeoutMs: GIT_ACTION_TIMEOUT_MS
+  })
+
+export const runHelperPull = (
+  connection: HelperConnection,
+  rootPath: string,
+  repositoryName: string
+): Promise<RepositoryPullResponse> =>
+  requestHelper<RepositoryPullResponse>(connection, "/pull", {
+    method: "POST",
+    params: { root: rootPath, name: repositoryName },
+    timeoutMs: GIT_ACTION_TIMEOUT_MS
+  })
+
+export const runHelperStash = (
+  connection: HelperConnection,
+  rootPath: string,
+  repositoryName: string
+): Promise<RepositoryStashResponse> =>
+  requestHelper<RepositoryStashResponse>(connection, "/stash", {
+    method: "POST",
+    params: { root: rootPath, name: repositoryName },
+    timeoutMs: GIT_ACTION_TIMEOUT_MS
+  })
+
+export const runHelperDiscard = (
+  connection: HelperConnection,
+  rootPath: string,
+  repositoryName: string
+): Promise<RepositoryDiscardResponse> =>
+  requestHelper<RepositoryDiscardResponse>(connection, "/discard", {
+    method: "POST",
+    params: { root: rootPath, name: repositoryName },
+    timeoutMs: GIT_ACTION_TIMEOUT_MS
+  })

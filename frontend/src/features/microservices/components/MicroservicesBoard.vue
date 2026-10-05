@@ -10,6 +10,7 @@ import { findModelOption, readModelPreferences, storeModelPreference } from "./m
 import type { ServiceFilter } from "./service-filters"
 import { countChangedFiles, formatServiceCount } from "./service-presentation"
 import { useMicroservices } from "../composables/useMicroservices"
+import { useRepositoryActions } from "../composables/useRepositoryActions"
 import type { RepositoryDetail, RepositorySummary } from "../types"
 
 const {
@@ -24,6 +25,8 @@ const {
   saveSelections,
   clearError
 } = useMicroservices()
+
+const { actionNotice, clearActionNotice } = useRepositoryActions()
 
 const searchQuery = ref("")
 const debouncedSearchQuery = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS)
@@ -154,6 +157,18 @@ const selectModel = (modelId: string) => {
       <button class="banner-retry" type="button" @click="reloadBoard">Retry</button>
     </div>
 
+    <div v-else-if="actionNotice" class="notice-banner" role="status">
+      <span class="banner-message">{{ actionNotice }}</span>
+      <button
+        class="banner-dismiss"
+        type="button"
+        aria-label="Dismiss the repository action result"
+        @click="clearActionNotice"
+      >
+        Dismiss
+      </button>
+    </div>
+
     <WorkspaceStatePanel
       v-if="selectedRepositoryNames.length === 0"
       title="No repositories selected"
@@ -208,4 +223,18 @@ const selectModel = (modelId: string) => {
   transition: background-color 150ms ease;
 }
 .banner-retry:hover { background: color-mix(in srgb, var(--danger) 16%, transparent); }
+
+.notice-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  margin-bottom: 16px; padding: 12px 16px; border: 1px solid color-mix(in srgb, var(--positive) 30%, transparent);
+  border-radius: 9px; background: color-mix(in srgb, var(--positive) 10%, transparent); color: var(--positive);
+  font-size: 12.5px;
+}
+.banner-dismiss {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 30px; padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--positive) 34%, transparent); border-radius: 8px; background: transparent;
+  color: var(--positive); font-size: 11.5px; font-weight: 600; white-space: nowrap; cursor: pointer;
+  transition: background-color 150ms ease;
+}
+.banner-dismiss:hover { background: color-mix(in srgb, var(--positive) 16%, transparent); }
 </style>

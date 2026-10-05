@@ -43,6 +43,27 @@ func setupWorkspaceHandler(t *testing.T, gitReader workspaceDomain.GitReader) (h
 		t.Fatalf("cannot migrate test database: %v", err)
 	}
 
+	seedHandlerTestUsers(t, db)
+
+	workspaceRepo := infrastructure.NewSQLiteWorkspaceRepository(db)
+	selectionRepo := infrastructure.NewSQLiteSelectionRepository(db)
+	service := application.NewWorkspaceService(workspaceRepo, selectionRepo, gitReader, nil, nil, handlerTestEncryptKey)
+	handler := NewWorkspaceHandler(service)
+
+	authMiddleware := sharedAuth.RequireAuth(handlerTestJWTSecret)
+	mux := http.NewServeMux()
+	mux.Handle("GET /api/workspace", authMiddleware(http.HandlerFunc(handler.GetWorkspace)))
+	mux.Handle("PUT /api/workspace", authMiddleware(http.HandlerFunc(handler.SaveWorkspace)))
+	mux.Handle("GET /api/workspace/repositories", authMiddleware(http.HandlerFunc(handler.ListRepositories)))
+	mux.Handle("GET /api/workspace/services", authMiddleware(http.HandlerFunc(handler.ListServices)))
+	mux.Handle("PUT /api/workspace/selections", authMiddleware(http.HandlerFunc(handler.ReplaceSelections)))
+
+	return mux, db
+}
+
+func seedHandlerTestUsers(t *testing.T, db *sql.DB) {
+	t.Helper()
+
 	now := time.Now().UTC()
 	for _, userID := range []string{handlerTestUserA, handlerTestUserB} {
 		if _, err := db.Exec(
@@ -58,21 +79,6 @@ func setupWorkspaceHandler(t *testing.T, gitReader workspaceDomain.GitReader) (h
 			t.Fatalf("cannot seed user %q: %v", userID, err)
 		}
 	}
-
-	workspaceRepo := infrastructure.NewSQLiteWorkspaceRepository(db)
-	selectionRepo := infrastructure.NewSQLiteSelectionRepository(db)
-	service := application.NewWorkspaceService(workspaceRepo, selectionRepo, gitReader, nil, handlerTestEncryptKey)
-	handler := NewWorkspaceHandler(service)
-
-	authMiddleware := sharedAuth.RequireAuth(handlerTestJWTSecret)
-	mux := http.NewServeMux()
-	mux.Handle("GET /api/workspace", authMiddleware(http.HandlerFunc(handler.GetWorkspace)))
-	mux.Handle("PUT /api/workspace", authMiddleware(http.HandlerFunc(handler.SaveWorkspace)))
-	mux.Handle("GET /api/workspace/repositories", authMiddleware(http.HandlerFunc(handler.ListRepositories)))
-	mux.Handle("GET /api/workspace/services", authMiddleware(http.HandlerFunc(handler.ListServices)))
-	mux.Handle("PUT /api/workspace/selections", authMiddleware(http.HandlerFunc(handler.ReplaceSelections)))
-
-	return mux, db
 }
 
 func authorizedRequest(t *testing.T, method string, path string, body string, userID string) *http.Request {

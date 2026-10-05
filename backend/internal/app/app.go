@@ -117,6 +117,7 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 		workspaceRepo,
 		workspaceSelectionRepo,
 		workspaceGitReader,
+		workspaceGitReader,
 		cfg.WorkspaceAllowedRoots,
 		cfg.EncryptionKey,
 	)
@@ -201,6 +202,12 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	mux.Handle("GET /api/workspace/repositories", authMiddleware(http.HandlerFunc(workspaceHandler.ListRepositories)))
 	mux.Handle("GET /api/workspace/services", authMiddleware(http.HandlerFunc(workspaceHandler.ListServices)))
 	mux.Handle("PUT /api/workspace/selections", authMiddleware(http.HandlerFunc(workspaceHandler.ReplaceSelections)))
+	mux.Handle("GET /api/workspace/branches", authMiddleware(http.HandlerFunc(workspaceHandler.ListBranches)))
+	mux.Handle("POST /api/workspace/checkout", authMiddleware(http.HandlerFunc(workspaceHandler.CheckoutBranch)))
+	mux.Handle("POST /api/workspace/fetch", authMiddleware(http.HandlerFunc(workspaceHandler.FetchRepository)))
+	mux.Handle("POST /api/workspace/pull", authMiddleware(http.HandlerFunc(workspaceHandler.PullRepository)))
+	mux.Handle("POST /api/workspace/stash", authMiddleware(http.HandlerFunc(workspaceHandler.StashRepository)))
+	mux.Handle("POST /api/workspace/discard", authMiddleware(http.HandlerFunc(workspaceHandler.DiscardRepository)))
 
 	handler := sharedHttp.CORSMiddleware(cfg.CORSOrigin)(loggingMiddleware(mux))
 

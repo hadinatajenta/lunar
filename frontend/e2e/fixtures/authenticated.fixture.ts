@@ -7,6 +7,7 @@ import { JiraPage } from "../pages/JiraPage"
 import { BitbucketPage } from "../pages/BitbucketPage"
 import { ConfluencePage } from "../pages/ConfluencePage"
 import { SettingsPage } from "../pages/SettingsPage"
+import { MicroservicesPage } from "../pages/MicroservicesPage"
 
 type AppFixtures = {
   authPage: AuthPage
@@ -17,6 +18,7 @@ type AppFixtures = {
   bitbucketPage: BitbucketPage
   confluencePage: ConfluencePage
   settingsPage: SettingsPage
+  microservicesPage: MicroservicesPage
 }
 
 export const test = base.extend<AppFixtures>({
@@ -43,6 +45,9 @@ export const test = base.extend<AppFixtures>({
   },
   settingsPage: async ({ page }, use) => {
     await use(new SettingsPage(page))
+  },
+  microservicesPage: async ({ page }, use) => {
+    await use(new MicroservicesPage(page))
   }
 })
 

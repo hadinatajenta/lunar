@@ -152,5 +152,9 @@ func (h *WorkspaceHandler) writeError(w http.ResponseWriter, err error) {
 		sharedHttp.WriteError(w, http.StatusBadGateway, repositoryReadMessage)
 		return
 	}
+	if status, message, found := workspaceGitErrorResponse(err); found {
+		sharedHttp.WriteError(w, status, message)
+		return
+	}
 	sharedHttp.WriteError(w, http.StatusInternalServerError, internalMessage)
 }

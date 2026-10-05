@@ -10,13 +10,20 @@ import (
 )
 
 var (
-	ErrInvalidRepoName  = errors.New("invalid repository name")
-	ErrInvalidRoot      = errors.New("invalid workspace root")
-	ErrRootNotFound     = errors.New("workspace root does not exist")
-	ErrRootNotDirectory = errors.New("workspace root is not a directory")
-	ErrRootOutsideScope = errors.New("workspace root is outside the allowed roots")
-	ErrRootNotAllowed   = errors.New("workspace root is not permitted")
-	ErrRepoOutsideRoot  = errors.New("repository path escapes the workspace root")
+	ErrInvalidRepoName    = errors.New("invalid repository name")
+	ErrInvalidBranchName  = errors.New("invalid branch name")
+	ErrBranchNotFound     = errors.New("branch does not exist in this repository")
+	ErrNotGitRepository   = errors.New("not a git repository")
+	ErrWorkingTreeDirty   = errors.New("working tree has uncommitted changes")
+	ErrGitOperationFailed = errors.New("git operation was rejected")
+	ErrGitNetworkFailure  = errors.New("git network operation failed")
+	ErrGitTimeout         = errors.New("git operation timed out")
+	ErrInvalidRoot        = errors.New("invalid workspace root")
+	ErrRootNotFound       = errors.New("workspace root does not exist")
+	ErrRootNotDirectory   = errors.New("workspace root is not a directory")
+	ErrRootOutsideScope   = errors.New("workspace root is outside the allowed roots")
+	ErrRootNotAllowed     = errors.New("workspace root is not permitted")
+	ErrRepoOutsideRoot    = errors.New("repository path escapes the workspace root")
 )
 
 var sensitiveRootPatterns = []string{
@@ -46,6 +53,33 @@ var sensitiveRootRegexps = func() []*regexp.Regexp {
 }()
 
 var repositoryNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+
+var branchNamePattern = regexp.MustCompile(`^[A-Za-z0-9._/-]+$`)
+
+func ValidateBranchName(name string) (string, error) {
+	if name == "" {
+		return "", fmt.Errorf("%w: name is empty", ErrInvalidBranchName)
+	}
+	if !branchNamePattern.MatchString(name) {
+		return "", fmt.Errorf("%w: name contains characters outside letters, digits, dot, hyphen, underscore, and slash", ErrInvalidBranchName)
+	}
+	if strings.HasPrefix(name, "-") {
+		return "", fmt.Errorf("%w: name must not start with a hyphen", ErrInvalidBranchName)
+	}
+	if strings.Contains(name, "..") {
+		return "", fmt.Errorf("%w: relative segments are not allowed", ErrInvalidBranchName)
+	}
+	if strings.Contains(name, "@{") {
+		return "", fmt.Errorf("%w: reflog syntax is not allowed", ErrInvalidBranchName)
+	}
+	if strings.Trim(name, ".") == "" {
+		return "", fmt.Errorf("%w: name must not consist only of dots", ErrInvalidBranchName)
+	}
+	if strings.HasPrefix(name, "/") || strings.HasSuffix(name, "/") || strings.Contains(name, "//") {
+		return "", fmt.Errorf("%w: path separators must separate path segments", ErrInvalidBranchName)
+	}
+	return name, nil
+}
 
 func ValidateRepoName(name string) (string, error) {
 	trimmed := strings.TrimSpace(name)

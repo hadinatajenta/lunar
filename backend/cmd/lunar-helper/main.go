@@ -51,6 +51,7 @@ func main() {
 
 	dependencies := helperDependencies{
 		reader:         inspector,
+		operator:       inspector,
 		allowedRoots:   workspaceConfig.WorkspaceAllowedRoots,
 		token:          token,
 		allowedOrigins: parseOriginList(os.Getenv(helperOriginsEnv)),

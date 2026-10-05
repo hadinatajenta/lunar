@@ -61,6 +61,38 @@ export interface SelectionUpdateResponse {
   selected_count: number
 }
 
+export interface BranchOption {
+  name: string
+  is_current: boolean
+  updated_relative: string
+}
+
+export interface BranchListResponse {
+  branches: BranchOption[]
+}
+
+export interface BranchCheckoutResponse {
+  branch: string
+}
+
+export interface RepositoryFetchResponse {
+  ahead: number
+  behind: number
+}
+
+export interface RepositoryPullResponse {
+  branch: string
+  updated_relative: string
+}
+
+export interface RepositoryStashResponse {
+  stash_count: number
+}
+
+export interface RepositoryDiscardResponse {
+  restored_count: number
+}
+
 export interface HelperHealth {
   status: string
   version: string
@@ -81,3 +113,13 @@ export interface ValidatePathResponse {
 }
 
 export type HelperConnectionStatus = "unknown" | "checking" | "online" | "offline"
+
+export type RepositoryActionKind = "checkout" | "fetch" | "pull" | "stash" | "discard"
+
+export type RepositoryActionStatus = "idle" | "running" | "failed"
+
+export interface RepositoryActionState {
+  status: RepositoryActionStatus
+  kind: RepositoryActionKind | null
+  message: string
+}

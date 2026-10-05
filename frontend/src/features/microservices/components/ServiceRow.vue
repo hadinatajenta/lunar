@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed } from "vue"
 import type { RepositoryDetail } from "../types"
+import BranchPicker from "./BranchPicker.vue"
+import RepositoryActionsMenu from "./RepositoryActionsMenu.vue"
 import ServiceDetailPanel from "./ServiceDetailPanel.vue"
+import { useRepositoryActions } from "../composables/useRepositoryActions"
 import {
   countChangedFiles,
   formatDirtyLabel,
@@ -26,6 +29,13 @@ const dirtyLevel = computed(() => resolveDirtyLevel(changedFileCount.value))
 const dirtyLabel = computed(() => formatDirtyLabel(changedFileCount.value))
 const initials = computed(() => resolveRepositoryInitials(props.service.name))
 const commitHash = computed(() => resolveShortCommitHash(props.service.commit.hash))
+
+const { resolveActionState } = useRepositoryActions()
+const actionState = computed(() => resolveActionState(props.service.name))
+const isBusy = computed(() => actionState.value.status === "running")
+const actionFailureMessage = computed(() =>
+  actionState.value.status === "failed" ? actionState.value.message : ""
+)
 </script>
 
 <template>
@@ -43,7 +53,11 @@ const commitHash = computed(() => resolveShortCommitHash(props.service.commit.ha
   </tr>
 
   <template v-else>
-    <tr class="service-row" :class="{ 'is-open': props.isOpen }" @click="emit('toggle')">
+    <tr
+      class="service-row"
+      :class="{ 'is-open': props.isOpen, 'is-busy': isBusy }"
+      @click="emit('toggle')"
+    >
       <td>
         <div class="svc-name">
           <span class="svc-mark">{{ initials }}</span>
@@ -55,16 +69,11 @@ const commitHash = computed(() => resolveShortCommitHash(props.service.commit.ha
       </td>
 
       <td class="col-branch">
-        <span v-if="props.service.branch" class="branch-pill">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="6" cy="6" r="2.5"></circle>
-            <circle cx="6" cy="18" r="2.5"></circle>
-            <circle cx="18" cy="12" r="2.5"></circle>
-            <path d="M6 8.5v7"></path>
-            <path d="M8.5 6h4a3 3 0 0 1 3 3v1"></path>
-          </svg>
-          {{ props.service.branch }}
-        </span>
+        <BranchPicker
+          v-if="props.service.branch"
+          :repository-name="props.service.name"
+          :branch="props.service.branch"
+        />
         <span v-else class="muted-value">No branch</span>
       </td>
 
@@ -77,17 +86,13 @@ const commitHash = computed(() => resolveShortCommitHash(props.service.commit.ha
       </td>
 
       <td class="col-action">
-        <button
-          class="expand-btn"
-          type="button"
-          :aria-expanded="props.isOpen"
-          :aria-label="props.isOpen ? `Collapse ${props.service.name}` : `Expand ${props.service.name}`"
-          @click.stop="emit('toggle')"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M6 9l6 6 6-6"></path>
-          </svg>
-        </button>
+        <RepositoryActionsMenu
+          :repository-name="props.service.name"
+          :is-details-open="props.isOpen"
+          :is-busy="isBusy"
+          :failure-message="actionFailureMessage"
+          @toggle-details="emit('toggle')"
+        />
       </td>
     </tr>
 
@@ -120,16 +125,6 @@ const commitHash = computed(() => resolveShortCommitHash(props.service.commit.ha
 .svc-title { overflow: hidden; color: var(--text); font-size: 12.5px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
 .svc-sub { margin-top: 3px; color: var(--subtle); font-size: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
-.branch-pill {
-  display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 3px 7px; border: 1px solid var(--border);
-  border-radius: 6px; background: var(--surface-raised); color: var(--muted); font-size: 10.5px; overflow-wrap: anywhere;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-.branch-pill svg {
-  width: 10px; height: 10px; flex: 0 0 auto; stroke: currentColor; stroke-width: 2; fill: none;
-  stroke-linecap: round; stroke-linejoin: round;
-}
-
 .muted-value, .updated-value { color: var(--subtle); font-size: 11px; }
 
 .dirty-count {
@@ -148,17 +143,7 @@ const commitHash = computed(() => resolveShortCommitHash(props.service.commit.ha
 }
 
 .col-action { width: 44px; text-align: right; }
-.expand-btn {
-  display: grid; place-items: center; width: 30px; height: 30px; margin-left: auto; border: 1px solid var(--border);
-  border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer;
-  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
-}
-.expand-btn:hover { border-color: var(--border-strong); background: var(--surface-hover); color: var(--text); }
-.expand-btn svg {
-  width: 13px; height: 13px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round;
-  stroke-linejoin: round; transition: transform 200ms ease;
-}
-.service-row.is-open .expand-btn svg { transform: rotate(180deg); }
+.service-row.is-busy { background: color-mix(in srgb, var(--accent) 6%, transparent); }
 
 .expand-row td { padding: 0; border-bottom: 1px solid var(--border); background: var(--surface); }
 
