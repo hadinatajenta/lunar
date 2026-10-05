@@ -31,23 +31,69 @@ const buildBoardRepository = (repositoryName: string) => ({
   error: ""
 })
 
-export const buildWorkspaceSettings = () => ({
+export const BOARD_TALL_REPOSITORY_NAMES = [
+  ...BOARD_REPOSITORY_NAMES,
+  "bandung",
+  "cendana",
+  "dahlia",
+  "eclipse",
+  "flamboyan",
+  "garuda",
+  "himalaya",
+  "indigo",
+  "jasmine",
+  "kenanga",
+  "lotus",
+  "meranti"
+]
+
+export const buildWorkspaceSettings = (selected: string[] = BOARD_REPOSITORY_NAMES) => ({
   source: "server",
   root_path: BOARD_ROOT_PATH,
   helper_url: "http://127.0.0.1:5199",
   has_helper_token: false,
-  selected: [...BOARD_REPOSITORY_NAMES]
+  selected: [...selected]
 })
 
-export function routeWorkspaceBoard(page: Page): Promise<unknown[]> {
+export const BOARD_CURRENT_BRANCH = "master"
+export const BOARD_BRANCH_NAMES = [
+  BOARD_CURRENT_BRANCH,
+  "development",
+  "staging",
+  "release/v1.13.0-program-mdr",
+  "feature/CRMMS-69759-maintenance-mdr",
+  "feature/CRMMS-73952-inbox-cm",
+  "feature/CRMMS-75734-manage-wa-notif",
+  "bugfix/62302-fixing-conflict"
+]
+
+const buildBoardBranch = (name: string, index: number) => ({
+  name,
+  is_current: index === 0,
+  updated_relative: index === 0 ? "2 hours ago" : "3 days ago"
+})
+
+export function routeWorkspaceBranches(page: Page): Promise<unknown[]> {
+  const registration = page.route(/\/api\/workspace\/branches/, (route) =>
+    route.fulfill({
+      json: { branches: BOARD_BRANCH_NAMES.map(buildBoardBranch) }
+    })
+  )
+  return Promise.all([registration])
+}
+
+export function routeWorkspaceBoard(
+  page: Page,
+  repositoryNames: string[] = BOARD_REPOSITORY_NAMES
+): Promise<unknown[]> {
   const workspaceRegistration = page.route(/\/api\/workspace$/, (route) =>
-    route.fulfill({ json: buildWorkspaceSettings() })
+    route.fulfill({ json: buildWorkspaceSettings(repositoryNames) })
   )
   const repositoriesRegistration = page.route(/\/api\/workspace\/repositories$/, (route) =>
     route.fulfill({
       json: {
         root_path: BOARD_ROOT_PATH,
-        repositories: BOARD_REPOSITORY_NAMES.map(buildBoardRepository)
+        repositories: repositoryNames.map(buildBoardRepository)
       }
     })
   )
@@ -55,7 +101,7 @@ export function routeWorkspaceBoard(page: Page): Promise<unknown[]> {
     route.fulfill({
       json: {
         root_path: BOARD_ROOT_PATH,
-        services: BOARD_REPOSITORY_NAMES.map(buildBoardService)
+        services: repositoryNames.map(buildBoardService)
       }
     })
   )

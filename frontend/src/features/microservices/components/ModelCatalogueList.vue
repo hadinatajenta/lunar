@@ -33,7 +33,6 @@ defineExpose({ focusSelected })
 
 <template>
   <div
-    v-if="props.models.length > 0"
     ref="radiogroupElement"
     class="model-list"
     role="radiogroup"
@@ -59,11 +58,12 @@ defineExpose({ focusSelected })
       <span class="model-option-name">{{ model.name }}</span>
       <span v-if="isFreeModelId(model.id)" class="model-option-badge" aria-hidden="true">Free</span>
     </label>
-  </div>
 
-  <button v-else class="model-option is-unavailable" type="button" disabled>
-    No AI model available
-  </button>
+    <label v-if="props.models.length === 0" class="model-option is-unavailable">
+      <input class="model-radio" type="radio" name="microservices-model" value="" disabled />
+      <span>No AI model available</span>
+    </label>
+  </div>
 </template>
 
 <style scoped>

@@ -1,9 +1,19 @@
 import { test, expect } from "../../../fixtures/authenticated.fixture"
 import { routeWorkspaceGitActions } from "../../../helpers/route-mock"
+import {
+  BOARD_TALL_REPOSITORY_NAMES,
+  routeWorkspaceBoard,
+  routeWorkspaceBranches
+} from "../../../helpers/workspace-board"
 
 const REPOSITORY_NAME = "aurora"
 
 test.describe("Microservices branch picker", () => {
+  test.beforeEach(async ({ page }) => {
+    await routeWorkspaceBoard(page)
+    await routeWorkspaceBranches(page)
+  })
+
   test(
     "MS-BRANCH-001 the branch pill is a button that opens a named branch popup",
     { tag: ["@microservices", "@positive", "@branch-picker", "@p0"] },
@@ -126,6 +136,7 @@ test.describe("Microservices branch picker", () => {
     "MS-BRANCH-006 the popup opens below the pill with room below and above the last row",
     { tag: ["@microservices", "@positive", "@branch-picker", "@p1"] },
     async ({ page, microservicesPage }) => {
+      await routeWorkspaceBoard(page, BOARD_TALL_REPOSITORY_NAMES)
       routeWorkspaceGitActions(page)
       await microservicesPage.navigateTo()
 

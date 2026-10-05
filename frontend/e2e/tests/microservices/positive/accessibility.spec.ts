@@ -2,6 +2,7 @@ import type { Locator, Page } from "@playwright/test"
 import { test, expect } from "../../../fixtures/authenticated.fixture"
 import { routeWorkspaceGitActions } from "../../../helpers/route-mock"
 import { escapeRegExpPattern } from "../../../pages/MicroservicesPage"
+import { routeWorkspaceBoard, routeWorkspaceBranches } from "../../../helpers/workspace-board"
 
 const REPOSITORY_NAME = "aurora"
 const TAB_PRESS_LIMIT = 40
@@ -18,6 +19,11 @@ async function focusWithTabKey(page: Page, target: Locator): Promise<void> {
 }
 
 test.describe("Microservices keyboard and accessible names", () => {
+  test.beforeEach(async ({ page }) => {
+    await routeWorkspaceBoard(page)
+    await routeWorkspaceBranches(page)
+  })
+
   test(
     "MS-A11Y-001 the branch picker is operable with the keyboard alone",
     { tag: ["@microservices", "@positive", "@accessibility", "@p0"] },

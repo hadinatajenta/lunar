@@ -1,9 +1,15 @@
 import { test, expect } from "../../../fixtures/authenticated.fixture"
 import { routeWorkspaceGitActions } from "../../../helpers/route-mock"
+import { routeWorkspaceBoard, routeWorkspaceBranches } from "../../../helpers/workspace-board"
 
 const REPOSITORY_NAME = "aurora"
 
 test.describe("Microservices discard confirmation", () => {
+  test.beforeEach(async ({ page }) => {
+    await routeWorkspaceBoard(page)
+    await routeWorkspaceBranches(page)
+  })
+
   test(
     "MS-DISCARD-001 choosing Discard changes opens the confirmation dialog",
     { tag: ["@microservices", "@positive", "@discard", "@p0"] },

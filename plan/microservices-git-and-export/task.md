@@ -97,7 +97,7 @@ Nothing is implemented yet. `[ ]` not started, `[~]` in progress, `[x]` done and
 - [x] failure keeps the modal open with a readable reason and a retry
 - [x] repository model preference preserved
 
-### 2Q QA  [~ RUNNING]
+### 2Q QA  [DONE]
 
 - [ ] selector verified against panama, merchant-service-laravel, micro-user-mms, mocash_api, and fe-mms
 - [ ] `mms` and `fe-mms` refused with a reason

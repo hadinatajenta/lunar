@@ -1,10 +1,16 @@
 import { test, expect } from "../../../fixtures/authenticated.fixture"
 import { routeWorkspaceGitActions } from "../../../helpers/route-mock"
+import { routeWorkspaceBoard, routeWorkspaceBranches } from "../../../helpers/workspace-board"
 
 const REPOSITORY_NAME = "aurora"
 const MENU_ITEM_LABELS = ["Pull", "Fetch", "Stash changes local", "Discard changes", "Details"]
 
 test.describe("Microservices repository actions menu", () => {
+  test.beforeEach(async ({ page }) => {
+    await routeWorkspaceBoard(page)
+    await routeWorkspaceBranches(page)
+  })
+
   test(
     "MS-MENU-001 the kebab trigger is a button that opens the repository actions menu",
     { tag: ["@microservices", "@positive", "@actions-menu", "@p0"] },
