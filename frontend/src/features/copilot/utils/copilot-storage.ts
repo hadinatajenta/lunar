@@ -20,11 +20,6 @@ export const loadSessionMessages = (sessionId: string): ChatMessage[] =>
 export const loadSelectedModel = (): string =>
   localStorage.getItem("copilot_selected_model") || "DeepSeek-V4 Pro (Thinking)"
 
-export const loadThinkingMode = (): boolean => {
-  const val = localStorage.getItem("copilot_thinking_mode")
-  return val === null ? true : val === "true"
-}
-
 export const loadReasoningEffort = (): ReasoningEffort => {
   const val = localStorage.getItem("copilot_reasoning_effort") as ReasoningEffort
   return val === "low" || val === "high" ? val : "medium"

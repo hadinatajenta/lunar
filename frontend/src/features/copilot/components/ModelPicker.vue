@@ -1,37 +1,93 @@
 <script setup lang="ts">
-import { computed, ref } from "vue"
+import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue"
 import { useCopilot } from "../composables/useCopilot"
+import type { ReasoningEffort } from "../types"
 
-const { selectedModel, thinkingMode, configuredModels, allSupportedModels } = useCopilot()
+const { selectedModel, reasoningEffort, configuredModels, allSupportedModels } = useCopilot()
 
-const THINKING_MODEL_HINTS = ["Thinking", "Reasoning", "Astra", "Opus", "Fable", "Pro"]
+const EFFORT_OPTIONS: { id: ReasoningEffort; label: string }[] = [
+  { id: "low", label: "Low" },
+  { id: "medium", label: "Med" },
+  { id: "high", label: "High" }
+]
 
 const isModelMenuOpen = ref(false)
+const menuView = ref<"root" | "model" | "effort">("root")
+const modelSearchQuery = ref("")
+const searchInputElement = ref<HTMLInputElement | null>(null)
 
 const unconfiguredModels = computed(() => {
   const configuredNames = new Set(configuredModels.value.map((model) => model.name))
   return allSupportedModels.filter((model) => !configuredNames.has(model.name))
 })
 
+const filteredConfiguredModels = computed(() => {
+  const query = modelSearchQuery.value.trim().toLowerCase()
+  if (query === "") return configuredModels.value
+  return configuredModels.value.filter((model) => model.name.toLowerCase().includes(query))
+})
+
+const openMenu = (): void => {
+  menuView.value = "root"
+  modelSearchQuery.value = ""
+  isModelMenuOpen.value = true
+}
+
+const toggleMenu = (): void => {
+  isModelMenuOpen.value ? closeMenu() : openMenu()
+}
+
+const closeMenu = (): void => {
+  isModelMenuOpen.value = false
+  modelSearchQuery.value = ""
+}
+
 const selectModel = (modelName: string): void => {
   const isAllowed = configuredModels.value.some((model) => model.name === modelName)
   if (!isAllowed) return
   selectedModel.value = modelName
-  isModelMenuOpen.value = false
-  if (THINKING_MODEL_HINTS.some((hint) => modelName.includes(hint))) {
-    thinkingMode.value = true
-  }
+  menuView.value = "root"
+  modelSearchQuery.value = ""
 }
+
+const selectEffort = (effort: ReasoningEffort): void => {
+  reasoningEffort.value = effort
+  menuView.value = "root"
+}
+
+const handleEscape = (event: KeyboardEvent): void => {
+  if (event.key !== "Escape") return
+  event.preventDefault()
+  closeMenu()
+}
+
+watch(isModelMenuOpen, (isOpen) => {
+  if (isOpen) {
+    window.addEventListener("keydown", handleEscape)
+    return
+  }
+  window.removeEventListener("keydown", handleEscape)
+})
+
+watch(menuView, async (view) => {
+  if (view !== "model") return
+  await nextTick()
+  searchInputElement.value?.focus()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", handleEscape)
+})
 </script>
 
 <template>
-  <div class="model-picker" @keydown.escape="isModelMenuOpen = false">
+  <div class="model-picker">
     <button
       class="model-trigger"
       type="button"
       :aria-expanded="isModelMenuOpen"
       title="Select a model"
-      @click="isModelMenuOpen = !isModelMenuOpen"
+      @click="toggleMenu"
     >
       <span class="model-trigger-label">{{ selectedModel }}</span>
       <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -40,181 +96,119 @@ const selectModel = (modelName: string): void => {
     </button>
 
     <div v-if="isModelMenuOpen" class="model-menu">
-      <div v-if="configuredModels.length === 0" class="model-empty-notice">
-        <span>No AI providers configured.</span>
-        <RouterLink to="/settings" class="model-settings-link">Configure in Settings →</RouterLink>
-      </div>
+      <template v-if="menuView === 'root'">
+        <button
+          class="model-option"
+          type="button"
+          data-testid="model-root-option-model"
+          @click="menuView = 'model'"
+        >
+          <span>Model</span>
+        </button>
+        <button
+          class="model-option"
+          type="button"
+          data-testid="model-root-option-effort"
+          @click="menuView = 'effort'"
+        >
+          <span>Effort</span>
+        </button>
+      </template>
+
+      <template v-else-if="menuView === 'model'">
+        <div class="model-menu-header">
+          <button
+            class="model-back"
+            type="button"
+            title="Back"
+            data-testid="model-picker-back"
+            @click="menuView = 'root'"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m15 6-6 6 6 6"></path>
+            </svg>
+          </button>
+          <input
+            ref="searchInputElement"
+            v-model="modelSearchQuery"
+            class="model-search-input"
+            type="text"
+            placeholder="Search models"
+            data-testid="model-search-input"
+            @keydown.enter.prevent
+          />
+        </div>
+
+        <div v-if="configuredModels.length === 0" class="model-empty-notice">
+          <span>No AI providers configured.</span>
+          <RouterLink to="/settings" class="model-settings-link">Configure in Settings →</RouterLink>
+        </div>
+
+        <template v-else>
+          <button
+            v-for="model in filteredConfiguredModels"
+            :key="model.name"
+            class="model-option"
+            :class="{ 'is-selected': selectedModel === model.name }"
+            type="button"
+            :aria-pressed="selectedModel === model.name"
+            @click="selectModel(model.name)"
+          >
+            <span>{{ model.name }}</span>
+            <svg v-if="selectedModel === model.name" class="check" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m5 13 4 4L19 7"></path>
+            </svg>
+          </button>
+        </template>
+
+        <div v-if="unconfiguredModels.length > 0" class="model-menu-divider">
+          <span>Requires API Key in Settings</span>
+        </div>
+
+        <div
+          v-for="model in unconfiguredModels"
+          :key="model.name"
+          class="model-option is-disabled"
+          data-testid="model-option-disabled"
+        >
+          <span class="disabled-name">{{ model.name }}</span>
+          <span class="unconfigured-tag">Locked</span>
+        </div>
+      </template>
 
       <template v-else>
+        <div class="model-menu-header">
+          <button
+            class="model-back"
+            type="button"
+            title="Back"
+            data-testid="model-picker-back"
+            @click="menuView = 'root'"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m15 6-6 6 6 6"></path>
+            </svg>
+          </button>
+          <span class="model-header-title">Effort</span>
+        </div>
+
         <button
-          v-for="model in configuredModels"
-          :key="model.name"
+          v-for="option in EFFORT_OPTIONS"
+          :key="option.id"
           class="model-option"
-          :class="{ 'is-selected': selectedModel === model.name }"
+          :class="{ 'is-selected': reasoningEffort === option.id }"
           type="button"
-          @click="selectModel(model.name)"
+          :data-testid="`effort-option-${option.id}`"
+          :aria-pressed="reasoningEffort === option.id"
+          @click="selectEffort(option.id)"
         >
-          <span>{{ model.name }}</span>
-          <svg v-if="selectedModel === model.name" class="check" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <span>{{ option.label }}</span>
+          <svg v-if="reasoningEffort === option.id" class="check" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="m5 13 4 4L19 7"></path>
           </svg>
         </button>
       </template>
-
-      <div v-if="unconfiguredModels.length > 0" class="model-menu-divider">
-        <span>Requires API Key in Settings</span>
-      </div>
-
-      <div
-        v-for="model in unconfiguredModels"
-        :key="model.name"
-        class="model-option is-disabled"
-        data-testid="model-option-disabled"
-      >
-        <span class="disabled-name">{{ model.name }}</span>
-        <span class="unconfigured-tag">Locked</span>
-      </div>
     </div>
   </div>
 </template>
-
-<style scoped>
-.model-picker {
-  position: relative;
-}
-
-.model-trigger {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 28px;
-  max-width: 220px;
-  padding: 0 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface-raised);
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease;
-}
-
-.model-trigger:hover {
-  background: var(--surface-hover);
-  border-color: var(--border-strong);
-  color: var(--text);
-}
-
-.model-trigger:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.model-trigger svg {
-  width: 12px;
-  height: 12px;
-  flex-shrink: 0;
-}
-
-.model-trigger-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.model-menu {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  right: 0;
-  width: 240px;
-  padding: 4px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-  display: grid;
-  gap: 2px;
-  z-index: 30;
-}
-
-.model-option {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
-  padding: 7px 10px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 12px;
-  text-align: left;
-  cursor: pointer;
-  transition: color 160ms ease, background-color 160ms ease;
-}
-
-.model-option:hover {
-  background: var(--surface-hover);
-  color: var(--text);
-}
-
-.model-option.is-selected {
-  color: var(--text);
-  font-weight: 600;
-}
-
-.model-option .check {
-  width: 12px;
-  height: 12px;
-  stroke: var(--positive);
-}
-
-.model-option.is-disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-  background: var(--surface-raised);
-}
-
-.disabled-name {
-  color: var(--subtle);
-  font-size: 11px;
-}
-
-.unconfigured-tag {
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--danger) 16%, transparent);
-  color: var(--danger);
-  font-size: 9px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.model-menu-divider {
-  padding: 6px 10px 4px;
-  margin-top: 4px;
-  border-top: 1px solid var(--border);
-  color: var(--subtle);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.model-empty-notice {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 12px 10px;
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.model-settings-link {
-  color: var(--text);
-  font-weight: 500;
-  text-decoration: underline;
-}
-</style>
+<style scoped src="./model-picker.css"></style>

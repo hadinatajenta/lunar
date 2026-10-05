@@ -1,46 +1,11 @@
-import type { Page } from "@playwright/test"
 import { test, expect } from "../../../fixtures/authenticated.fixture"
 import { routeSecrets, routeSystemConfig } from "../../../helpers/route-mock"
 import { mockChatSuccessResponse } from "../../../data/copilot.data"
-import { contrastRatio, parseColor, type RgbColor } from "../../../helpers/contrast"
 
-type ToggleStyles = {
-  iconColor: string
-  iconBackground: string
-  pageBackground: string
-}
+const VIEWPORT_HEIGHT_RATIO = 0.4
+const LENGTH_TOLERANCE_PX = 2
 
-const TRANSITION_SETTLE_MS = 350
-
-const readToggleStyles = (page: Page): Promise<ToggleStyles> =>
-  page.evaluate(() => {
-    const toggle = document.querySelector(".thinking-toggle") as HTMLElement
-    const inputArea = document.querySelector(".chat-input-area") as HTMLElement
-    const toggleStyle = window.getComputedStyle(toggle)
-    const inputAreaStyle = window.getComputedStyle(inputArea)
-    return {
-      iconColor: toggleStyle.color,
-      iconBackground: toggleStyle.backgroundColor,
-      pageBackground: inputAreaStyle.backgroundColor
-    }
-  })
-
-const requireColor = (rawColor: string, label: string): RgbColor => {
-  const color = parseColor(rawColor)
-  if (color === null) throw new Error(`${label} is not a measurable colour: "${rawColor}"`)
-  return color
-}
-
-const readToggleContrast = async (page: Page): Promise<{ color: RgbColor; ratio: number }> => {
-  await page.waitForTimeout(TRANSITION_SETTLE_MS)
-  const styles = await readToggleStyles(page)
-  const color = requireColor(styles.iconColor, "thinking icon colour")
-  const background = requireColor(styles.iconBackground, "thinking icon background")
-  const pageBackground = requireColor(styles.pageBackground, "chat input background")
-  return { color, ratio: contrastRatio(color, background, pageBackground) }
-}
-
-test.describe("AI Copilot - Composer, Thinking and Effort Controls", () => {
+test.describe("AI Copilot - Composer, Model and Effort Controls", () => {
   test.beforeEach(async ({ page }) => {
     await routeSecrets(page, { hasAiKeys: true, configuredAiProviders: ["deepseek"] })
     await routeSystemConfig(page, [])
@@ -79,82 +44,149 @@ test.describe("AI Copilot - Composer, Thinking and Effort Controls", () => {
   )
 
   test(
-    "CP-THINK-001 thinking is an icon-only brain control with an accessible name, an aria state, and a gold or grey icon that meets contrast in both themes",
+    "CP-COMPOSER-002 the composer wraps long input instead of scrolling sideways and never grows past four tenths of the viewport",
     {
-      tag: ["@copilot", "@positive", "@controls", "@contrast"]
+      tag: ["@copilot", "@positive", "@composer"]
     },
     async ({ page, copilotPage }) => {
       await copilotPage.navigateTo()
 
-      const toggle = copilotPage.thinkingToggle
-      await expect(toggle).toBeVisible()
-      await expect(toggle).toHaveText("")
-      await expect(toggle).toHaveAttribute("aria-label", "Thinking mode")
-      await expect(toggle).toHaveAttribute("aria-pressed", "true")
+      const initialHeight = await copilotPage.composerInput.evaluate(
+        (element) => element.getBoundingClientRect().height
+      )
 
-      const darkGold = await readToggleContrast(page)
-      expect(darkGold.ratio).toBeGreaterThanOrEqual(4.5)
-      expect(darkGold.color.r).toBeGreaterThan(darkGold.color.b)
+      const longWord = "wrapping".repeat(90)
+      await copilotPage.composerInput.fill(longWord)
 
-      await toggle.click()
-      await expect(toggle).toHaveAttribute("aria-pressed", "false")
+      const metrics = await copilotPage.composerInput.evaluate((element) => {
+        const style = window.getComputedStyle(element)
+        return {
+          height: element.getBoundingClientRect().height,
+          scrollWidth: element.scrollWidth,
+          clientWidth: element.clientWidth,
+          maxHeight: Number.parseFloat(style.maxHeight),
+          overflowY: style.overflowY,
+          whiteSpace: style.whiteSpace
+        }
+      })
 
-      const darkGrey = await readToggleContrast(page)
-      expect(darkGrey.ratio).toBeGreaterThanOrEqual(4.5)
-      expect(darkGrey.color.b).toBeGreaterThanOrEqual(darkGrey.color.r)
+      expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + LENGTH_TOLERANCE_PX)
+      expect(metrics.height).toBeGreaterThan(initialHeight)
+      expect(metrics.overflowY).toBe("auto")
+      expect(metrics.whiteSpace).not.toBe("nowrap")
 
-      await page.evaluate(() => document.documentElement.setAttribute("data-theme", "light"))
-
-      const lightGrey = await readToggleContrast(page)
-      expect(lightGrey.ratio).toBeGreaterThanOrEqual(4.5)
-
-      await toggle.click()
-      await expect(toggle).toHaveAttribute("aria-pressed", "true")
-
-      const lightGold = await readToggleContrast(page)
-      expect(lightGold.ratio).toBeGreaterThanOrEqual(4.5)
-      expect(lightGold.color.r).toBeGreaterThan(lightGold.color.b)
+      const expectedMaxHeight = page.viewportSize()!.height * VIEWPORT_HEIGHT_RATIO
+      expect(metrics.maxHeight).toBeGreaterThan(expectedMaxHeight - LENGTH_TOLERANCE_PX)
+      expect(metrics.maxHeight).toBeLessThan(expectedMaxHeight + LENGTH_TOLERANCE_PX)
     }
   )
 
   test(
-    "CP-REASON-001 reasoning effort is grouped with thinking, reachable by keyboard, and inactive while thinking is off",
+    "CP-THINK-001 thinking mode is always on and offers no control to switch it off",
     {
       tag: ["@copilot", "@positive", "@controls"]
     },
     async ({ page, copilotPage }) => {
       await copilotPage.navigateTo()
 
-      await expect(copilotPage.effortControl).toBeVisible()
-      await expect(copilotPage.effortControl).toContainText("Reasoning effort")
-      await expect(copilotPage.effortRequirement).toHaveText("Applies only while thinking is on")
-      await expect(copilotPage.effortOption("Medium")).toHaveAttribute("aria-pressed", "true")
-
-      await copilotPage.thinkingToggle.focus()
-      await page.keyboard.press("Tab")
-      await expect(copilotPage.effortOption("Low")).toBeFocused()
-      await page.keyboard.press("Tab")
-      await expect(copilotPage.effortOption("Medium")).toBeFocused()
-
-      await copilotPage.effortOption("High").click()
-      await expect(copilotPage.effortOption("High")).toHaveAttribute("aria-pressed", "true")
-      await expect(copilotPage.effortOption("Medium")).toHaveAttribute("aria-pressed", "false")
-      await expect.poll(() => page.evaluate(() => localStorage.getItem("copilot_reasoning_effort"))).toBe("high")
-
-      await copilotPage.thinkingToggle.click()
-      await expect(copilotPage.effortOptions).toHaveAttribute("aria-disabled", "true")
-      await expect(copilotPage.effortOption("High")).toHaveAttribute("aria-disabled", "true")
-      await expect.poll(() => page.evaluate(() => getComputedStyle(document.querySelector(".effort-options") as Element).opacity)).not.toBe("1")
-
-      await copilotPage.effortOption("Low").dispatchEvent("click")
-      await expect(copilotPage.effortOption("High")).toHaveAttribute("aria-pressed", "true")
-
-      await copilotPage.thinkingToggle.click()
-      await expect(copilotPage.effortOptions).toHaveAttribute("aria-disabled", "false")
+      await expect(page.locator(".thinking-toggle")).toHaveCount(0)
+      await expect(page.locator('[aria-label="Thinking mode"]')).toHaveCount(0)
 
       await page.reload()
-      await expect(copilotPage.effortOption("High")).toHaveAttribute("aria-pressed", "true")
-      await expect(copilotPage.thinkingToggle).toHaveAttribute("aria-pressed", "true")
+      await expect(page.locator(".thinking-toggle")).toHaveCount(0)
+    }
+  )
+
+  test(
+    "CP-PICKER-MODEL-001 opening the picker shows Model and Effort, the model view searches and returns, and a choice applies",
+    {
+      tag: ["@copilot", "@positive", "@controls"]
+    },
+    async ({ page, copilotPage }) => {
+      await copilotPage.navigateTo()
+
+      await copilotPage.modelTrigger.click()
+      await expect(copilotPage.modelRootOptionModel).toBeVisible()
+      await expect(copilotPage.modelRootOptionEffort).toBeVisible()
+      await expect(copilotPage.modelSearchInput).toHaveCount(0)
+
+      await copilotPage.modelRootOptionModel.click()
+      await expect(copilotPage.modelSearchInput).toBeVisible()
+      await expect(copilotPage.modelBackButton).toBeVisible()
+      await expect(copilotPage.modelOption("DeepSeek Flash")).toBeVisible()
+      await expect(copilotPage.modelOption("DeepSeek-V4 Pro")).toBeVisible()
+
+      await copilotPage.modelSearchInput.fill("Flash")
+      await expect(copilotPage.modelOption("DeepSeek Flash")).toBeVisible()
+      await expect(copilotPage.modelOption("DeepSeek-V4 Pro")).toHaveCount(0)
+
+      await copilotPage.modelSearchInput.fill("no-such-model")
+      await expect(page.locator(".model-option.is-selected")).toHaveCount(0)
+
+      await copilotPage.modelBackButton.click()
+      await expect(copilotPage.modelRootOptionModel).toBeVisible()
+
+      await copilotPage.modelRootOptionModel.click()
+      await copilotPage.modelSearchInput.fill("Flash")
+      await copilotPage.modelOption("DeepSeek Flash").click()
+
+      await expect(copilotPage.modelRootOptionModel).toBeVisible()
+      await expect(copilotPage.modelTriggerLabel).toHaveText("DeepSeek Flash")
+      await expect.poll(() => page.evaluate(() => localStorage.getItem("copilot_selected_model"))).toBe("DeepSeek Flash")
+    }
+  )
+
+  test(
+    "CP-EFFORT-001 the effort view lists Low, Med and High, and a choice applies and returns to the picker root",
+    {
+      tag: ["@copilot", "@positive", "@controls"]
+    },
+    async ({ page, copilotPage }) => {
+      await copilotPage.navigateTo()
+
+      await copilotPage.modelTrigger.click()
+      await copilotPage.modelRootOptionEffort.click()
+
+      await expect(copilotPage.effortOption("low")).toBeVisible()
+      await expect(copilotPage.effortOption("medium")).toBeVisible()
+      await expect(copilotPage.effortOption("high")).toBeVisible()
+      await expect(copilotPage.effortOption("medium")).toHaveAttribute("aria-pressed", "true")
+
+      await copilotPage.effortOption("high").click()
+      await expect(copilotPage.modelRootOptionEffort).toBeVisible()
+      await expect.poll(() => page.evaluate(() => localStorage.getItem("copilot_reasoning_effort"))).toBe("high")
+
+      await copilotPage.modelRootOptionEffort.click()
+      await expect(copilotPage.effortOption("high")).toHaveAttribute("aria-pressed", "true")
+      await expect(copilotPage.effortOption("medium")).toHaveAttribute("aria-pressed", "false")
+
+      await copilotPage.effortOption("low").click()
+      await expect.poll(() => page.evaluate(() => localStorage.getItem("copilot_reasoning_effort"))).toBe("low")
+
+      await page.reload()
+      await copilotPage.modelTrigger.click()
+      await copilotPage.modelRootOptionEffort.click()
+      await expect(copilotPage.effortOption("low")).toHaveAttribute("aria-pressed", "true")
+    }
+  )
+
+  test(
+    "CP-PICKER-ESCAPE-001 Escape closes the picker menu from either view",
+    {
+      tag: ["@copilot", "@positive", "@controls"]
+    },
+    async ({ page, copilotPage }) => {
+      await copilotPage.navigateTo()
+
+      await copilotPage.modelTrigger.click()
+      await expect(copilotPage.modelRootOptionModel).toBeVisible()
+      await page.keyboard.press("Escape")
+      await expect(copilotPage.modelRootOptionModel).toHaveCount(0)
+
+      await copilotPage.modelTrigger.click()
+      await copilotPage.modelRootOptionModel.click()
+      await page.keyboard.press("Escape")
+      await expect(copilotPage.modelSearchInput).toHaveCount(0)
     }
   )
 })

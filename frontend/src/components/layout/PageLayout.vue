@@ -10,7 +10,9 @@ const { isMenuCollapsed } = useMainSidebar()
   <div class="shell" :class="{ 'is-sidebar-collapsed': isMenuCollapsed }">
     <AppSidebar />
     <div class="main-column">
-      <AppHeader />
+      <slot name="header">
+        <AppHeader />
+      </slot>
       <main class="main-content">
         <slot />
       </main>

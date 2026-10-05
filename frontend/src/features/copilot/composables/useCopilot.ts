@@ -14,7 +14,6 @@ import {
   loadSelectedModel,
   loadSessionMessages,
   loadSidebarCollapsed,
-  loadThinkingMode,
   storeBoolean,
   storeJson,
   storeText
@@ -22,7 +21,7 @@ import {
 
 const enabledDomains = ref<string[]>(loadEnabledDomains(defaultDomains.map((domain) => domain.id)))
 const selectedModel = ref<string>(loadSelectedModel())
-const thinkingMode = ref<boolean>(loadThinkingMode())
+const thinkingMode = ref<boolean>(true)
 const reasoningEffort = ref<ReasoningEffort>(loadReasoningEffort())
 const isSidebarCollapsed = ref<boolean>(loadSidebarCollapsed())
 const isDomainModalOpen = ref(false)
@@ -40,7 +39,6 @@ const { configuredProviders, isCheckingProviders, hasConfiguredAI, configuredMod
 
 watch(enabledDomains, (storedDomains) => { storeJson("copilot_enabled_domains", storedDomains) }, { deep: true })
 watch(selectedModel, (storedModel) => { storeText("copilot_selected_model", storedModel) })
-watch(thinkingMode, (storedThinkingMode) => { storeBoolean("copilot_thinking_mode", storedThinkingMode) })
 watch(reasoningEffort, (storedEffort) => { storeText("copilot_reasoning_effort", storedEffort) })
 watch(isSidebarCollapsed, (storedCollapsed) => { storeBoolean("copilot_sidebar_collapsed", storedCollapsed) })
 watch(sessions, (storedSessions) => { storeJson("copilot_user_sessions", storedSessions) }, { deep: true })

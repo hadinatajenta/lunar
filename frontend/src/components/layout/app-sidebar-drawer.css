@@ -11,16 +11,15 @@
   }
 
   .sidebar.is-collapsed .sidebar-header {
-    flex-direction: column;
-    gap: 10px;
+    justify-content: center;
+    gap: 0;
     padding-bottom: 16px;
   }
 
   .sidebar.is-collapsed .brand {
-    padding: 0;
+    display: none;
   }
 
-  .sidebar.is-collapsed .brand-name,
   .sidebar.is-collapsed .nav-label,
   .sidebar.is-collapsed .nav-text {
     position: absolute;
@@ -64,12 +63,6 @@
   }
 
   .sidebar.is-collapsed .account {
-    flex-direction: column;
-    gap: 8px;
-    padding: 14px 0 4px;
-  }
-
-  .sidebar.is-collapsed .account-copy {
     display: none;
   }
 }

@@ -18,6 +18,9 @@ test.describe("AI Copilot - Model Selection", () => {
       await copilotPage.modelTrigger.click()
       await expect(copilotPage.modelMenu).toBeVisible()
 
+      await copilotPage.modelRootOptionModel.click()
+      await expect(copilotPage.modelSearchInput).toBeVisible()
+
       await expect(copilotPage.modelOption("DeepSeek-V4 Pro (Thinking)")).toBeVisible()
       await expect(copilotPage.modelOption("DeepSeek Flash")).toBeVisible()
 

@@ -43,24 +43,24 @@ export class CopilotPage {
     return this.page.locator(".done-btn")
   }
 
-  get thinkingToggle() {
-    return this.page.locator(".thinking-toggle")
+  get modelRootOptionModel() {
+    return this.page.getByTestId("model-root-option-model")
   }
 
-  get effortControl() {
-    return this.page.locator(".effort-control")
+  get modelRootOptionEffort() {
+    return this.page.getByTestId("model-root-option-effort")
   }
 
-  get effortOptions() {
-    return this.page.locator(".effort-options")
+  get modelBackButton() {
+    return this.page.getByTestId("model-picker-back")
   }
 
-  get effortRequirement() {
-    return this.page.locator(".effort-requirement")
+  get modelSearchInput() {
+    return this.page.getByTestId("model-search-input")
   }
 
-  effortOption(label: string) {
-    return this.page.locator(`.effort-option:has-text("${label}")`)
+  effortOption(effortId: string) {
+    return this.page.getByTestId(`effort-option-${effortId}`)
   }
 
   get composer() {

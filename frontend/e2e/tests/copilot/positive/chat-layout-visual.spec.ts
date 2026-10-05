@@ -44,7 +44,6 @@ test.describe("AI Copilot - Visual Layout & Contrast Audit", () => {
         const composerActions = document.querySelector(".composer-actions") as HTMLElement | null
         const textarea = document.querySelector(".chat-composer textarea") as HTMLElement | null
         const sendBtn = document.querySelector(".send-btn") as HTMLElement | null
-        const thinkingToggle = document.querySelector(".thinking-toggle") as HTMLElement | null
         const reasoningPanel = document.querySelector(".reasoning-panel") as HTMLElement | null
         const reasoningToggle = document.querySelector(".reasoning-toggle") as HTMLElement | null
         const reasoningDuration = document.querySelector(".reasoning-duration") as HTMLElement | null
@@ -75,13 +74,6 @@ test.describe("AI Copilot - Visual Layout & Contrast Audit", () => {
           const cs = window.getComputedStyle(reasoningToggle)
           if (cs.display !== "flex") {
             errors.push(`reasoning-toggle display is "${cs.display}", expected "flex"`)
-          }
-        }
-
-        if (thinkingToggle) {
-          const cs = window.getComputedStyle(thinkingToggle)
-          if (cs.display !== "flex") {
-            errors.push(`thinking-toggle display is "${cs.display}", expected "flex"`)
           }
         }
 

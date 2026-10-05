@@ -29,6 +29,14 @@ const {
 } = useAttachments()
 
 const inputPrompt = ref("")
+const textareaEl = ref<HTMLTextAreaElement | null>(null)
+
+const handleInput = (): void => {
+  const el = textareaEl.value
+  if (el === null) return
+  el.style.height = "auto"
+  el.style.height = `${Math.min(el.scrollHeight, window.innerHeight * 0.4)}px`
+}
 
 const visionModelNames = imageCapableModelNames().join(" or ")
 
@@ -58,6 +66,7 @@ const handleSend = (): void => {
   const text = inputPrompt.value.trim()
   if (text.length === 0 || isSendDisabled.value) return
   inputPrompt.value = ""
+  if (textareaEl.value !== null) textareaEl.value.style.height = "auto"
   emit("send", text, readyAttachmentIds.value)
 }
 
@@ -80,7 +89,9 @@ defineExpose({ clearDrafts })
       data-testid="composer-input"
       aria-label="Message Lunar Copilot"
       placeholder="Message Lunar Copilot with tool integrations..."
+      ref="textareaEl"
       @keydown="handleKeydown"
+      @input="handleInput"
     ></textarea>
 
     <p v-if="uploadNotice" class="composer-notice" role="status" data-testid="composer-upload-notice">
@@ -131,6 +142,8 @@ defineExpose({ clearDrafts })
   font-size: 14px;
   line-height: 1.5;
   resize: none;
+  max-height: 40vh;
+  overflow-y: auto;
 }
 
 .chat-composer textarea::placeholder {

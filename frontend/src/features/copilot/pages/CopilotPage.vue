@@ -3,6 +3,7 @@ import { onMounted } from "vue"
 import PageLayout from "../../../components/layout/PageLayout.vue"
 import ChatSidebar from "../components/ChatSidebar.vue"
 import ChatWindow from "../components/ChatWindow.vue"
+import CopilotHeader from "../components/CopilotHeader.vue"
 import DomainToggleModal from "../components/DomainToggleModal.vue"
 import { useCopilot } from "../composables/useCopilot"
 import { useCopilotShortcuts } from "../composables/useCopilotShortcuts"
@@ -18,6 +19,9 @@ onMounted(async () => {
 
 <template>
   <PageLayout>
+    <template #header>
+      <CopilotHeader />
+    </template>
     <div class="copilot-container">
       <div v-if="!hasConfiguredAI && !isCheckingProviders" class="unconfigured-gate" data-testid="banner-no-ai-keys">
         <div class="gate-card">
@@ -50,7 +54,7 @@ onMounted(async () => {
 
 <style scoped>
 .copilot-container {
-  height: calc(100vh - 64px);
+  height: calc(100vh - 48px);
   overflow: hidden;
   position: relative;
 }

@@ -197,7 +197,7 @@ contains.
 |---|---|
 | Conversation context | Each question carries the previous turns to the model, so a follow-up such as "and where is it used?" resolves against what was already discussed. The last ten turns are sent, and the agent truncates a long assistant answer rather than rejecting it |
 | Sessions | Conversation history, created on the first message. Deleting a conversation asks for confirmation first, and the dialog can be dismissed with Cancel, Escape, or a backdrop click |
-| New chat | Button and the `Cmd+Shift+O` / `Ctrl+Shift+O` shortcut |
+| New chat | The sidebar button, the `+` button in the slim header, and the `Cmd+Shift+O` / `Ctrl+Shift+O` shortcut |
 | Streaming answers | Text arrives progressively, with a spinner pill and elapsed time |
 | Answer layout | An avatar per role. The user message is a right-aligned bubble, the assistant answer is flat beside its avatar |
 | Reasoning panel | A collapsible dashed panel with a duration, shown when the model returns reasoning |
@@ -212,11 +212,12 @@ contains.
 | Diagram tag | Every diagram card carries a name. The model supplies it as a mermaid frontmatter title; when absent, it is derived from the diagram type and its first participant or node |
 | Diagram navigation | When an answer has more than one diagram, each card shows its position and previous and next arrows that scroll to the adjacent diagram |
 | Diagram security | Mermaid runs with `securityLevel: strict` and its output is additionally sanitized with DOMPurify before injection. `script`, `foreignObject`, `iframe`, and event attributes are removed |
-| Thinking mode | An icon-only brain control in the control bar above the composer, reachable by keyboard. It renders gold when thinking is on and grey when off, and carries `aria-pressed`. The bar states no text label |
-| Reasoning effort | A three-way Low, Medium, High control grouped with the brain control, labelled "Reasoning effort" and stating "Applies only while thinking is on". It is dimmed and marked `aria-disabled` while thinking is off, because the backend ignores `reasoning_effort` unless thinking mode is enabled. The choice is persisted |
+| Thinking mode | Always on. There is no control to switch it off, and `thinking_mode` is sent as true on every question |
+| Model and effort picker | A dropup that opens on the model trigger. Its first level offers only Model and Effort. The Model level adds a search field and a back control, filters the configured models live as a name is typed, and returns to the first level once a model is chosen. The Effort level lists Low, Med, and High with the same behaviour. `Escape` closes the menu from either level |
+| Reasoning effort | Low, Med, or High, chosen from the picker's Effort level and persisted across reloads |
 | Reasoning trace | Collapsible thinking output per answer |
-| Composer | Its own component. `Enter` sends and `Shift + Enter` inserts a newline, with no hint text under the composer |
-| Model selection | Per-conversation model choice |
+| Composer | Its own component. `Enter` sends and `Shift + Enter` inserts a newline, with no hint text under the composer. Long input wraps to a new line and the field grows with the text, up to four tenths of the viewport height, then scrolls |
+| Contextual header | The Copilot page replaces the 64px workspace topbar with a slim 48px header holding a breadcrumb and a single new chat button, with the mobile menu trigger at or below 768px |
 | Code index status | A chip in the control bar above the composer, with the same ready, building, or missing panel as before |
 | Transcript persistence | Answers are saved to the backend so history survives a helper restart |
 
@@ -339,7 +340,8 @@ Source: `backend/cmd/lunar-helper/`. User documentation: `docs/microservices/HEL
 | Credential vault | AES-256-GCM encryption at rest, per user, never returned in plain text |
 | Session scoping | Feature stores are reset when the signed-in user changes |
 | Theming | Dark and light mode driven by CSS custom properties |
-| Main menu sidebar | The navigation sidebar collapses to icons with a persisted preference, and becomes an overlay drawer with a backdrop at or below 768px |
+| Main menu sidebar | The navigation sidebar collapses to icons with a persisted preference, hiding the Lunar brand and the user account block so only the collapse control and the icon rail remain. It becomes an overlay drawer with a backdrop at or below 768px |
+| New chat button colour | The sidebar new chat button is drawn from the theme surface, border, and text tokens, so it differs between dark and light instead of resolving to the same inverted block in both |
 | Markdown rendering | Answers render as Markdown through `marked` and `DOMPurify`, with a strict tag allowlist |
 | Toasts | Shared notification component |
 | Error states | Each feature reports its own failure rather than blanking the page |
@@ -386,6 +388,7 @@ Newest first. Every feature change adds a line here.
 
 | Date | Change |
 |---|---|
+| 2026-10-05 | Copilot: the model menu is now a two-level picker. It opens on Model and Effort; the Model level adds a live name filter and a back control and returns to the first level on selection, and the Effort level lists Low, Med, and High the same way, with `Escape` closing from either level. Thinking mode is always on and its toggle is removed, so `ThinkingControl.vue` and `EffortControl.vue` are deleted. The composer wraps long input and grows to four tenths of the viewport before scrolling. The Copilot page gets a slim 48px contextual header with a breadcrumb and a single new chat button in place of the 64px topbar, supplied through a new `PageLayout` header slot. The sidebar new chat button is re-tokenised to follow each theme, and the collapsed main menu now hides the Lunar brand and the user account block |
 | 2026-10-05 | Copilot: attachment backend. `POST /api/copilot/attachments` accepts a `multipart/form-data` upload of at most 10 MB, enforces png, jpeg, webp, pdf, xlsx, xls, and docx with content sniffing for images and the extension for documents, stores it in SQLite scoped to the owner, and returns `{ id, name, kind, size, preview }`. PDF, Excel, and Word are reduced to text, capped at 60000 characters, and prepended to the question as a delimited untrusted block in the user message. `GET /api/copilot/attachments/{id}` lets the helper resolve an id, and an image is sent inline as a base64 `data:` URL only when the model reads images, otherwise the request is rejected with the model named. New dependencies: `github.com/xuri/excelize/v2`, `github.com/ledongthuc/pdf`, `github.com/extrame/xls` |
 | 2026-10-05 | Main menu: the navigation sidebar collapses to a 72px icon rail from a control in its header, with the active route still highlighted and each label kept for assistive technology and as a tooltip. The preference is persisted as `menu_sidebar_collapsed`, read through a new `useMainSidebar` composable. At or below 768px the sidebar becomes an overlay drawer opened from a header button, with a backdrop, `Escape`, a focus trap, and focus returned to the opener, and the grid drops to a single column so no empty gutter is left behind |
 | 2026-10-05 | Copilot: the `Copilot Workspace <model>` header is removed, so the conversation gains that height back, and the code index chip moved into a new control bar above the composer. The composer is extracted into `ChatComposer.vue`, with the model menu in `ModelPicker.vue`, which brings `ChatWindow.vue` from 703 to 196 lines and closes B.11. The `Enter to send, Shift + Enter for new line` hint text is removed while both shortcuts still work, so the composer sits 24.5px lower (measured). Thinking mode is now an icon-only brain control (`ThinkingControl.vue`) that renders gold when on and grey when off, at 8.00:1 and 5.86:1 contrast in dark and 6.27:1 and 6.92:1 in light. Reasoning effort (`EffortControl.vue`) moved out of the composer beside it, states that it applies only while thinking is on, and is dimmed and `aria-disabled` while thinking is off |

@@ -6,9 +6,6 @@ import ChatMessage from "./ChatMessage.vue"
 import ChatStreamingMessage from "./ChatStreamingMessage.vue"
 import ChatComposer from "./ChatComposer.vue"
 import CodeIndexStatus from "./CodeIndexStatus.vue"
-import ThinkingControl from "./ThinkingControl.vue"
-import EffortControl from "./EffortControl.vue"
-import type { ReasoningEffort } from "../types"
 
 const { messages, isLoading, thinkingMode, reasoningEffort, sendMessage, regenerateMessage } = useCopilot()
 
@@ -31,13 +28,6 @@ const handleSend = async (text: string): Promise<void> => {
   }
 }
 
-const toggleThinkingMode = (): void => {
-  thinkingMode.value = !thinkingMode.value
-}
-
-const selectEffort = (effort: ReasoningEffort): void => {
-  reasoningEffort.value = effort
-}
 </script>
 
 <template>
@@ -80,11 +70,6 @@ const selectEffort = (effort: ReasoningEffort): void => {
 
     <div class="chat-input-area">
       <div class="control-bar">
-        <div class="control-group">
-          <ThinkingControl :is-enabled="thinkingMode" @toggle="toggleThinkingMode" />
-          <EffortControl :effort="reasoningEffort" :is-thinking-enabled="thinkingMode" @select="selectEffort" />
-        </div>
-
         <CodeIndexStatus />
       </div>
 
@@ -99,7 +84,8 @@ const selectEffort = (effort: ReasoningEffort): void => {
 .chat-main {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 64px);
+  height: 100%;
+  min-height: 0;
   min-width: 0;
   background: var(--bg);
 }
@@ -173,13 +159,6 @@ const selectEffort = (effort: ReasoningEffort): void => {
   gap: 10px 16px;
   max-width: 820px;
   margin: 0 auto 10px;
-}
-
-.control-group {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
 }
 
 .index-hint {
