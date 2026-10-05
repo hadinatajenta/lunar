@@ -70,6 +70,19 @@ func (r *helperRepositoryReader) GetDiff(ctx context.Context, request agenttools
 	}, nil
 }
 
+type providerCredentialError struct {
+	StatusCode int
+	Err        error
+}
+
+func (e *providerCredentialError) Error() string {
+	return e.Err.Error()
+}
+
+func (e *providerCredentialError) Unwrap() error {
+	return e.Err
+}
+
 func fetchProviderCredentials(ctx context.Context, backendURL string, sessionToken string, model string) (providerCredentials, error) {
 	endpoint := fmt.Sprintf("%s/api/copilot/provider-key?model=%s", backendURL, url.QueryEscape(strings.TrimSpace(model)))
 
@@ -91,7 +104,10 @@ func fetchProviderCredentials(ctx context.Context, backendURL string, sessionTok
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return providerCredentials{}, fmt.Errorf("fetchProviderCredentials: unexpected status %d", response.StatusCode)
+		return providerCredentials{}, &providerCredentialError{
+			StatusCode: response.StatusCode,
+			Err:        fmt.Errorf("fetchProviderCredentials: unexpected status %d", response.StatusCode),
+		}
 	}
 
 	var credentials providerCredentials

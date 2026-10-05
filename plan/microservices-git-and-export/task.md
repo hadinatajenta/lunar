@@ -57,9 +57,9 @@ Nothing is implemented yet. `[ ]` not started, `[~]` in progress, `[x]` done and
 - [x] adversarial review of the git argument path
 - [x] regression run against the recorded baseline
 
-## Phase 2 - Export pipeline
+## Phase 2 - Export pipeline  [IN PROGRESS]
 
-### 2A backend
+### 2A backend  [~]
 
 - [ ] `selector.go` implementing the include and exclude rules
 - [ ] `src/vendor` includes `panama/src/vendor`
@@ -83,7 +83,7 @@ Nothing is implemented yet. `[ ]` not started, `[~]` in progress, `[x]` done and
 - [ ] the response carries no write to disk anywhere
 - [ ] unit tests for selector, classifier, prompt assembly, normaliser, and validator
 
-### 2B frontend
+### 2B frontend  [~]
 
 - [ ] modal lists models from the configured provider catalogue, not the old provider list
 - [ ] free models such as `space-bunny-free` badged

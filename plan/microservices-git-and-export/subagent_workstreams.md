@@ -41,7 +41,11 @@ Helper paths sit at the root; server paths are the same under `/api/workspace`. 
 Frozen contract:
 
 ```text
-POST /export  { root, name, model }   -> text/event-stream
+POST /export  { root, name, model, backend_url?, session_token? }   -> text/event-stream
+  backend_url and session_token are required only on the HELPER surface: the helper is a
+  separate process with no database, so it resolves the provider key by calling the backend,
+  the same way /agent/ask already does. The backend surface ignores both and uses the
+  authenticated session plus saved workspace settings.
   event: stage   { stage, detail }        selecting | prompt | model | validating
   event: result  { service, request_count, folder_count, collection }
   event: error   { error }
@@ -62,7 +66,7 @@ The collection travels in the result event. **The server writes nothing to disk.
   against them before 2A finishes.
 - `codeindex/infrastructure/walker.go` must not be modified. The export owns its selector.
 - The export must not write any file, anywhere. Any stream that adds a write is out of contract.
-- The effort value is `medium` in the request payload and must never surface in the UI.
+- The request body is exactly `{ root, name, model }`. Effort is NOT a request field: the backend fixes it to `medium` internally, so a client cannot request a different effort and the setting stays invisible. Model display names may legitimately contain the word "Reasoning" as part of an upstream product name; that is not an effort control and must not be renamed.
 - 3B writes `guide.md` only after 3A reports, so the documentation matches what ships.
 - Every stream reports what it did not verify, and why.
 

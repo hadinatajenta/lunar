@@ -123,3 +123,31 @@ export interface RepositoryActionState {
   kind: RepositoryActionKind | null
   message: string
 }
+
+export type CollectionExportStage = "selecting" | "prompt" | "model" | "validating"
+
+export interface CollectionExportRequest {
+  root: string
+  name: string
+  model: string
+  backend_url: string
+  session_token: string
+}
+
+export interface CollectionExportStageEvent {
+  stage: CollectionExportStage
+  detail: string
+}
+
+export interface CollectionExportResult {
+  service: string
+  request_count: number
+  folder_count: number
+  collection: unknown
+}
+
+export interface CollectionExportHandlers {
+  signal?: AbortSignal
+  onStage: (stageEvent: CollectionExportStageEvent) => void
+  onResult: (exportResult: CollectionExportResult) => void
+}

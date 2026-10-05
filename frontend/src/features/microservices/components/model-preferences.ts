@@ -1,51 +1,27 @@
+import { allSupportedModels } from "../../copilot/utils/models"
+
 export interface AiModelOption {
   id: string
   name: string
-  icon: string
-  description: string
 }
-
-export const AI_MODEL_OPTIONS: AiModelOption[] = [
-  {
-    id: "claude",
-    name: "Claude Sonnet",
-    icon: "C",
-    description: "Best for structured specs and long OpenAPI definitions."
-  },
-  {
-    id: "gpt",
-    name: "GPT",
-    icon: "O",
-    description: "Balanced reasoning across routes and payloads."
-  },
-  {
-    id: "gemini",
-    name: "Gemini",
-    icon: "G",
-    description: "Fast generation with strong code understanding."
-  },
-  {
-    id: "deepseek",
-    name: "DeepSeek",
-    icon: "D",
-    description: "Cost-efficient for large repositories."
-  },
-  {
-    id: "mimo",
-    name: "MiMo",
-    icon: "M",
-    description: "Lightweight model for quick exports."
-  }
-]
 
 const MODEL_PREFERENCE_STORAGE_KEY = "lunar_microservices_model_preferences"
-
-export function isKnownModelId(modelId: string): boolean {
-  return AI_MODEL_OPTIONS.some((model) => model.id === modelId)
-}
+const FREE_MODEL_ID_SUFFIX = "-free"
 
 export function findModelOption(modelId: string): AiModelOption | null {
-  return AI_MODEL_OPTIONS.find((model) => model.id === modelId) ?? null
+  const catalogModel = allSupportedModels.find((model) => model.id === modelId)
+  if (catalogModel === undefined) {
+    return null
+  }
+  return { id: catalogModel.id, name: catalogModel.name }
+}
+
+export function isKnownModelId(modelId: string): boolean {
+  return allSupportedModels.some((model) => model.id === modelId)
+}
+
+export function isFreeModelId(modelId: string): boolean {
+  return modelId.endsWith(FREE_MODEL_ID_SUFFIX)
 }
 
 export function readModelPreferences(): Record<string, string> {

@@ -29,6 +29,9 @@ import (
 	jiraApp "lunar/backend/internal/jira/application"
 	jiraInfra "lunar/backend/internal/jira/infrastructure"
 	jiraTransport "lunar/backend/internal/jira/transport"
+	postmanApp "lunar/backend/internal/postman/application"
+	postmanInfra "lunar/backend/internal/postman/infrastructure"
+	postmanTransport "lunar/backend/internal/postman/transport"
 	sharedAuth "lunar/backend/internal/shared/auth"
 	sharedDatabase "lunar/backend/internal/shared/database"
 	sharedHttp "lunar/backend/internal/shared/http"
@@ -123,6 +126,14 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	)
 	workspaceHandler := workspaceTransport.NewWorkspaceHandler(workspaceService)
 
+	postmanPipeline := postmanApp.NewPipeline(
+		postmanInfra.NewSelector(),
+		postmanInfra.NewClassifier(),
+		postmanInfra.NewProviderClient(),
+	)
+	exportService := postmanApp.NewExporter(workspaceService, copilotService, postmanPipeline)
+	exportHandler := postmanTransport.NewExportHandler(exportService)
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
@@ -208,6 +219,7 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	mux.Handle("POST /api/workspace/pull", authMiddleware(http.HandlerFunc(workspaceHandler.PullRepository)))
 	mux.Handle("POST /api/workspace/stash", authMiddleware(http.HandlerFunc(workspaceHandler.StashRepository)))
 	mux.Handle("POST /api/workspace/discard", authMiddleware(http.HandlerFunc(workspaceHandler.DiscardRepository)))
+	mux.Handle("POST /api/workspace/export", authMiddleware(http.HandlerFunc(exportHandler.Export)))
 
 	handler := sharedHttp.CORSMiddleware(cfg.CORSOrigin)(loggingMiddleware(mux))
 

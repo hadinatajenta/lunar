@@ -28,6 +28,7 @@ const (
 	pullPath         = "/pull"
 	stashPath        = "/stash"
 	discardPath      = "/discard"
+	exportPath       = "/export"
 
 	authorizationHeader = "Authorization"
 	bearerScheme        = "Bearer"
@@ -98,6 +99,7 @@ func newHelperHandler(dependencies helperDependencies) (http.Handler, func()) {
 	mux.Handle("POST "+pullPath, requireToken(dependencies.token, http.HandlerFunc(server.handlePull)))
 	mux.Handle("POST "+stashPath, requireToken(dependencies.token, http.HandlerFunc(server.handleStash)))
 	mux.Handle("POST "+discardPath, requireToken(dependencies.token, http.HandlerFunc(server.handleDiscard)))
+	mux.Handle("POST "+exportPath, requireToken(dependencies.token, http.HandlerFunc(server.handleExport)))
 	mux.Handle("GET "+indexStatusPath, requireToken(dependencies.token, http.HandlerFunc(server.handleIndexStatus)))
 	mux.Handle("POST "+indexBuildPath, requireToken(dependencies.token, http.HandlerFunc(server.handleIndexBuild)))
 	mux.Handle("GET "+searchPath, requireToken(dependencies.token, http.HandlerFunc(server.handleSearch)))
@@ -201,6 +203,10 @@ type statusRecorder struct {
 func (r *statusRecorder) WriteHeader(status int) {
 	r.status = status
 	r.ResponseWriter.WriteHeader(status)
+}
+
+func (r *statusRecorder) Unwrap() http.ResponseWriter {
+	return r.ResponseWriter
 }
 
 func (r *statusRecorder) Flush() {

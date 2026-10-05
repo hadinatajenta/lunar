@@ -374,6 +374,22 @@ Three phases, at most three agents each, QA included.
 - The downloaded file imports into Postman.
 - `go build ./...`, `go test ./...`, `vue-tsc`, and the Playwright suites stay green.
 
+### Ground truth for the atlas and aurora export
+
+Counted from the real repositories, so the export can be checked against a number rather than a
+feeling:
+
+| Repository | Routes declared in `src/**/routes.go` | Route declarations inside `*_test.go` | Group calls | Wire files |
+|---|---|---|---|---|
+| atlas | 30 | **9** | 7 | 3 |
+| aurora | 54 | **19** | 9 | 3 |
+
+Two consequences. First, an export of atlas must yield about 30 requests and aurora about 54; a
+result near 39 or 73 means test files leaked into the selection and every route from a test file was
+emitted a second time. Second, the group counts confirm that `Group()` prefixes must be resolved,
+including the nested groups aurora uses, or the emitted paths will be wrong even when the count is
+right.
+
 ## Risks
 
 | Risk | Mitigation |

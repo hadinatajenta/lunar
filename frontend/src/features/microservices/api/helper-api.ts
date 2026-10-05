@@ -29,11 +29,11 @@ interface HelperTokenResponse {
   token: string
 }
 
-const HELPER_UNREACHABLE_MESSAGE =
+export const HELPER_UNREACHABLE_MESSAGE =
   "The Lunar helper is not reachable. Start the helper on this machine and try again."
 const HELPER_TIMEOUT_MESSAGE =
   "The Lunar helper did not respond in time. Check that it is running and try again."
-const HELPER_TOKEN_REJECTED_MESSAGE =
+export const HELPER_TOKEN_REJECTED_MESSAGE =
   "The helper rejected the token. Copy the current token from ~/.lunar/helper-token into Settings."
 const HELPER_INVALID_URL_MESSAGE =
   "The helper URL is not a valid address. Use the full address, for example http://127.0.0.1:5199"
@@ -56,7 +56,7 @@ interface HelperRequestOptions {
   timeoutMs?: number
 }
 
-function normalizeHelperUrl(helperUrl: string): string {
+export function normalizeHelperUrl(helperUrl: string): string {
   const trimmedUrl = helperUrl.trim()
   return trimmedUrl.length > 0 ? trimmedUrl : DEFAULT_HELPER_URL
 }
@@ -69,7 +69,7 @@ function parseHelperUrl(helperUrl: string): URL | null {
   }
 }
 
-function buildHelperEndpoint(connection: HelperConnection, path: string): string {
+export function buildHelperEndpoint(connection: HelperConnection, path: string): string {
   const parsedUrl = parseHelperUrl(connection.helperUrl)
   if (parsedUrl === null) {
     throw new ApiError(HELPER_INVALID_URL_MESSAGE, 0)
@@ -92,7 +92,7 @@ function appendQueryParams(endpoint: string, params: Record<string, string>): st
   return queryString.length > 0 ? `${endpoint}?${queryString}` : endpoint
 }
 
-function extractPayloadMessage(payload: unknown): string | null {
+export function extractPayloadMessage(payload: unknown): string | null {
   if (typeof payload !== "object" || payload === null) {
     return null
   }
