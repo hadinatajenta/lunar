@@ -117,6 +117,27 @@ test.describe("Settings & Credential Vault Positive Flows", () => {
   )
 
   test(
+    "SETTINGS-008 OpenCode Go renders its logo in light mode with the original two-tone artwork",
+    {
+      tag: ["@settings", "@positive", "@ai-providers", "@opencode-go", "@visual"]
+    },
+    async ({ page, settingsPage }) => {
+      await settingsPage.navigateTo()
+      await page.evaluate(() => {
+        localStorage.setItem("lunar_theme", "light")
+        document.documentElement.setAttribute("data-theme", "light")
+      })
+      await settingsPage.aiProvidersTabButton().click()
+
+      const logo = settingsPage.providerRow("OpenCode Go").locator(".provider-img")
+      await expect(logo).toBeVisible()
+      await expect(logo).toHaveAttribute("src", /opencode\.svg$/)
+
+      await captureEvidence(page, "settings", "07_settings_opencode_go_light.png", { fullPage: true })
+    }
+  )
+
+  test(
     "SETTINGS-006 engineer can navigate to the Security tab and see encryption status",
     {
       tag: ["@settings", "@positive", "@security", "@p1"]
