@@ -101,3 +101,7 @@ deciding it requires.
   `.reasoning-body`, `.reasoning-title`). The remaining fix belongs in test infrastructure: abort the
   helper connection in the route mock so the mocked backend path is deterministic, or point the mock
   at the helper.
+- [ ] **B.16 Stashing a clean repository reports the total stash count with HTTP 200, so the notice implies something was stashed when nothing was. Report whether an entry was actually created.**
+- [ ] **B.17 The export file selector is bounded by the file and byte caps on the RESULT, but not by a context or an entry cap, so a pathological tree is traversed in full. Measured at 29.5ms for 20,000 entries, so low severity; a context-aware Select would bound it honestly.**
+- [ ] **B.18 With no provider key the export control area shows a disabled button rather than the Choose AI model radiogroup, so the accessible name differs from the unlocked state. Visible-but-disabled and the Settings link both hold.**
+- [ ] **B.19 The Microservices page walks all 34 workspace repositories on load, slowly enough that e2e specs time out under parallel load. The page specs now mock the board, so product behaviour is unaffected.**
