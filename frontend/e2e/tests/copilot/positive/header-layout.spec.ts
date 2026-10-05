@@ -37,6 +37,16 @@ test.describe("AI Copilot - Slim Contextual Header and Collapsed Main Menu", () 
       await expect(header.locator(".theme-toggle")).toHaveCount(0)
       await expect(header.locator('[title="Chat History"]')).toHaveCount(0)
 
+      const indexChip = page.getByTestId("code-index-status")
+      await expect(header.getByTestId("code-index-status")).toHaveCount(1)
+      await expect(page.locator(".chat-input-area .control-bar")).toHaveCount(0)
+
+      const chipBox = await indexChip.boundingBox()
+      expect(chipBox).not.toBeNull()
+      const headerCenter = headerBox!.x + headerBox!.width / 2
+      const chipCenter = chipBox!.x + chipBox!.width / 2
+      expect(Math.abs(chipCenter - headerCenter)).toBeLessThanOrEqual(2)
+
       await captureEvidence(page, "copilot", "11_copilot_slim_header.png")
     }
   )

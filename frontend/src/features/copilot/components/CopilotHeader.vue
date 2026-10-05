@@ -2,6 +2,7 @@
 import { onBeforeUnmount, ref, watch } from "vue"
 import { useCopilot } from "../composables/useCopilot"
 import { useMainSidebar } from "../../../components/layout/useMainSidebar"
+import CodeIndexStatus from "./CodeIndexStatus.vue"
 
 const { startNewChat } = useCopilot()
 const { isMobileMenuOpen, openMobileMenu, registerMenuTrigger } = useMainSidebar()
@@ -52,17 +53,23 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <button
-      class="new-chat-btn"
-      type="button"
-      data-testid="copilot-header-new-chat"
-      aria-label="New chat"
-      @click="startNewChat"
-    >
-      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 4v16m8-8H4"></path>
-      </svg>
-    </button>
+    <div class="header-center">
+      <CodeIndexStatus />
+    </div>
+
+    <div class="header-end">
+      <button
+        class="new-chat-btn"
+        type="button"
+        data-testid="copilot-header-new-chat"
+        aria-label="New chat"
+        @click="startNewChat"
+      >
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 4v16m8-8H4"></path>
+        </svg>
+      </button>
+    </div>
   </header>
 </template>
 
@@ -72,10 +79,10 @@ onBeforeUnmount(() => {
   top: 0;
   z-index: 10;
   height: 48px;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
+  gap: 16px;
   padding: 0 24px;
   border-bottom: 1px solid var(--border);
   background: transparent;
@@ -87,6 +94,20 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
+}
+
+.header-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.header-end {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
   min-width: 0;
 }
 
@@ -173,6 +194,7 @@ onBeforeUnmount(() => {
 
 @media (max-width: 768px) {
   .copilot-header {
+    gap: 8px;
     padding: 0 16px;
   }
 

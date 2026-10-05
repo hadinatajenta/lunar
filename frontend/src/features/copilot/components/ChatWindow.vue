@@ -5,7 +5,6 @@ import { useCodeAgent } from "../../code-context/composables/useCodeAgent"
 import ChatMessage from "./ChatMessage.vue"
 import ChatStreamingMessage from "./ChatStreamingMessage.vue"
 import ChatComposer from "./ChatComposer.vue"
-import CodeIndexStatus from "./CodeIndexStatus.vue"
 
 const { messages, isLoading, thinkingMode, reasoningEffort, sendMessage, regenerateMessage } = useCopilot()
 
@@ -69,10 +68,6 @@ const handleSend = async (text: string): Promise<void> => {
     </div>
 
     <div class="chat-input-area">
-      <div class="control-bar">
-        <CodeIndexStatus />
-      </div>
-
       <div v-if="indexHint" class="index-hint" role="status">{{ indexHint }}</div>
 
       <ChatComposer :is-loading="isLoading" @send="handleSend" />
@@ -149,16 +144,6 @@ const handleSend = async (text: string): Promise<void> => {
   padding: 16px 24px 20px;
   border-top: 1px solid var(--border);
   background: var(--bg);
-}
-
-.control-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px 16px;
-  max-width: 820px;
-  margin: 0 auto 10px;
 }
 
 .index-hint {
