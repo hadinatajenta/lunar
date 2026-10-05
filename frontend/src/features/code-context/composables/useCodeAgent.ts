@@ -221,6 +221,7 @@ export const askCodeAgent = async (request: CodeAgentRequest): Promise<CodeAgent
   indexHint.value = null
 
   const agentRequest: AgentAskRequest = {
+    session_id: request.sessionId,
     question: request.question,
     domains: resolveToolDomains(request.domainIds),
     provider: request.provider,

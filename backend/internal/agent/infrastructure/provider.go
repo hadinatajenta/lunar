@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"lunar/backend/internal/agent/domain"
+	sharedHttp "lunar/backend/internal/shared/http"
 )
 
 const (
@@ -24,6 +25,7 @@ const (
 	defaultRetryBase         = 300 * time.Millisecond
 	maxBackoff               = 5 * time.Second
 	reasoningProviderName    = "deepseek"
+	openCodeGoProviderName   = "opencode-go"
 	chatCompletionsPath      = "/chat/completions"
 	missingAPIKeyMessage     = "chat completions: API key is not configured"
 	emptyChoicesMessage      = "chat completions: provider returned no choices"
@@ -41,6 +43,7 @@ type ProviderConfig struct {
 	APIKey     string
 	BaseURL    string
 	Model      string
+	SessionID  string
 	Timeout    time.Duration
 	MaxRetries int
 	RetryBase  time.Duration
@@ -81,8 +84,13 @@ func (c *ChatClient) supportsReasoningEffort() bool {
 
 func (c *ChatClient) setHeaders(req *http.Request) {
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", sharedHttp.ClientUserAgent)
 	if c.cfg.APIKey != "" {
 		req.Header.Set("Authorization", "Bearer "+c.cfg.APIKey)
+	}
+	sessionID := strings.TrimSpace(c.cfg.SessionID)
+	if c.providerName() == openCodeGoProviderName && sessionID != "" {
+		req.Header.Set("x-opencode-session", sessionID)
 	}
 }
 

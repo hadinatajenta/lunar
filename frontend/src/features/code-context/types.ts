@@ -35,6 +35,7 @@ export interface AgentSource {
 }
 
 export interface AgentAskRequest {
+  session_id?: string
   question: string
   domains: ToolDomain[]
   provider: string

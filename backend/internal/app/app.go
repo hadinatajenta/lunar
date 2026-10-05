@@ -77,11 +77,12 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	authHandler := transport.NewAuthHandler(authService)
 
 	systemAIProviders := map[string]string{
-		"deepseek": cfg.SystemDeepseekKey,
-		"gemini":   cfg.SystemGeminiKey,
-		"openai":   cfg.SystemOpenAIKey,
-		"claude":   cfg.SystemClaudeKey,
-		"mimo":     cfg.SystemMimoKey,
+		"deepseek":    cfg.SystemDeepseekKey,
+		"gemini":      cfg.SystemGeminiKey,
+		"openai":      cfg.SystemOpenAIKey,
+		"claude":      cfg.SystemClaudeKey,
+		"mimo":        cfg.SystemMimoKey,
+		"opencode-go": cfg.SystemOpenCodeGoKey,
 	}
 
 	copilotRepo := copilotInfra.NewSQLiteCopilotRepository(db)
@@ -143,6 +144,9 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 		}
 		if cfg.SystemMimoKey != "" {
 			systemAI = append(systemAI, "mimo")
+		}
+		if cfg.SystemOpenCodeGoKey != "" {
+			systemAI = append(systemAI, "opencode-go")
 		}
 
 		sharedHttp.WriteJSON(w, http.StatusOK, map[string]any{

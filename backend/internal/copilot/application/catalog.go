@@ -7,13 +7,15 @@ import (
 	"lunar/backend/internal/copilot/domain"
 )
 
-var standardModelCatalog = []struct {
+type modelCatalogEntry struct {
 	ID          string
 	Name        string
 	Provider    string
 	Description string
 	HasThinking bool
-}{
+}
+
+var standardModelCatalog = append([]modelCatalogEntry{
 	{
 		ID:          "deepseek-v4-pro",
 		Name:        "DeepSeek-V4 Pro (Thinking)",
@@ -84,6 +86,20 @@ var standardModelCatalog = []struct {
 		Description: "Efficient multilingual engineering model with specialized reasoning mode.",
 		HasThinking: true,
 	},
+}, openCodeGoCatalogEntries()...)
+
+func openCodeGoCatalogEntries() []modelCatalogEntry {
+	entries := make([]modelCatalogEntry, 0, len(domain.OpenCodeGoCatalog))
+	for _, model := range domain.OpenCodeGoCatalog {
+		entries = append(entries, modelCatalogEntry{
+			ID:          model.CatalogID,
+			Name:        model.Name,
+			Provider:    domain.OpenCodeGoProvider,
+			Description: model.Description,
+			HasThinking: false,
+		})
+	}
+	return entries
 }
 
 func (s *CopilotService) ListModels(ctx context.Context, userID string) ([]domain.ModelInfo, error) {

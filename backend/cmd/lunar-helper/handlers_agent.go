@@ -30,6 +30,7 @@ type agentAskRequest struct {
 	Model           string                            `json:"model"`
 	BackendURL      string                            `json:"backend_url"`
 	SessionToken    string                            `json:"session_token"`
+	SessionID       string                            `json:"session_id"`
 	ThinkingMode    bool                              `json:"thinking_mode"`
 	ReasoningEffort string                            `json:"reasoning_effort"`
 	History         []codeindexdomain.ChatHistoryItem `json:"history"`
@@ -140,7 +141,7 @@ func (s *helperServer) handleAgentAsk(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	agent, chatClient := s.buildAgent(request.Root, credentials)
+	agent, chatClient := s.buildAgent(request.Root, credentials, request.SessionID)
 	if imageError := validateImageAttachments(model, credentials.Model, len(imageDataURLs), chatClient); imageError != nil {
 		sharedHttp.WriteError(w, http.StatusBadRequest, imageError.Error())
 		return

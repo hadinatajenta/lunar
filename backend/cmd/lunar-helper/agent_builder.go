@@ -107,12 +107,14 @@ func fetchProviderCredentials(ctx context.Context, backendURL string, sessionTok
 func (s *helperServer) buildAgent(
 	workspaceRoot string,
 	credentials providerCredentials,
+	sessionID string,
 ) (*agentapplication.Agent, *agentinfrastructure.ChatClient) {
 	client := agentinfrastructure.NewChatClient(agentinfrastructure.ProviderConfig{
-		Provider: credentials.Provider,
-		APIKey:   credentials.APIKey,
-		BaseURL:  credentials.BaseURL,
-		Model:    credentials.Model,
+		Provider:  credentials.Provider,
+		APIKey:    credentials.APIKey,
+		BaseURL:   credentials.BaseURL,
+		Model:     credentials.Model,
+		SessionID: sessionID,
 	})
 
 	reader := newHelperRepositoryReader(workspaceRoot)

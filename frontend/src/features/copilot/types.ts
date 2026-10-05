@@ -34,7 +34,7 @@ export interface ToolDomain {
 export interface ModelOption {
   id: string
   name: string
-  provider: "openai" | "claude" | "gemini" | "deepseek" | "mimo"
+  provider: "openai" | "claude" | "gemini" | "deepseek" | "mimo" | "opencode-go"
   description: string
   hasThinking: boolean
 }

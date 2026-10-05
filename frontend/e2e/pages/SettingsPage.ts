@@ -48,7 +48,10 @@ export class SettingsPage {
   }
 
   providerRow(providerName: string) {
-    return this.page.locator(`.provider-row:has-text("${providerName}")`)
+    const exactName = new RegExp(`^${providerName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`)
+    return this.page
+      .locator(".provider-row")
+      .filter({ has: this.page.locator(".provider-name", { hasText: exactName }) })
   }
 
   providerSubtitle(providerName: string) {
@@ -65,6 +68,10 @@ export class SettingsPage {
 
   get deepseekKeyInput() {
     return this.page.locator("#deepseek-key")
+  }
+
+  get openCodeGoKeyInput() {
+    return this.page.locator("#opencode-go-key")
   }
 
   async navigateTo() {

@@ -13,6 +13,7 @@ import (
 	bitbucketDomain "lunar/backend/internal/bitbucket/domain"
 	"lunar/backend/internal/copilot/domain"
 	sharedErrors "lunar/backend/internal/shared/errors"
+	sharedHttp "lunar/backend/internal/shared/http"
 )
 
 type LLMClient struct {
@@ -35,6 +36,10 @@ func NewLLMClient(deepseekURL, mimoURL string) *LLMClient {
 }
 
 func (c *LLMClient) ResolveProviderAndModel(modelName string) (provider string, actualModel string, hasThinking bool) {
+	if model, found := domain.ResolveOpenCodeGoModel(modelName); found {
+		return domain.OpenCodeGoProvider, model.UpstreamID, false
+	}
+
 	lower := strings.ToLower(modelName)
 	switch {
 	case strings.Contains(lower, "deepseek"):
@@ -138,6 +143,9 @@ func (c *LLMClient) ChatCompletion(
 			endpoint = "https://api.xiaomimimo.com/v1/chat/completions"
 		}
 		authHeader = "Bearer " + apiKey
+	case domain.OpenCodeGoProvider:
+		endpoint = openCodeGoBaseURL + "/chat/completions"
+		authHeader = "Bearer " + apiKey
 	default:
 		return "", "", fmt.Errorf("%w: unsupported AI provider %s", sharedErrors.ErrBadRequest, provider)
 	}
@@ -170,6 +178,7 @@ func (c *LLMClient) ChatCompletion(
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", authHeader)
+	httpReq.Header.Set("User-Agent", sharedHttp.ClientUserAgent)
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
@@ -211,83 +220,6 @@ func (c *LLMClient) ChatCompletion(
 		reasoning = fmt.Sprintf("Completed reasoning using %s with %s effort allocation. Verified active tools and synthesized workspace context.", modelName, effort)
 	}
 
-	return content, reasoning, nil
-}
-
-func (c *LLMClient) callClaudeAPI(
-	ctx context.Context,
-	apiKey string,
-	model string,
-	prompt string,
-	systemPrompt string,
-	thinking bool,
-) (string, string, error) {
-	endpoint := "https://api.anthropic.com/v1/messages"
-
-	payload := map[string]any{
-		"model":      model,
-		"max_tokens": 4096,
-		"messages": []map[string]string{
-			{"role": "user", "content": prompt},
-		},
-	}
-	if systemPrompt != "" {
-		payload["system"] = systemPrompt
-	}
-
-	jsonBytes, err := json.Marshal(payload)
-	if err != nil {
-		return "", "", err
-	}
-
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(jsonBytes))
-	if err != nil {
-		return "", "", err
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("x-api-key", apiKey)
-	httpReq.Header.Set("anthropic-version", "2023-06-01")
-
-	resp, err := c.httpClient.Do(httpReq)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to contact Claude API: %w", err)
-	}
-	defer resp.Body.Close()
-
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to read Claude response: %w", err)
-	}
-
-	if resp.StatusCode == http.StatusUnauthorized {
-		return "", "", fmt.Errorf("%w: invalid or expired Claude API key", sharedErrors.ErrUnauthorized)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return "", "", fmt.Errorf("claude API returned HTTP %d: %s", resp.StatusCode, string(bodyBytes))
-	}
-
-	var result struct {
-		Content []struct {
-			Type string `json:"type"`
-			Text string `json:"text"`
-		} `json:"content"`
-	}
-	if err := json.Unmarshal(bodyBytes, &result); err != nil {
-		return "", "", fmt.Errorf("failed to decode Claude response: %w", err)
-	}
-
-	var sb strings.Builder
-	for _, block := range result.Content {
-		if block.Type == "text" {
-			sb.WriteString(block.Text)
-		}
-	}
-
-	content := strings.TrimSpace(sb.String())
-	var reasoning string
-	if thinking {
-		reasoning = "Claude adaptive thinking executed. Verified inputs against architectural patterns."
-	}
 	return content, reasoning, nil
 }
 

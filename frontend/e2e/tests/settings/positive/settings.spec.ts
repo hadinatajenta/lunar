@@ -61,6 +61,9 @@ test.describe("Settings & Credential Vault Positive Flows", () => {
       await expect(settingsPage.providerSubtitle("Google Gemini")).toContainText("Gemini 3.8 Flash")
       await expect(settingsPage.providerSubtitle("DeepSeek")).toContainText("deepseek-v4-pro")
       await expect(settingsPage.providerSubtitle("Xiaomi MiMo")).toContainText("mimo-v2.5-pro")
+      await expect(settingsPage.providerSubtitle("OpenCode Go")).toContainText("deepseek-v4.1-flash")
+      await expect(settingsPage.providerSubtitle("OpenCode Go")).toContainText("mimo-v2.6-flash")
+      await expect(settingsPage.providerSubtitle("OpenCode Go")).toContainText("space-bunny-free")
 
       await captureEvidence(page, "settings", "04_settings_ai_tab.png", { fullPage: true })
     }
@@ -93,6 +96,22 @@ test.describe("Settings & Credential Vault Positive Flows", () => {
       await settingsPage.aiProvidersTabButton().click()
       await settingsPage.deepseekKeyInput.fill("sk-deepseek-sample-key-112233")
       await settingsPage.providerSaveButton("DeepSeek").click()
+      await expect(settingsPage.successToast).toBeVisible()
+    }
+  )
+
+  test(
+    "SETTINGS-007 engineer can save an OpenCode Go API key and see success toast",
+    {
+      tag: ["@settings", "@positive", "@ai-providers", "@opencode-go"]
+    },
+    async ({ page, settingsPage }) => {
+      await interceptSecretsWrite(page)
+      await settingsPage.navigateTo()
+      await settingsPage.aiProvidersTabButton().click()
+      await expect(settingsPage.openCodeGoKeyInput).toBeVisible()
+      await settingsPage.openCodeGoKeyInput.fill("oc-go-sample-key-445566")
+      await settingsPage.providerSaveButton("OpenCode Go").click()
       await expect(settingsPage.successToast).toBeVisible()
     }
   )

@@ -70,6 +70,27 @@ export const allSupportedModels: ModelOption[] = [
     provider: "mimo",
     description: "Xiaomi specialized engineering reasoning model",
     hasThinking: true
+  },
+  {
+    id: "opencode-go-deepseek-v4.1-flash",
+    name: "DeepSeek V4.1 Flash (Go)",
+    provider: "opencode-go",
+    description: "Fast DeepSeek V4.1 coding model served through the OpenCode Go subscription.",
+    hasThinking: false
+  },
+  {
+    id: "opencode-go-mimo-v2.6-flash",
+    name: "MiMo V2.6 Flash (Go)",
+    provider: "opencode-go",
+    description: "Low-latency Xiaomi MiMo coding model served through the OpenCode Go subscription.",
+    hasThinking: false
+  },
+  {
+    id: "opencode-go-space-bunny-free",
+    name: "Space Bunny Free (Go)",
+    provider: "opencode-go",
+    description: "Free community model served through the OpenCode Go subscription, available for a limited time.",
+    hasThinking: false
   }
 ]
 

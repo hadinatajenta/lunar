@@ -213,6 +213,7 @@ contains.
 | Diagram navigation | When an answer has more than one diagram, each card shows its position and previous and next arrows that scroll to the adjacent diagram |
 | Diagram security | Mermaid runs with `securityLevel: strict` and its output is additionally sanitized with DOMPurify before injection. `script`, `foreignObject`, `iframe`, and event attributes are removed |
 | Thinking mode | Always on. There is no control to switch it off, and `thinking_mode` is sent as true on every question |
+| Providers | Six are selectable: OpenAI, Anthropic Claude, Google Gemini, DeepSeek, Xiaomi MiMo, and OpenCode Go. OpenCode Go is a subscription rather than a pay-per-request key, and it serves only open models, so it offers no Claude model whatever |
 | Model and effort picker | A dropup that opens on the model trigger. Its first level offers only Model and Effort. The Model level adds a search field and a back control, filters the configured models live as a name is typed, and returns to the first level once a model is chosen. The Effort level lists Low, Med, and High with the same behaviour. `Escape` closes the menu from either level |
 | Reasoning effort | Low, Med, or High, chosen from the picker's Effort level and persisted across reloads |
 | Reasoning trace | Collapsible thinking output per answer |
@@ -300,6 +301,7 @@ Source: `backend/internal/attachment/`, `backend/internal/agent/domain/ai.go`,
 | AI providers | Google Gemini | As above |
 | AI providers | DeepSeek | As above, including system fallback |
 | AI providers | Xiaomi MiMo | As above |
+| AI providers | OpenCode Go | Key entry, the three models the Go subscription serves, configured state, and system fallback through `SYSTEM_OPENCODE_GO_KEY` |
 | Security | Encryption status | Confirms keys are encrypted at rest with AES-256-GCM |
 
 `GET` and `PUT /api/auth/secrets`, `GET` and `PUT /api/workspace`,
@@ -388,6 +390,7 @@ Newest first. Every feature change adds a line here.
 
 | Date | Change |
 |---|---|
+| 2026-10-05 | Settings and Copilot: OpenCode Go joins as a sixth AI provider, reaching `https://opencode.ai/zen/go/v1` and offering DeepSeek V4.1 Flash (Go), MiMo V2.6 Flash (Go), and Space Bunny Free (Go). Because every one of those speaks OpenAI chat completions, no new transport was needed. Model resolution now matches the OpenCode Go catalogue exactly before the legacy substring rule, which would otherwise have sent `deepseek-v4.1-flash` to the personal DeepSeek provider as `deepseek-chat`. Outbound provider requests now identify themselves with `lunar/1.0`, and the code agent sends `x-opencode-session` carrying the conversation id, both required by the Go terms. The AI providers settings screen is rebuilt around a reusable `AiProviderRow`, taking `AiProvidersSettings.vue` from 493 to 170 lines, and the Playwright provider locator now matches the provider name exactly instead of any text in the row |
 | 2026-10-05 | Copilot: the composer input no longer draws a focus outline, which resolved to near black in light mode. Focus is marked on the composer container through its border and a soft ring instead, so the field stays visibly focused without the hard outline |
 | 2026-10-05 | Copilot: the code index chip moves out of the composer control bar into the slim header, centred between the breadcrumb and the new chat button. The composer area now holds only the composer and its optional hint |
 | 2026-10-05 | Copilot: the model menu is now a two-level picker. It opens on Model and Effort; the Model level adds a live name filter and a back control and returns to the first level on selection, and the Effort level lists Low, Med, and High the same way, with `Escape` closing from either level. Thinking mode is always on and its toggle is removed, so `ThinkingControl.vue` and `EffortControl.vue` are deleted. The composer wraps long input and grows to four tenths of the viewport before scrolling. The Copilot page gets a slim 48px contextual header with a breadcrumb and a single new chat button in place of the 64px topbar, supplied through a new `PageLayout` header slot. The sidebar new chat button is re-tokenised to follow each theme, and the collapsed main menu now hides the Lunar brand and the user account block |

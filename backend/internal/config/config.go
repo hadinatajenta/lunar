@@ -24,6 +24,7 @@ type Config struct {
 	SystemClaudeKey       string
 	SystemMimoKey         string
 	SystemMimoBaseURL     string
+	SystemOpenCodeGoKey   string
 	SeedUserEmail         string
 	SeedUserPassword      string
 	SeedUserName          string
@@ -123,6 +124,7 @@ func LoadConfig() *Config {
 		SystemClaudeKey:       os.Getenv("SYSTEM_CLAUDE_KEY"),
 		SystemMimoKey:         os.Getenv("SYSTEM_MIMO_KEY"),
 		SystemMimoBaseURL:     os.Getenv("SYSTEM_MIMO_BASE_URL"),
+		SystemOpenCodeGoKey:   os.Getenv("SYSTEM_OPENCODE_GO_KEY"),
 		SeedUserEmail:         getEnvOrDefault("SEED_USER_EMAIL", "developer@lunar.dev"),
 		SeedUserPassword:      getEnvOrDefault("SEED_USER_PASSWORD", "12345678"),
 		SeedUserName:          getEnvOrDefault("SEED_USER_NAME", "Lunar Developer"),
