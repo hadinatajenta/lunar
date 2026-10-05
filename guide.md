@@ -177,7 +177,10 @@ Repository intelligence for the services a squad owns.
 | Repository picker | Modal to choose which repositories are displayed, with name search and checkboxes |
 | Branch picker | Clicking a service's branch opens a picker that pins the current branch, lists up to five rows in a scroll view, filters by name, and switches the repository to the chosen branch with `git checkout`. It opens downward or upward depending on the room below the row, closes on `Escape`, an outside click, or a selection, and returns focus to the trigger |
 | Repository actions | A kebab menu per service offers Pull, Fetch, Stash changes local, Discard changes, and Details. Discard asks for confirmation first, cancellable by Cancel, `Escape`, or a backdrop click, and restores tracked files only. The row shows a busy state while an action runs |
-| Model picker | Chooses the AI model used for service analysis |
+| Postman collection export | Choosing a model for one service reads that repository and produces a Postman Collection v2.1, streamed to the browser and downloaded there as `<service>-postman-collection.json`. The request count is shown before the file is taken. Nothing is written on the server |
+| Export model list | Only models whose provider already has a key, personal or system fallback, with the free ones badged. One repository per export |
+| Export progress | The pipeline reports its stages as they happen: selecting, prompt, model, validating. A failure keeps the picker open with the reason and a retry |
+| Export lock | With no provider key at all the export is visible but disabled, naming the reason and linking to Settings, so the feature stays discoverable without offering a call that cannot succeed |
 | Workspace state panel | Explains what is missing when nothing can be shown |
 | Helper connection fields | Helper URL, token, connection test, and one-click connect |
 | Helper setup guide | Instructions shown when the helper is not running |
@@ -185,7 +188,22 @@ Repository intelligence for the services a squad owns.
 | Write operations | Pull, fetch, stash, discard, and branch switching run on whichever side holds the working tree, the helper or the server, through the same hardened git runner: fixed binary, argument array, no shell, and no credential prompt. A branch name must be an existing local branch, so a revision expression such as `HEAD` or a commit SHA is refused rather than silently detaching `HEAD`. Switching branch is refused while tracked files are modified, while untracked files are left alone because git carries them across |
 | Destructive operation safety | Destructive git actions are refused unless `LUNAR_WORKSPACE_ALLOWED_ROOTS` is set and contains the workspace root. Reads and configuration are unaffected, so an operator opts in explicitly before the workspace can modify repositories |
 
-Source: `frontend/src/features/microservices/`.
+### 6.1 Export internals
+
+The export is read-only. It selects files, builds a prompt, calls the model, validates the reply, and
+streams it back; no stage writes to disk.
+
+| Rule | Detail |
+|---|---|
+| Selection | `src/**` including `src/vendor`, route, handler, service, repository, DTO and DAO files, and the Google Wire `wire.go` and `wire_gen.go`, since the generated file holds the real wiring |
+| Exclusion | Test files, `mocks`, framework vendors including root `vendor/` and `node_modules/`, build output, dependency and editor directories, and non-source assets. Directory matching is case-insensitive, because on a case-insensitive filesystem a differently cased name is the same directory |
+| Symlinks | Not followed, and the root `package.json` and the monolith markers must be regular files, so a symlink cannot read outside the repository |
+| Classification | A CodeIgniter 3 tree, a front-end `package.json` with no server framework, and a repository with no discoverable route are refused with the reason shown to the user |
+| Completeness | The prompt requires every key the model identifies to be emitted, with an empty string where a value is unknown. A normaliser then fills the structural keys and a validator refuses a collection with no requests or an incomplete request, so a hollow result cannot be presented as success |
+| Effort | Fixed to `medium` on the backend. It is not a request field and never appears in the UI, so a client cannot request a different effort |
+| Caps | A bounded number of files and bytes per export, with an explicit refusal rather than a truncated prompt |
+
+Source: `frontend/src/features/microservices/`, `backend/internal/postman/`.
 
 ---
 
@@ -393,6 +411,7 @@ Newest first. Every feature change adds a line here.
 
 | Date | Change |
 |---|---|
+| 2026-10-05 | Microservices: a service can now be exported as a Postman collection through a configured model. The pipeline selects the repository's source, classifies the service, builds a framework-specific prompt, and streams stage progress and the collection over server-sent events; the browser writes the file, and nothing is written on the server. The selector includes `src/vendor`, which the code indexer deliberately skips, and excludes test files because atlas and aurora declare every route a second time inside `delivery_test.go`. Adversarial review found and closed four selector defects: a case-sensitive deny list that let `Node_Modules` and eleven other spellings through, a root `package.json` read through a symlink to outside the repository, non-regular files such as a FIFO that blocked the export forever, and the same symlink gap in the monolith markers. Verified live: atlas exported 29 requests against 30 declared routes and aurora 53 against 54, every path traceable to a `routes.go` literal and none missing a name, method, url, path, or header, while `mms` and `fe-mms` were refused with their reasons and panama kept its `src/vendor` files |
 | 2026-10-05 | Microservices: the Branch column becomes a picker and the Action column becomes a kebab menu over five git operations, on both the helper and the server. Branch switching validates the name and then confirms it against `refs/heads`, so a tag or commit SHA is refused with 404 instead of detaching `HEAD`; the dirty guard counts tracked changes only, because stash does not cover untracked files and git carries them across a checkout. Network operations get a 90 second git deadline and a per-request HTTP write deadline, since the backend's 15 second and the client's 8 second defaults truncated a fetch or pull. Destructive actions now require `LUNAR_WORKSPACE_ALLOWED_ROOTS` to contain the workspace root, closing a gap where a session could aim the workspace at any directory and then modify repositories inside it |
 | 2026-10-05 | Settings and Copilot: OpenCode Go joins as a sixth AI provider, reaching `https://opencode.ai/zen/go/v1` and offering DeepSeek V4.1 Flash (Go), MiMo V2.6 Flash (Go), and Space Bunny Free (Go). Because every one of those speaks OpenAI chat completions, no new transport was needed. Model resolution now matches the OpenCode Go catalogue exactly before the legacy substring rule, which would otherwise have sent `deepseek-v4.1-flash` to the personal DeepSeek provider as `deepseek-chat`. Outbound provider requests now identify themselves with `lunar/1.0`, and the code agent sends `x-opencode-session` carrying the conversation id, both required by the Go terms. The AI providers settings screen is rebuilt around a reusable `AiProviderRow`, taking `AiProvidersSettings.vue` from 493 to 170 lines, and the Playwright provider locator now matches the provider name exactly instead of any text in the row. The provider row uses the OpenCode mark shipped as `frontend/public/icons/opencode.svg`, drawn as a white silhouette in dark mode like the other monochrome marks and left in its original two-tone artwork on white in light mode |
 | 2026-10-05 | Copilot: the composer input no longer draws a focus outline, which resolved to near black in light mode. Focus is marked on the composer container through its border and a soft ring instead, so the field stays visibly focused without the hard outline |
