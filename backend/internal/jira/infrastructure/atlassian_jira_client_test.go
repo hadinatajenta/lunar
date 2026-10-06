@@ -641,11 +641,11 @@ func TestAtlassianJiraClient_BacklogSprintsFallsBackToDefaultBoard(t *testing.T)
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if len(sprints) != 2 {
-		t.Fatalf("expected both board sprints, got %+v", sprints)
+	if len(sprints) != 1 {
+		t.Fatalf("expected only the fallback board's own sprint, got %+v", sprints)
 	}
-	if sprints[0].ID != 10103 || sprints[1].ID != 10983 {
-		t.Fatalf("expected sprints 10103 and 10983 from fallback board, got %+v", sprints)
+	if sprints[0].ID != 10983 {
+		t.Fatalf("expected sprint 10983 from the fallback board, got %+v", sprints)
 	}
 	if hits := pathCounter.countFor("/rest/agile/1.0/board/2646/sprint"); hits != 1 {
 		t.Errorf("expected 1 request to fallback board 2646, got %d", hits)

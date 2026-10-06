@@ -4,8 +4,15 @@ import (
 	"lunar/backend/internal/jira/domain"
 )
 
-func filterBacklogSprints(sprintList []domain.JiraSprint) []domain.JiraSprint {
-	return sprintList
+func filterBacklogSprints(sprintList []domain.JiraSprint, boardID int) []domain.JiraSprint {
+	filteredSprints := make([]domain.JiraSprint, 0, len(sprintList))
+	for _, sprint := range sprintList {
+		if sprint.OriginBoardID != 0 && sprint.OriginBoardID != boardID {
+			continue
+		}
+		filteredSprints = append(filteredSprints, sprint)
+	}
+	return filteredSprints
 }
 
 func selectPrioritySprints(sprints []domain.JiraSprint) []domain.JiraSprint {

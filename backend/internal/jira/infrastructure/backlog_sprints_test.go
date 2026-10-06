@@ -6,21 +6,33 @@ import (
 	"lunar/backend/internal/jira/domain"
 )
 
-func TestFilterBacklogSprintsKeepsSprintsFromOtherBoards(t *testing.T) {
+func TestFilterBacklogSprintsDropsSprintsFromAnotherBoard(t *testing.T) {
 	sprintList := []domain.JiraSprint{
 		{ID: 10103, Name: "Sprint Azzuri #5", State: "active", OriginBoardID: 3946},
 		{ID: 10983, Name: "Sprint 44 - Fortune Squad", State: "active", OriginBoardID: 2646},
-		{ID: 8827, Name: "Other Data - Fortune Squad", State: "future", OriginBoardID: 2646},
+		{ID: 10984, Name: "Sprint 45 - Fortune Squad", State: "future", OriginBoardID: 2646},
 	}
 
-	filteredSprints := filterBacklogSprints(sprintList)
-	if len(filteredSprints) != len(sprintList) {
-		t.Fatalf("expected %d sprints to survive filtering, got %d", len(sprintList), len(filteredSprints))
+	filteredSprints := filterBacklogSprints(sprintList, 2646)
+	if len(filteredSprints) != 2 {
+		t.Fatalf("expected 2 sprints for board 2646, got %d: %+v", len(filteredSprints), filteredSprints)
 	}
-	for index, sprint := range filteredSprints {
-		if sprint.ID != sprintList[index].ID {
-			t.Errorf("expected sprint %d at position %d, got %d", sprintList[index].ID, index, sprint.ID)
+	for _, sprint := range filteredSprints {
+		if sprint.OriginBoardID != 2646 {
+			t.Errorf("expected only board 2646 sprints, got %+v", sprint)
 		}
+	}
+}
+
+func TestFilterBacklogSprintsKeepsASprintWhoseBoardIsUnknown(t *testing.T) {
+	sprintList := []domain.JiraSprint{
+		{ID: 10983, Name: "Sprint 44 - Fortune Squad", State: "active", OriginBoardID: 2646},
+		{ID: 10990, Name: "Sprint Without Origin", State: "active"},
+	}
+
+	filteredSprints := filterBacklogSprints(sprintList, 2646)
+	if len(filteredSprints) != 2 {
+		t.Fatalf("expected an unknown origin board to survive, got %d: %+v", len(filteredSprints), filteredSprints)
 	}
 }
 

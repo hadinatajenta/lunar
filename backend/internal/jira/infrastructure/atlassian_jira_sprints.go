@@ -29,7 +29,8 @@ func (c *AtlassianJiraClient) GetBacklogSprints(ctx context.Context, pat string,
 		return c.seedSprints, nil
 	}
 
-	sprintList, err := c.fetchSprintList(ctx, pat, resolveBacklogBoardID(boardID))
+	resolvedBoardID := resolveBacklogBoardID(boardID)
+	sprintList, err := c.fetchSprintList(ctx, pat, resolvedBoardID)
 	if err != nil {
 		if errors.Is(err, errSprintListUnavailable) {
 			return c.seedSprints, nil
@@ -37,7 +38,7 @@ func (c *AtlassianJiraClient) GetBacklogSprints(ctx context.Context, pat string,
 		return nil, err
 	}
 
-	filteredSprints := filterBacklogSprints(sprintList)
+	filteredSprints := filterBacklogSprints(sprintList, resolvedBoardID)
 	prioritySprints := selectPrioritySprints(filteredSprints)
 
 	if err := c.enrichBacklogSprints(ctx, pat, prioritySprints); err != nil {
