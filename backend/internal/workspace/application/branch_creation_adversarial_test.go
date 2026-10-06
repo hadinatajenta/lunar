@@ -244,7 +244,7 @@ func TestAdversarialRunBranchCreationSkipsTheRemoteGuardWhenTheOriginIsNotParsea
 	}
 }
 
-func TestAdversarialRunBranchCreationSkipsWhenOnlyALongerDigitRunBranchExistsRemotely(t *testing.T) {
+func TestAdversarialRunBranchCreationCreatesWhenTheRemoteOnlyCarriesALongerDigitRun(t *testing.T) {
 	operations := &adversarialBranchOperations{coordinates: domain.RepositoryCoordinates{Project: "NME", Slug: "alpha"}}
 	finder := &adversarialRemoteFinder{branches: []string{"feature/CRMMS-63970-other-issue"}}
 	dependencies := adversarialDependencies(operations)
@@ -253,10 +253,26 @@ func TestAdversarialRunBranchCreationSkipsWhenOnlyALongerDigitRunBranchExistsRem
 	request := BranchCreationRequest{Key: "CRMMS-6397", Branch: "feature/CRMMS-6397-x", Targets: adversarialTargets("alpha")}
 	outcome := RunBranchCreation(context.Background(), dependencies, request, "feature/CRMMS-6397-x")
 
-	if len(outcome.Skipped) != 1 || len(outcome.Created) != 0 {
-		t.Fatalf("the remote result is not re-verified against the key, so a longer digit run blocks the create, got %+v", outcome)
+	if len(outcome.Created) != 1 || len(outcome.Skipped) != 0 {
+		t.Fatalf("a remote branch carrying a different key must not block the create, got %+v", outcome)
 	}
-	t.Logf("characterisation: key CRMMS-6397 was skipped because the remote returned %v", finder.branches)
+}
+
+func TestAdversarialRunBranchCreationSkipsWhenTheRemoteCarriesTheSameKeyUnderAnotherName(t *testing.T) {
+	operations := &adversarialBranchOperations{coordinates: domain.RepositoryCoordinates{Project: "NME", Slug: "alpha"}}
+	finder := &adversarialRemoteFinder{branches: []string{"feature/CRMMS-63970-other-issue", "bugfix_CRMMS-6397-already-there"}}
+	dependencies := adversarialDependencies(operations)
+	dependencies.Finder = finder
+
+	request := BranchCreationRequest{Key: "CRMMS-6397", Branch: "feature/CRMMS-6397-x", Targets: adversarialTargets("alpha")}
+	outcome := RunBranchCreation(context.Background(), dependencies, request, "feature/CRMMS-6397-x")
+
+	if len(outcome.Skipped) != 1 || len(outcome.Created) != 0 {
+		t.Fatalf("the remote branch carrying the key must skip the target, got %+v", outcome)
+	}
+	if !strings.Contains(outcome.Skipped[0].Reason, "bugfix_CRMMS-6397-already-there") {
+		t.Fatalf("the skip reason must name the branch that carries the key, got %q", outcome.Skipped[0].Reason)
+	}
 }
 func TestAdversarialIssueBranchesCannotBeCorruptedByTheCaller(t *testing.T) {
 	scanner := keyedBranchScanner()

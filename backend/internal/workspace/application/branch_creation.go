@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	jiraDomain "lunar/backend/internal/jira/domain"
 	sharedErrors "lunar/backend/internal/shared/errors"
 	"lunar/backend/internal/workspace/domain"
 )
@@ -92,10 +93,10 @@ func ValidateBranchCreationRequest(request BranchCreationRequest) (string, error
 	}
 
 	if strings.TrimSpace(request.Key) == "" {
-		return "", fmt.Errorf("%w: %s", sharedErrors.ErrBadRequest, branchCreationKeyRequiredMessage)
+		return "", sharedErrors.BadRequest(branchCreationKeyRequiredMessage)
 	}
 	if len(request.Targets) == 0 {
-		return "", fmt.Errorf("%w: %s", sharedErrors.ErrBadRequest, branchCreationTargetsRequiredMessage)
+		return "", sharedErrors.BadRequest(branchCreationTargetsRequiredMessage)
 	}
 
 	for _, target := range request.Targets {
@@ -103,7 +104,7 @@ func ValidateBranchCreationRequest(request BranchCreationRequest) (string, error
 			return "", err
 		}
 		if strings.TrimSpace(target.BaseBranch) == "" {
-			return "", fmt.Errorf("%w: %s", sharedErrors.ErrBadRequest, branchCreationBaseRequiredMessage)
+			return "", sharedErrors.BadRequest(branchCreationBaseRequiredMessage)
 		}
 		if _, err := domain.ValidateBranchName(target.BaseBranch); err != nil {
 			return "", fmt.Errorf("base branch: %w", err)
@@ -216,11 +217,17 @@ func checkRemoteBranch(ctx context.Context, dependencies BranchCreationDependenc
 	if err != nil {
 		return remoteBranchCheck{Failed: true, Reason: branchReasonRemoteCheckFailed}
 	}
-	if len(existingBranches) == 0 {
+	carryingKey := make([]string, 0, len(existingBranches))
+	for _, branchName := range existingBranches {
+		if jiraDomain.ContainsIssueKey(branchName, key) {
+			carryingKey = append(carryingKey, branchName)
+		}
+	}
+	if len(carryingKey) == 0 {
 		return remoteBranchCheck{}
 	}
 
-	return remoteBranchCheck{Skipped: true, Reason: branchReasonAlreadyExists + ": " + existingBranches[0]}
+	return remoteBranchCheck{Skipped: true, Reason: branchReasonAlreadyExists + ": " + carryingKey[0]}
 }
 
 func rememberBaseBranch(dependencies BranchCreationDependencies, repoName string, baseBranch string, shouldRemember bool) {

@@ -977,3 +977,25 @@ the one thing to preserve: making the scan lenient would reintroduce the absorbe
 66. Never keep a test that pins a defect once the defect is fixed. The characterisation tests written
     by QA recorded the miss on purpose; they were rewritten in the same change as the fix.
 
+## 26. QA findings, resolved
+
+Phase 1 was reviewed adversarially. One defect was real and is fixed in section 24. The rest are
+resolved here.
+
+| Finding | Resolution |
+|---|---|
+| **F2** The remote duplicate check never re-verified the key, so `filterText=CRMMS-6397` returning a `CRMMS-63970` branch skipped a legitimate create | **Fixed.** The returned branches are filtered through the same containment rule, so only a branch that actually carries the key skips the target. A skip now also names the branch that carries the key, not the first thing the remote returned |
+| **F3** The remote guard is silently absent when the clone has no parseable origin, such as a local path or a non-Bitbucket host | **Documented, not fixed.** The condition cannot be produced by a request, it depends on how the clone was made, and the local scan still covers the repository. A repository cloned from somewhere else is out of Bitbucket's reach by definition |
+| **F5** `bitbucket_default` is reported but never appears in `options`, so the contract's `last_commit_relative: null` shape is unreachable | **Contract corrected, not the code.** `options` lists local branches only, because a base must exist locally to be branched from. When the default has no local branch it is reported in `bitbucket_default` and the frontend may say so, but it is not selectable. `last_commit_relative` is never null |
+| **F7** Three 400 bodies read `bad request: the issue key is required`, leaking the sentinel prefix the other bodies did not | **Fixed.** A shared `BadRequest` constructor carries the message without the prefix while still matching the sentinel, so all seven bodies on this endpoint are plain sentences |
+| **F9** One malformed key in a sprint request fails the whole batch | **Kept, deliberately.** The keys come from Jira, so a malformed one means something upstream is wrong, and returning branch data for some issues while silently omitting others would look complete when it is not. Failing closed is the safer direction |
+| **F8** The single-scan tests were masked by the 30 second cache, so they proved less than they appeared to | **Acknowledged.** QA re-proved the property with the cache defeated: seven keys over three repositories is exactly three ref reads, and one key over a fresh workspace is three as well. The property holds; the original tests were simply weaker evidence than they looked |
+
+## 27. Rules from the QA pass
+
+67. Never trust a remote filter as a match. Re-verify the key against every branch the remote returns.
+68. Never let a remote branch carrying a different key block a create.
+69. Never let an error body carry an internal sentinel prefix. The message is for the user.
+70. Never present a partial batch as a complete one. If one key is unusable, say so rather than
+    returning data for the rest.
+
