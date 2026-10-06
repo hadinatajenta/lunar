@@ -933,3 +933,47 @@ So the rule stays case insensitive. A stray token is cheaper than a missed branc
 61. Never assume a boundary pair exists in the real workspace. It was believed to, it does not, so the
     pair is asserted on scratch repositories and the real workspace run only logs what it found.
 
+## 24. The key matcher, corrected
+
+QA found a real defect and it was in the dangerous direction. The leading `\b` is an ASCII word
+boundary, and `_` and digits are word characters, so a key directly preceded by either was never
+found:
+
+| Input | Before | After |
+|---|---|---|
+| `bugfix_CRMMS-6397-existing` | `[]` | `[CRMMS-6397]` |
+| `feature_CRMMS-6397` | `[]` | `[CRMMS-6397]` |
+| `sprint12CRMMS-6397` | `[]` | `[CRMMS-6397]` |
+| `feature/buildCRMMS-6397-x` | `[BUILDCRMMS-6397]` | `[CRMMS-6397]` |
+| `feature/CRMMS-63970-longer` | `[CRMMS-63970]` | `[CRMMS-63970]` |
+| `feature/crmms-6397-lower` | `[CRMMS-6397]` | `[]` indexed, found on lookup |
+| `feature/tid-max-30-CRMMS-12290` | `[MAX-30, CRMMS-12290]` | `[CRMMS-12290]` |
+
+It was proven end to end: with `bugfix_CRMMS-6397-existing` present, the read reported no match and the
+create went on to make a second branch for the same issue. The one failure the whole design exists to
+prevent.
+
+### The rule is two rules, because there are two jobs
+
+| Job | Rule | Why |
+|---|---|---|
+| **Extraction**, building the index of what keys exist | `[A-Z][A-Z0-9]{1,9}-[0-9]{1,6}` with the trailing digit guard, **no word boundary and no case folding** | A word boundary is wrong on both sides: it misses `_` and digits, and it lets `build` be absorbed into the prefix. Case folding is what makes `buildCRMMS` a valid prefix at all |
+| **Lookup**, answering "is this key here" | Case insensitive containment with the same trailing digit guard, unioned with the index | Jira always renders keys uppercase, so extraction can insist on it. A branch that wrote one lowercase is still found, because lookup does not insist |
+
+Extraction indexes `CRMMS-12290` from the branch that also contains `max-30`, and `max-30` is gone,
+because it is not uppercase. The false positive accepted in section 22 is closed as a side effect.
+
+**The scan indexes strictly and the service looks up leniently.** That asymmetry is deliberate and is
+the one thing to preserve: making the scan lenient would reintroduce the absorbed prefix as a junk key.
+
+## 25. Rules for the corrected matcher
+
+62. Never use `\b` in the key pattern. It is an ASCII word boundary and it fails on `_` and on digits.
+63. Never case fold during extraction. A lowercase prefix is not a Jira key, and folding is what allows
+    a preceding word to be absorbed into the project prefix.
+64. Always look up leniently, so a branch that wrote the key lowercase is still found.
+65. Never let the scan and the lookup share one rule. The scan is strict to keep the index clean, the
+    lookup is lenient to avoid missing a branch.
+66. Never keep a test that pins a defect once the defect is fixed. The characterisation tests written
+    by QA recorded the miss on purpose; they were rewritten in the same change as the fix.
+

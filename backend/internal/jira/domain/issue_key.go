@@ -6,14 +6,15 @@ import (
 	"strings"
 )
 
-const IssueKeyPattern = `(?i)\b[A-Z][A-Z0-9]{1,9}-[0-9]{1,6}(?![0-9])`
+const IssueKeyPattern = `[A-Z][A-Z0-9]{1,9}-[0-9]{1,6}(?![0-9])`
 
-var issueKeyExpression = regexp.MustCompile(`(?i)\b[A-Z][A-Z0-9]{1,9}-[0-9]{1,6}`)
+var issueKeyExpression = regexp.MustCompile(`[A-Z][A-Z0-9]{1,9}-[0-9]{1,6}`)
+
+var issueKeyValidationExpression = regexp.MustCompile(`(?i)^[A-Z][A-Z0-9]{1,9}-[0-9]{1,6}$`)
 
 func ValidateIssueKey(value string) (string, error) {
 	trimmed := strings.TrimSpace(value)
-	location := issueKeyExpression.FindStringIndex(trimmed)
-	if location == nil || location[0] != 0 || location[1] != len(trimmed) || hasTrailingDigit(trimmed, location[1]) {
+	if !issueKeyValidationExpression.MatchString(trimmed) {
 		return "", fmt.Errorf("issue key %q is not a valid Jira issue key", trimmed)
 	}
 
@@ -40,6 +41,31 @@ func IssueKeysIn(text string) []string {
 	}
 
 	return keys
+}
+
+func ContainsIssueKey(text string, key string) bool {
+	upperText := strings.ToUpper(text)
+	upperKey := strings.ToUpper(strings.TrimSpace(key))
+	if upperKey == "" {
+		return false
+	}
+
+	searchFrom := 0
+	for searchFrom <= len(upperText)-len(upperKey) {
+		offset := strings.Index(upperText[searchFrom:], upperKey)
+		if offset < 0 {
+			return false
+		}
+
+		end := searchFrom + offset + len(upperKey)
+		if !hasTrailingDigit(upperText, end) {
+			return true
+		}
+
+		searchFrom = searchFrom + offset + 1
+	}
+
+	return false
 }
 
 func hasTrailingDigit(text string, end int) bool {

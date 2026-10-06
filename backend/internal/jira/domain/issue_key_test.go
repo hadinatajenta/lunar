@@ -6,13 +6,57 @@ import (
 )
 
 func TestIssueKeyExpressionIsTheContractPatternWithoutTheLookahead(t *testing.T) {
-	if IssueKeyPattern != `(?i)\b[A-Z][A-Z0-9]{1,9}-[0-9]{1,6}(?![0-9])` {
+	if IssueKeyPattern != `[A-Z][A-Z0-9]{1,9}-[0-9]{1,6}(?![0-9])` {
 		t.Fatalf("the contract key pattern changed: %q", IssueKeyPattern)
 	}
 
 	expected := strings.TrimSuffix(IssueKeyPattern, `(?![0-9])`)
 	if issueKeyExpression.String() != expected {
 		t.Fatalf("the compiled expression %q must be the contract pattern without its lookahead", issueKeyExpression.String())
+	}
+}
+
+func TestIssueKeysInFindsAKeyAdjoinedByAWordCharacter(t *testing.T) {
+	testCases := []struct {
+		name       string
+		branchName string
+	}{
+		{name: "an underscore before the key", branchName: "bugfix_CRMMS-6397-existing"},
+		{name: "a digit before the key", branchName: "sprint12CRMMS-6397"},
+		{name: "a letter directly before the key", branchName: "feature/buildCRMMS-6397-x"},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			keys := IssueKeysIn(testCase.branchName)
+			if len(keys) != 1 || keys[0] != "CRMMS-6397" {
+				t.Fatalf("expected [CRMMS-6397], got %v", keys)
+			}
+		})
+	}
+}
+
+func TestContainsIssueKeyIsLenientAboutCaseAndPrefix(t *testing.T) {
+	testCases := []struct {
+		name       string
+		branchName string
+		key        string
+		expected   bool
+	}{
+		{name: "a lowercase key", branchName: "feature/crmms-6397-fix", key: "CRMMS-6397", expected: true},
+		{name: "a mixed case key", branchName: "feature/Crmms-6397-Fix", key: "CRMMS-6397", expected: true},
+		{name: "an absorbed prefix", branchName: "feature/buildCRMMS-6397-x", key: "CRMMS-6397", expected: true},
+		{name: "a longer key", branchName: "feature/CRMMS-63970-x", key: "CRMMS-6397", expected: false},
+		{name: "an unrelated branch", branchName: "develop", key: "CRMMS-6397", expected: false},
+		{name: "an empty key", branchName: "feature/CRMMS-6397", key: "", expected: false},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			if actual := ContainsIssueKey(testCase.branchName, testCase.key); actual != testCase.expected {
+				t.Fatalf("expected %v, got %v", testCase.expected, actual)
+			}
+		})
 	}
 }
 
@@ -44,8 +88,8 @@ func TestIssueKeysInExtractsEveryKeyFromABranchName(t *testing.T) {
 		{name: "a key after a prefix", branchName: "feature/generate-tid-CRMMS-6397", expected: []string{"CRMMS-6397"}},
 		{name: "a longer key", branchName: "feature/CRMMS-63970-handle-tid", expected: []string{"CRMMS-63970"}},
 		{name: "a key without a trailing separator", branchName: "CRMMS-63970", expected: []string{"CRMMS-63970"}},
-		{name: "a lowercase key", branchName: "feature/crmms-6397-fix", expected: []string{"CRMMS-6397"}},
-		{name: "a mixed case key", branchName: "feature/Crmms-6397-Fix", expected: []string{"CRMMS-6397"}},
+		{name: "a lowercase key is not indexed", branchName: "feature/crmms-6397-fix", expected: []string{}},
+		{name: "a mixed case key is not indexed", branchName: "feature/Crmms-6397-Fix", expected: []string{}},
 		{name: "two keys", branchName: "feature/CRMMS-6397-and-CRMMS-77745", expected: []string{"CRMMS-6397", "CRMMS-77745"}},
 		{name: "a repeated key", branchName: "feature/CRMMS-6397-CRMMS-6397", expected: []string{"CRMMS-6397"}},
 		{name: "a key followed by a letter", branchName: "feature/CRMMS-6397x", expected: []string{"CRMMS-6397"}},

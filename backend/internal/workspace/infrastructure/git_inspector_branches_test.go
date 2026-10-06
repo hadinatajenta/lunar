@@ -138,7 +138,7 @@ func TestScanRepositoryBranchesKeepsALongerKeySeparateFromItsPrefix(t *testing.T
 		sort.Strings(matchesByKey[issueKey])
 	}
 
-	expectedShortKey := []string{"alpha/feature/CRMMS-6397-first", "beta/feature/crmms-6397-lower"}
+	expectedShortKey := []string{"alpha/feature/CRMMS-6397-first"}
 	shortKeyMatches := matchesByKey["CRMMS-6397"]
 	if len(shortKeyMatches) != len(expectedShortKey) {
 		t.Fatalf("expected %v, got %v", expectedShortKey, shortKeyMatches)

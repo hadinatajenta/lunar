@@ -61,6 +61,7 @@ type SprintBranches struct {
 
 type workspaceBranchIndex struct {
 	matchesByKey map[string][]BranchMatch
+	allBranches  []BranchMatch
 	scope        WorkspaceScope
 }
 
@@ -156,25 +157,47 @@ func buildWorkspaceBranchIndex(branchesByRepository map[string][]domain.Branch) 
 	}
 	sort.Strings(repositoryNames)
 
+	allBranches := make([]BranchMatch, 0)
 	for _, repositoryName := range repositoryNames {
 		for _, branch := range branchesByRepository[repositoryName] {
+			match := localBranchMatch(repositoryName, branch)
+			allBranches = append(allBranches, match)
 			for _, issueKey := range jiraDomain.IssueKeysIn(branch.Name) {
-				matchesByKey[issueKey] = append(matchesByKey[issueKey], localBranchMatch(repositoryName, branch))
+				matchesByKey[issueKey] = append(matchesByKey[issueKey], match)
 			}
 		}
 	}
 
 	return &workspaceBranchIndex{
 		matchesByKey: matchesByKey,
+		allBranches:  allBranches,
 		scope:        localWorkspaceScope(len(repositoryNames)),
 	}
 }
 
 func (i *workspaceBranchIndex) matchesForKey(issueKey string) []BranchMatch {
-	matches := i.matchesByKey[issueKey]
-	clonedMatches := make([]BranchMatch, len(matches))
-	copy(clonedMatches, matches)
-	return clonedMatches
+	indexed := i.matchesByKey[issueKey]
+	matches := make([]BranchMatch, 0, len(indexed))
+	seen := make(map[string]struct{}, len(indexed))
+
+	for _, match := range indexed {
+		identity := match.Repository + "\x00" + match.Branch
+		seen[identity] = struct{}{}
+		matches = append(matches, match)
+	}
+
+	for _, match := range i.allBranches {
+		identity := match.Repository + "\x00" + match.Branch
+		if _, duplicate := seen[identity]; duplicate {
+			continue
+		}
+		if jiraDomain.ContainsIssueKey(match.Branch, issueKey) {
+			seen[identity] = struct{}{}
+			matches = append(matches, match)
+		}
+	}
+
+	return matches
 }
 
 func localBranchMatch(repositoryName string, branch domain.Branch) BranchMatch {
