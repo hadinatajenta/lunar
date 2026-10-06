@@ -747,3 +747,62 @@ beneath it.
 39. Never put interactive text below 4.5 to 1. Measure it, do not judge it by eye.
 40. Never use `--subtle` on a control. It reaches only 3.42 to 1 in the dark theme.
 
+## 14. What the screen must not say
+
+The first draft showed a **role selector** on manually added repositories and an **"added by you"**
+label on them. Both were removed on review, correctly: they are internal bookkeeping that leaked into
+the interface.
+
+| Removed | Why it was wrong |
+|---|---|
+| `set role` control | The role exists so the backend can order the creates. It is not a decision the user has an opinion about, and asking them to pick between "frontend", "api gateway" and "backend" for a repository they just chose is asking them to do the system's job |
+| `added by you` label | The user knows. They added it seconds ago. A label that restates what the user just did is noise |
+| `api gateway` role badge | Redundant with the reason text, which already says "the acceptance criteria name the list API the page calls" |
+
+The role stays in the API, because the create order depends on it. It is simply never rendered.
+
+**A reason line is only shown when there is a reason.** A suggested repository explains why it was
+suggested. A manually added one shows nothing, because there is nothing to explain.
+
+## 15. Partial failure
+
+Creating three branches can partly succeed, and the first draft only said so in the contract without
+designing the screen. The rule is that a partial result is a **state the user works from**, not an
+error to dismiss.
+
+| State per repository | Rendered |
+|---|---|
+| pending | the row with its base branch picker |
+| created | a check, the branch name, and the base it came from. No picker, because it is done |
+| already existed | a check and "Already existed, left alone". This is **success**, not failure: the branch being there is the desired end state |
+| failed | a cross, the reason in plain language, and a **Retry** on that row |
+
+And above the button:
+
+```
+1 of 3 created · 2 failed. The branches that were created are kept.
+Fix the reason below and retry only the rest.
+```
+
+| Rule | Detail |
+|---|---|
+| Nothing is rolled back | A created branch stays. Deleting it to make the result tidy is destructive and is not this feature's decision |
+| Retry is per row | Each failed row retries alone, so a failure in one repository never re-runs the ones that worked |
+| The button acts on what is left | It reads "Retry 2 failed" when everything left is a failure, and "Create 2 branches" when something is still pending. It never says "All created" while a failure is on screen |
+| The name locks once anything exists | Changing it after a partial success would leave the created branches under a different name from the new ones. The field is disabled and says why |
+| Failure reasons are actionable | "The working tree has uncommitted changes. Commit or stash them, then retry." names the action, not the exception |
+| The failure survives leaving the panel | The issue row in the list reads "1 of 3 created", so a partial result is visible without reopening the issue |
+| A not cloned repository is warned about before, not only after | The warning appears as soon as the base is chosen, so the user is not surprised by a failure they could have avoided |
+
+## 16. Rules for partial outcomes
+
+41. Never roll back a created branch because a sibling failed.
+42. Never offer a single retry for a partial result. Retry belongs to the failed row.
+43. Never label a partial result as complete. "All created" must be unreachable while any row has
+    failed.
+44. Never let the branch name change after a partial success.
+45. Never render an internal classification as a control or a label. Roles, provenance, and signal
+    names stay in the API.
+46. Never show a reason line for a repository the user added themselves.
+47. Never render "already exists" as a failure. It is the desired end state.
+

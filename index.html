@@ -79,6 +79,28 @@ h2 { font-size: 11px; font-weight: 650; letter-spacing: 0.09em; text-transform: 
   padding: 9px 11px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface-raised); margin-bottom: 6px; }
 .target:last-child { margin-bottom: 0; }
 .target.is-off { opacity: 0.45; }
+.target.is-outcome { grid-template-columns: 22px 1fr auto; }
+.target.is-ok { border-color: color-mix(in srgb, var(--positive) 34%, transparent); }
+.target.is-failed { border-color: color-mix(in srgb, var(--danger) 34%, transparent); }
+.mark { font-size: 13px; font-weight: 700; text-align: center; }
+.target.is-ok .mark { color: var(--positive); }
+.target.is-failed .mark { color: var(--danger); }
+.sub-line.is-reason { color: var(--danger); }
+.sub-line.mono-line { font-family: ui-monospace, "SF Mono", Menlo, monospace; color: var(--muted); }
+.outcome-side { display: flex; align-items: center; gap: 8px; }
+.retry { min-height: 30px; padding: 0 13px; border: 1px solid var(--border-strong); border-radius: 7px;
+  background: var(--surface); color: var(--text); font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; }
+.retry:hover { background: var(--surface-hover); }
+.summary { margin-top: 11px; padding: 11px 13px; border-radius: 9px; font-size: 12px;
+  border: 1px solid var(--border); background: var(--surface-raised); color: var(--muted); }
+.summary b { color: var(--text); font-weight: 650; }
+.summary.is-partial { border-color: color-mix(in srgb, var(--warning) 34%, transparent);
+  background: color-mix(in srgb, var(--warning) 8%, transparent); color: var(--warning); }
+.summary.is-partial b { color: var(--warning); }
+.summary.is-ok { border-color: color-mix(in srgb, var(--positive) 34%, transparent); }
+.warn-note { margin-top: 9px; padding: 10px 12px; border-radius: 9px; font-size: 11.5px;
+  border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
+  background: color-mix(in srgb, var(--warning) 8%, transparent); color: var(--warning); }
 .target > input { width: 15px; height: 15px; accent-color: var(--accent); flex: 0 0 auto; }
 .remove { border: 0; background: transparent; color: var(--muted); font-size: 16px; line-height: 1;
   cursor: pointer; padding: 0 5px; margin-left: 5px; border-radius: 5px; }
@@ -344,8 +366,13 @@ let created = {};
 let openPicker = null;
 const filters = {};
 const manual = {};
-const manualRoles = {};
 const feedback = {};
+const createState = {};
+const FAILURES = {
+  "micro-user-mms": "The working tree has uncommitted changes. Commit or stash them, then retry.",
+  "fe-mms": "The repository is not cloned, so no branch can be created there.",
+  "aurora": "The workspace root is outside LUNAR_WORKSPACE_ALLOWED_ROOTS."
+};
 let openRepoPicker = null;
 let rolePicker = null;
 
@@ -353,6 +380,17 @@ const el = (id) => document.getElementById(id);
 const current = () => issues.find((i) => i.key === selected);
 
 function branchPill(issue) {
+  const targets = allTargets(issue);
+  const done = targets.filter((t) => {
+    const s = createState[issue.key + "__" + t.repo];
+    return s && (s.status === "created" || s.status === "exists");
+  }).length;
+  const failed = targets.filter((t) => {
+    const s = createState[issue.key + "__" + t.repo];
+    return s && s.status === "failed";
+  }).length;
+  if (targets.length && failed) return '<span class="pill is-remote">' + done + " of " + targets.length + " created</span>";
+  if (targets.length && done === targets.length) return '<span class="pill is-found">' + done + " created</span>";
   if (issue.branches.length === 0) return '<span class="pill is-none">no branch</span>';
   const remoteOnly = issue.branches.every((b) => b.source === "remote");
   if (remoteOnly) return '<span class="pill is-remote">not cloned</span>';
@@ -388,6 +426,10 @@ function renderBranches(issue) {
   return rows + notice;
 }
 
+function branchNameFor(issue) {
+  return "feature/" + issue.key + "-" + issue.name.category + "-" + issue.name.core;
+}
+
 function optionsFor(repo) {
   if (baseOptions[repo]) return baseOptions[repo];
   const known = ALL_REPOS.find((entry) => entry.repo === repo);
@@ -403,9 +445,8 @@ function optionsFor(repo) {
 function allTargets(issue) {
   const added = (manual[issue.key] || []).map((repo) => ({
     repo,
-    role: manualRoles[issue.key + "__" + repo] || "unknown",
     cloned: optionsFor(repo).cloned,
-    because: "added by you",
+    because: "",
     manual: true
   }));
   return issue.targets.concat(added);
@@ -434,20 +475,34 @@ function renderTargets(issue) {
         })()
       : "";
     const popup = openPicker === key ? renderPopup(issue, target, key) : "";
-    const rolePicker = target.manual
-      ? `<button class="role ${target.role}" data-role="${key}" aria-label="Role for ${target.repo}">${ROLE_LABEL[target.role]} ▾</button>`
-      : `<span class="role ${target.role}">${ROLE_LABEL[target.role]}</span>`;
     const remove = target.manual
       ? `<button class="remove" data-remove="${key}" aria-label="Remove ${target.repo}">×</button>`
       : "";
-    const roleMenu = rolePicker === null ? "" : "";
+    const name = branchNameFor(issue);
+    const outcome = createState[key];
+    if (outcome) {
+      const isCreated = outcome.status === "created" || outcome.status === "exists";
+      const headline = outcome.status === "created" ? "Created"
+        : outcome.status === "exists" ? "Already existed, left alone"
+        : outcome.reason;
+      return `<div class="target is-outcome ${isCreated ? "is-ok" : "is-failed"}">
+        <span class="mark">${isCreated ? "✓" : "✕"}</span>
+        <div>
+          <div class="repo">${target.repo}</div>
+          <div class="sub-line ${isCreated ? "" : "is-reason"}">${headline}</div>
+          ${isCreated ? `<div class="sub-line mono-line">${name} from ${chosen[key]}</div>` : ""}
+        </div>
+        <div class="outcome-side">
+          ${isCreated ? "" : `<button class="retry" data-retry="${key}">Retry</button>`}
+        </div>
+      </div>`;
+    }
     return `<div class="target ${isOn ? "" : "is-off"}">
       <input type="checkbox" ${isOn ? "checked" : ""} data-toggle="${key}" aria-label="Include ${target.repo}" />
       <div>
-        <div class="repo">${target.repo} ${rolePicker}
-          ${data.cloned ? "" : '<span class="tag">not cloned</span>'}
-          ${target.manual ? '<span class="tag is-manual">added by you</span>' : ""}</div>
-        <div class="sub-line">${target.because}</div>
+        <div class="repo">${target.repo}
+          ${data.cloned ? "" : '<span class="tag">not cloned</span>'}</div>
+        ${target.because ? `<div class="sub-line">${target.because}</div>` : ""}
       </div>
       <div class="picker" data-picker="${key}">
         <button class="trigger" data-open="${key}" aria-haspopup="listbox" aria-expanded="${openPicker === key}">
@@ -526,33 +581,48 @@ function renderCreate(issue) {
   const targets = allTargets(issue);
   if (targets.length === 0) return "";
   const key = issue.key;
-  const name = "feature/" + key + "-" + issue.name.category + "-" + issue.name.core;
-  const active = targets.filter((t) => !created[key + "__" + t.repo]);
+  const name = branchNameFor(issue);
+  const isSettled = (repo) => {
+    const state = createState[key + "__" + repo];
+    return state && (state.status === "created" || state.status === "exists");
+  };
+  const isFailed = (repo) => {
+    const state = createState[key + "__" + repo];
+    return state && state.status === "failed";
+  };
+  const active = targets.filter((t) => !isSettled(t.repo));
+  const createdCount = targets.filter((t) => isSettled(t.repo)).length;
+  const failed = targets.filter((t) => isFailed(t.repo));
   const allChosen = active.length > 0 && active.every((t) => chosen[key + "__" + t.repo]);
-  const blocked = active.filter((t) => !optionsFor(t.repo).cloned);
-  const alreadyDone = targets.filter((t) => created[key + "__" + t.repo]);
   const evidence = issue.name.source === "model"
     ? `Read from the acceptance criteria: <b>${issue.name.evidence}</b>`
     : `The model was not asked, so this came from <b>${issue.name.evidence}</b>. Ask the model to improve it.`;
-  const willFail = active.filter((t) => !optionsFor(t.repo).cloned);
-  const failure = alreadyDone.length && active.length
-    ? `<div class="failure">Created ${alreadyDone.map((t) => t.repo).join(", ")}. Failed on ${active[0].repo}: the repository is not cloned, so no branch can be created there. Clone it and retry, or untick it.</div>`
+  const notCloned = active.filter((t) => !optionsFor(t.repo).cloned);
+  const warning = notCloned.length
+    ? `<div class="warn-note">${notCloned.map((t) => t.repo).join(", ")} ${notCloned.length > 1 ? "are" : "is"} not cloned. ${notCloned.length > 1 ? "Those branches" : "That branch"} will fail unless ${notCloned.length > 1 ? "they are" : "it is"} cloned first.</div>`
     : "";
-  const warning = !failure && willFail.length
-    ? `<div class="failure">${willFail.map((t) => t.repo).join(", ")} ${willFail.length > 1 ? "are" : "is"} not cloned, so ${willFail.length > 1 ? "those branches" : "that branch"} cannot be created. Untick or clone first.</div>`
+  const locked = createdCount > 0;
+  const summary = locked
+    ? `<div class="summary ${failed.length ? "is-partial" : "is-ok"}">
+        <b>${createdCount} of ${targets.length}</b> created${failed.length ? " · " + failed.length + " failed" : ""}.
+        ${failed.length ? "The branches that were created are kept. Fix the reason below and retry only the rest." : ""}
+      </div>`
     : "";
-  const done = alreadyDone.length && !active.length
-    ? `<div class="notice">Created ${alreadyDone.length} branches from ${chosen[key + "__" + alreadyDone[0].repo] || "the chosen base"}.</div>`
-    : "";
+  const pending = targets.filter((t) => !createState[key + "__" + t.repo]).length;
+  const label = active.length === 0 ? "All created"
+    : pending === 0 ? "Retry " + failed.length + " failed"
+    : "Create " + active.length + (active.length === 1 ? " branch" : " branches");
   return `<div>
     <h2>Branch name</h2>
-    <input class="field mono" id="branchName" value="${name}" aria-label="Branch name" />
-    <div class="derived">${evidence}</div>
+    <input class="field mono" id="branchName" value="${name}" aria-label="Branch name" ${locked ? "disabled" : ""} />
+    <div class="derived">${locked
+      ? "The name is fixed because branches already exist with it. Changing it now would leave the created branches inconsistent."
+      : evidence}</div>
     <div class="actions">
-      <button class="primary" id="create" ${allChosen ? "" : "disabled"}>${active.length ? "Create " + active.length + (active.length === 1 ? " branch" : " branches") : "Created"}</button>
-      <span class="hint">${allChosen ? "from " + active.map((t) => chosen[key + "__" + t.repo]).join(", ") : "Choose a base branch for every repository you keep"}</span>
+      <button class="primary" id="create" ${allChosen && active.length ? "" : "disabled"}>${label}</button>
+      <span class="hint">${allChosen || !active.length ? "" : "Choose a base branch for every repository you keep"}</span>
     </div>
-    ${warning}${failure}${done}
+    ${summary}${warning}
   </div>`;
 }
 
@@ -648,13 +718,26 @@ function bind() {
     });
     node.addEventListener("click", (event) => event.stopPropagation());
   });
+  el("detail").querySelectorAll("[data-retry]").forEach((node) => {
+    node.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const key = node.dataset.retry;
+      delete createState[key];
+      renderDetail();
+    });
+  });
   const create = el("create");
   if (create) create.addEventListener("click", () => {
     const issue = current();
-    const targets = allTargets(issue);
-    targets.forEach((t) => { created[issue.key + "__" + t.repo] = true; });
+    const targets = allTargets(issue).filter((t) => !createState[issue.key + "__" + t.repo]);
+    targets.forEach((t) => {
+      const key = issue.key + "__" + t.repo;
+      if (FAILURES[t.repo]) createState[key] = { status: "failed", reason: FAILURES[t.repo] };
+      else if (t.repo === "micro-cm-qris") createState[key] = { status: "exists" };
+      else createState[key] = { status: "created" };
+    });
     renderDetail();
-    el("scope").innerHTML = '<span class="dot" style="background:var(--positive)"></span><span>Created <strong>' + targets.length + " branches</strong> in " + targets.map((t) => t.repo).join(", ") + ". Nothing else was touched.</span>";
+    renderIssues();
   });
 }
 
