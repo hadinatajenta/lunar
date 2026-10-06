@@ -486,8 +486,9 @@ Each of these has been decided above, and a subagent changing one is a defect.
     feature branches descend from all disagree, and for aurora every automatic answer was wrong.
 18. Never send a create request without an explicit base_branch, and never create a branch before the
     base has been shown and chosen.
-19. Never offer a `feature/` or `bugfix/` branch as a base. A new feature is not cut from another
-    feature.
+19. Never hide another team's branch from the base picker. Branching from in-flight work that has not
+    reached production is a real workflow, so `feature/` and `bugfix/` branches are selectable. They are
+    grouped and labelled rather than excluded.
 20. Never hide staleness when offering a base. Every option shows its last commit, so an empty branch
     is visible before it is chosen rather than after.
 
@@ -851,4 +852,51 @@ because it applies to the repositories that still need a branch.
 52. Never let an existing branch override the outcome of a create that already ran.
 53. Never render an existing branch as an error. It is the desired end state, reached earlier than
     expected.
+
+## 19. Branching from another team's branch
+
+A team takes its work from production. Another team has already branched from production but their
+change has not been promoted yet, and the first team needs that change, so it branches from the second
+team's branch rather than from production.
+
+**The first draft forbade this.** The rule read "never offer a feature or bugfix branch as a base",
+which would have hidden exactly the branch the user needs. It is replaced.
+
+| Behaviour | Detail |
+|---|---|
+| Every branch is selectable | The picker searches all of them, not a trusted subset |
+| Grouped, not filtered | Production-like branches first, then a group labelled **Other teams' branches** |
+| Staleness is visible | Every option carries its last commit date, so a branch that is months old is visible as such rather than hidden |
+| The dependency is stated | Choosing another team's branch shows: "will branch from another team's branch, which has not reached production yet. Your branch carries that dependency until theirs is promoted." |
+
+The dependency note is the important part. Branching from in-flight work is legitimate and the user
+should do it when they need to, but they should know they have taken a dependency on a branch that can
+still be rewritten or abandoned.
+
+## 20. Stale and merged branches
+
+Asked whether a branch whose last commit is months old should still be offered as "use the existing
+one". **It should be offered, and the question is close to moot in practice.**
+
+It is rare here because each sprint carries a different backlog and therefore different issue keys, so
+a branch carrying this issue's key is almost always from the current sprint. Matching is by key, so an
+unrelated old branch never enters the comparison at all.
+
+The remaining case, an issue that genuinely slipped across sprints, needs no special rule: the row
+shows the branch and its last commit date, and the user can see it is old. An automatic staleness
+verdict would be guessing at intent, and a branch left open across a sprint boundary is frequently
+deliberate.
+
+| Rule | Detail |
+|---|---|
+| No staleness threshold | Age is shown, never judged. The user decides |
+| No merge detection | Detecting a merge needs the target branch, which is the thing being chosen, so the check would be circular |
+| The key match is what protects | An unrelated branch cannot appear, because it does not carry this issue's key |
+
+## 21. Final rules
+
+54. Never exclude a branch from the base picker because of its name. Group and label it instead.
+55. Never hide the age of a branch that is being offered as a base.
+56. Never let a base choice be silent about a dependency. Branching from unpromoted work is stated.
+57. Never invent a staleness threshold. Show the age and let the user judge.
 
