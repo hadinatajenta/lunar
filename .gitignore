@@ -18,6 +18,8 @@ vendor/
 .cache/
 
 data/
+!frontend/e2e/data/
+.gocache/
 *.db
 *.db-shm
 *.db-wal

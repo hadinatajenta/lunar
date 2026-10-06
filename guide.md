@@ -116,6 +116,12 @@ Source: `frontend/src/features/dashboard/`, `backend/internal/dashboard/`.
 | Branches for an issue | Every branch in the workspace whose name carries the issue key, across every repository. One scan of all repositories serves a whole sprint, so a seven-issue sprint costs one read per repository rather than one per issue |
 | Base branch choice | Every branch in the repository is offered, including another team's in-flight branch, because branching from work that has not reached production yet is a real workflow. Each option carries its last commit date, so an old or empty branch is visible before it is chosen |
 | Creating branches | One issue can produce branches in several repositories at once, each from its own base branch. A partial result is reported per repository rather than as a single success or failure |
+| Repository suggestion | Five weighted signals rank the repositories an issue will touch: epic siblings, an explicit hint, the code index, Confluence, and the model as a fallback. A low confidence result is a list of candidates to choose from, never a recommendation |
+| Sibling branches on Bitbucket | Epic siblings are the strongest signal and read the repositories the local workspace cannot see, because more than a third of the project is not cloned here. A repository that was checked and matched nothing is reported as checked, so verified is never confused with unchecked |
+| Repository catalogue | Every repository, local and remote, with search and totals for the whole catalogue, so one the picker cannot offer is visible as a gap. A repository outside the catalogue cannot be added |
+| Branch name | Derived from the acceptance criteria as feature/<KEY>-<Category>-<Core>, with the phrase it came from shown as evidence. The category is human judgement that appears nowhere in the issue, so the model chooses it from the categories the team's own branches already use, and no category is invented when the model is not asked |
+| Workspace readiness | Seven states, from not configured through partial to ready, reported on the workspace itself. It warns and never blocks |
+| Feedback ranking | Adding a repository that was not suggested is the strongest positive signal, because it is the one case where the engine was silent about a repository that mattered. It outranks a kept confirmation |
 
 When BRI Jira cannot be reached, this page shows an error with a retry action. It must never show
 fabricated data. The client previously fell back to hardcoded sample issues, which made an offline
@@ -156,17 +162,35 @@ Source: `frontend/src/features/jira/`, `backend/internal/jira/`.
 | Push activity | Recent pushes, filterable by all, ready, and stale |
 | Pull requests | List with filters for all, assigned to me, and AI flagged |
 | Create pull request | Modal that opens a pull request from a source branch |
-| Review modal | Pull request detail with repo, branch, author, and file counts |
-| Diff viewer | Toggleable diff for the pull request, with a fallback when the diff is large |
-| AI code review | Generates a review with the configured provider, streamed into the comment box |
-| Approve and comment | Status actions with confirmation toasts |
-| Error handling | Distinct messaging for an invalid token, an unreachable host, and a forbidden response |
+| Review modal | Split dialog: the changed files on the left, findings and the comment on the right. The header carries the repo, the branch flow, the author, and the changed-file and line counts, which come from the loaded diff rather than from the list |
+| Diff viewer | Changed files with per-file collapse, whole-file stats, and the file status. Below 1080px the dialog becomes one column and the diff collapses behind a Show diff control |
+| Model choice | The shared Copilot model picker, bound to the review's own selection, so the review model and the chat model stay independent |
+| AI code review | The backend fetches the pull request and its diff itself, then sends the title, the description, the author, the branches, the languages and test files it detected, and a line-numbered diff. Findings return structured and are grouped by blocker, suggestion, and nitpick |
+| Assumption marking | A finding whose file or line is not present in the diff is marked as an assumption instead of being presented as fact, and the review lists its assumptions separately |
+| Review comment | Composed on the server from the structured findings, so it always carries the verdict, the severity groups, the evidence, the strengths, and the assumptions. The reviewer can edit it or preview the rendered Markdown before posting |
+| Streaming | Not implemented. The review arrives in one response, not as a stream |
+| Long diffs | A diff beyond the review budget drops whole files rather than cutting one in half. The unread files are named in the prompt, in the response, and in the posted comment |
+| Review actions | Approve, Needs work, and Decline. Decline asks for confirmation first, because the author sees it immediately |
+| Failure handling | A failed review shows an in-modal error with Try again. The server never substitutes a canned review when the diff or the model call fails |
 
 `GET /api/bitbucket/pushes`, `/api/bitbucket/prs`, `/api/bitbucket/prs/{id}/diff`,
-`POST /api/bitbucket/prs`, `/api/bitbucket/prs/{id}/ai-review`, `/api/bitbucket/prs/{id}/action`,
+`POST /api/bitbucket/prs`, `POST /api/bitbucket/prs/{id}/ai-review`, `/api/bitbucket/prs/{id}/action`,
 `/api/bitbucket/prs/{id}/comments`, `/api/bitbucket/reset`.
 
-Source: `frontend/src/features/bitbucket/`, `backend/internal/bitbucket/`.
+`POST /api/bitbucket/prs/{id}/ai-review` accepts `{ "model": "..." }` and answers with `pr_id`,
+`model`, `prompt_version`, `summary`, `findings[]`, `assumptions[]`, `strengths[]`, `recommendation`,
+`generated_comment`, and `truncated`. Each finding carries `severity`, `category`, `file`, `line`,
+`title`, `explanation`, `suggested_fix`, `confidence`, and `evidence`.
+
+The review prompt is `pr-review-v2` in `backend/internal/copilot/infrastructure/review_prompt.go`. The
+review runs with JSON output mode on DeepSeek and OpenAI, and with an explicit output cap of 8,000
+tokens for a chat model and 32,000 for a reasoning model, clamped to 8,192 on Claude. A response that
+stops on the cap is reported as a failure with Try again rather than being accepted truncated.
+Gemini, MiMo, and OpenCode Go are sent no output cap because their limits are not documented here,
+and reasoning effort is still ignored on the OpenAI-compatible transport.
+
+Source: `frontend/src/features/bitbucket/`, `backend/internal/bitbucket/`,
+`backend/internal/copilot/infrastructure/review_prompt.go`.
 
 ---
 
@@ -410,6 +434,9 @@ Listed so that nothing here is mistaken for working. Each has a plan or a backlo
 | Shared code index for cross-team questions | Open decision in `plan/code-copilot/` |
 | Semantic code search using embeddings | Stage 5 of `plan/code-copilot/` |
 | Guided tours for the Atlassian pages | `plan/user-guide/` |
+| Reasoning effort reaches the model | The control exists in Copilot, and `ReasoningEffortMedium` is passed for a review, but the OpenAI-compatible transport never sends it, so DeepSeek, OpenAI, Gemini, and MiMo ignore the setting |
+| Output cap for Gemini, MiMo, and OpenCode Go | Their limits are not documented here, so no cap is sent rather than guessing one |
+| A review evaluation set | Prompt `pr-review-v2` is a behaviour change, and no fixture set yet measures it against `pr-review-v1`. Unit tests cover the deterministic prompt and comment assembly, not model quality |
 | Helper download and distribution page | `plan/BACKLOG.md` |
 | `CORS_ORIGIN` still wildcard | `plan/BACKLOG.md`, must be set before broad deployment |
 | Several files above the 300-line limit | `plan/BACKLOG.md` |
@@ -437,6 +464,10 @@ Newest first. Every feature change adds a line here.
 
 | Date | Change |
 |---|---|
+| 2026-10-06 | Jira: an issue now shows the repositories it will be built in, and can create a branch in several of them at once from a base the user chooses. Five weighted signals rank the candidates, the strongest being the other issues in the same epic, and that signal reads the repositories the local workspace cannot see. A branch name is derived from the acceptance criteria, and the phrase it came from is shown as evidence. A live test against the real instance and a real model found what no stubbed test could: asked for the category, which appears nowhere in the issue text, the model returned a word the team never uses. The category is now chosen from the vocabulary the team's own branches already use, and the worked example matches the branch that exists in the workspace byte for byte |
+| 2026-10-06 | Bitbucket: the pull request review modal is rebuilt as a split dialog, with the changed files on the left and findings and the comment on the right, tabs for both, per-file collapse in the diff, a shared Copilot model picker bound to the review's own model, the changed-file and line counts read from the diff instead of the always-zero list fields, a focus trap with focus returned to the opener, a real label on the comment field, a Markdown preview of the comment before posting, and a confirmation before Decline |
+| 2026-10-06 | Bitbucket: AI review quality. The prompt is rebuilt as `pr-review-v2` and now receives the pull request title, description, author, and branches, the languages and test files detected in the diff, and a line-numbered diff, all computed in Go rather than left for the model to infer. Findings return structured with a severity, a category, a file, a line, an explanation, a suggested fix, quoted evidence, and a confidence. A finding whose file or line is not present in the diff is marked as an assumption instead of being presented as fact. The posted comment is composed on the server from the structured findings, so it always carries the verdict, the severity groups, the evidence, the strengths, and the assumptions. Four defects were found and closed on the way: a JSON parse failure used to fabricate "Automated AI review completed." and post the raw model text as the review; a diff fetch failure silently fell through to a hardcoded canned review, so an outage looked like a real review; the diff was cut at 24,000 bytes in the middle of a file, which silently dropped every later file, and whole files are now dropped and named instead; and `max_tokens` was never sent on the OpenAI-compatible path while Claude hardcoded 4096, with `finish_reason` unread, so a truncated answer became invalid JSON and reached the reviewer through the first defect. The review now requests JSON output mode on DeepSeek and OpenAI, retries once without it if a provider rejects the field, repairs an unparsable answer once, and fails with a `502` and a retry control in the modal rather than showing invented content |
+| 2026-10-06 | Copilot and Bitbucket: the focus trap moves out of `AppSidebar.vue` into a shared `useFocusTrap` composable, which the sidebar and the review modal both use. Closing the sidebar drawer now returns focus to the control that opened it, which the guide had documented but no code did |
 | 2026-10-06 | Jira: an issue's branches can be read across the whole workspace, and a branch can be created from a base the user chose. Reading one scan of every repository serves a whole sprint. Creating accepts several repositories at once, each with its own base branch, and reports a partial result per repository rather than rolling back what already succeeded. A branch that already exists is skipped rather than failed, and the base branch is required with no default, so no branch can be created from a base the user never saw. Adversarial review found a real defect in the key matcher: the leading word boundary is an ASCII one, so a key written directly after an underscore or a digit was never found, and the read reported no branch for an issue that had one, which then produced a duplicate branch. Fixed, and the same change removed a false positive where a word followed by a number inside a branch name was read as a project key |
 | 2026-10-05 | Jira: a sprint's issue list now matches the Jira board. Sub-tasks were being returned alongside their parents, so the Pangestu sprint read as 50 issues where Jira shows 7, and the Fortune sprint as 73 where Jira shows 7. The sprint issue request excludes sub-tasks and the parent limit is raised well above a normal sprint |
 | 2026-10-05 | Jira: the backlog is scoped to the signed-in user's own squad. The sprint field was wrong, so squad detection had never worked and every user fell back to every sprint on one hardcoded board, which is why a user outside that squad saw its work. The board is now taken from the sprint that owns the user's own issues, only active sprints are requested, and an undetectable squad yields an empty backlog that says so instead of another squad's. The squad filter was removed, the sprint groups expand and collapse for real, the issue modal footer regained the layout it never had, and Read more opens the issue on BRI Jira |
