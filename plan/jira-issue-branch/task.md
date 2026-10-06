@@ -45,11 +45,19 @@
 - [ ] Low confidence is not presented as certain
 - [ ] No branch can be created without confirmation
 
-## Phase 2b: workspace readiness
+## Phase 2b: the authoritative tier and workspace readiness
 
-### 2C backend and frontend
+### 2C Bitbucket tier
+- [ ] List a Bitbucket project's repositories
+- [ ] Search a repository's branches by key with `filterText`
+- [ ] Two tier lookup: local scan first, Bitbucket where the local answer would be "not found"
+- [ ] Concurrent and cached, since the project holds 65 repositories
+- [ ] An unreachable Bitbucket degrades to the local tier and reports the limit
+
+### 2D workspace readiness
 - [ ] Readiness states defined once: not-configured, invalid, empty, single-repo, foreign, partial, ready
 - [ ] A path that is itself a repository says so instead of "none found"
+- [ ] The correspondence check handles a workspace drawn from several projects, since 12 local folders belong to no repository in NME
 - [ ] The correspondence check reports when no branch carries a key from the current Jira project
 - [ ] "Not found in the N repositories Lunar can see", never "does not exist"
 - [ ] The Jira page shows the same readiness panel the Microservices page already has

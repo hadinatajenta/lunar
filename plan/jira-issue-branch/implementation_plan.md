@@ -264,6 +264,112 @@ reimplemented.
 - A missing workspace never falls back to a guess, an empty suggestion, or a sample repository.
 - "Not found" is never rendered as "does not exist".
 
+## Recommending a repository when the workspace is incomplete
+
+Measured against the real environment rather than assumed.
+
+| Fact | Value |
+|---|---|
+| Repositories in Bitbucket project NME | **65** |
+| Repositories cloned into the workspace | **36** |
+| Coverage | **55%** |
+| Repositories not cloned locally | **41** |
+| Local folders that belong to no repository in NME | **12**, so the workspace spans more than one project |
+| Jira's dev-status API, which would aggregate the Bitbucket links per issue | **403, not permitted.** The integration is unavailable, so Jira cannot tell us about branches |
+| Bitbucket branch search with `filterText` | **Works.** `CRMMS-77911` was found in `atlas` and `mms-api` without either being queried through a clone |
+
+The last two are what decide the design. Jira cannot answer the branch question, and Bitbucket can.
+
+### The principle
+
+**The candidate list must not come from the workspace.** Asking "which repository is this issue in" while
+only being able to see 55% of the repositories is asking a question we cannot answer, and answering it
+anyway is how the feature becomes confidently wrong.
+
+Bitbucket knows the complete set, so it supplies the universe. The workspace is a fast local cache of
+part of that universe, not the source of truth.
+
+### Two tiers
+
+| Tier | Source | Cost | Coverage | Used for |
+|---|---|---|---|---|
+| Fast | Local workspace scan | About 2 seconds | 55% | Every request, and every keystroke-level interaction |
+| Authoritative | Bitbucket branch search per repository | One call per repository, cacheable | 100% | Answering "does a branch exist", and verifying a suggestion |
+
+The authoritative tier is **not** run on every page load. It runs where its answer changes a decision:
+
+1. When the local scan would report **no branch**, because that is the case where being wrong creates a
+   duplicate.
+2. When the user asks to create a branch, so the confirmation is based on the complete picture.
+3. When the user explicitly refreshes.
+
+### What an incomplete workspace does to each signal
+
+| Signal | Needs local code | Behaviour at 55% coverage |
+|---|---|---|
+| S1 epic siblings | Branches only | **Promoted to Bitbucket.** Sibling branches are searched server side, so this survives the missing repositories |
+| S2 explicit hint in the issue | No | **Unaffected.** Full weight |
+| S3 code index terms | Yes | **Scaled by coverage.** It can only speak for the repositories that are present |
+| S4 linked Confluence page | No | **Unaffected.** Full weight |
+| S5 model ranking | A catalogue | **Unaffected in principle**, because the catalogue comes from Bitbucket, not from the local disk. This is the opposite of the naive design, where a partial workspace would have hidden repositories from the model too |
+
+### Confidence is scaled, and the scale is shown
+
+Coverage is not a single number. What matters is whether the repositories **relevant to this issue**
+are present:
+
+- If the epic's siblings were all found, coverage is effectively complete for S1 even at 36 of 65.
+- If a sibling exists whose repository is not cloned, S1 is blind to it, and that is exactly what
+  Bitbucket fixes.
+
+The screen states the basis rather than hiding it:
+
+```
+Suggested: mms-api                       confidence: high
+  the branch CRMMS-77911 already exists in mms-api on Bitbucket
+  2 other issues in this epic were worked in mms-api and atlas
+  searched 36 repositories locally and 65 on Bitbucket
+```
+
+and when the local tier is all we have:
+
+```
+Suggested: mms-api                       confidence: medium
+  the issue names mms-api
+  3 sibling branches were found locally
+  searched 36 of 65 repositories, 29 not cloned
+```
+
+### The dangerous case, solved
+
+The failure worth designing against is telling the user a branch does not exist when it does, because
+that produces a duplicate branch and a confused squad. With the authoritative tier it becomes a
+useful message instead:
+
+```
+CRMMS-77911  branch already exists, repository not cloned
+  feature/CRMMS-77911-Enhancement-Manage-User
+  in mms-api, which is not in your workspace
+  [clone it]  [open on Bitbucket]
+```
+
+### The workspace spans projects
+
+Twelve local folders belong to no repository in NME, among them `mms`, `mocash_api`,
+`service_qris`, `micro-user-mms` and `vue-kanji`. The workspace is therefore a curated set drawn
+from more than one Bitbucket project, not a clone of one.
+
+That breaks the naive correspondence check. Comparing the workspace against a single project would
+report a correct workspace as foreign. The check must ask whether the workspace contains repositories
+from **any** project the user has access to, and the repository catalogue is the union of those
+projects rather than one.
+
+### When neither source is available
+
+If Bitbucket cannot be reached and the workspace is partial, the feature does not guess. It reports
+that it can only see the local repositories, marks the answer as limited, and never states that a
+branch does not exist.
+
 ## Out of scope
 
 - Creating the branch on the remote. Local only, consistent with every other git operation here.
