@@ -1,0 +1,722 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lunar · Jira issue to branch — design</title>
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #0b0c0f;
+  --sidebar: #0d0f13;
+  --surface: #101217;
+  --surface-raised: #151820;
+  --surface-hover: #181c23;
+  --border: rgba(255, 255, 255, 0.075);
+  --border-strong: rgba(255, 255, 255, 0.12);
+  --text: #f4f6f8;
+  --muted: #8d959f;
+  --subtle: #626a75;
+  --positive: #9fb6a6;
+  --warning: #bba984;
+  --danger: #c69090;
+  --accent: #f5f7fa;
+  --accent-contrast: #0b0c0f;
+  --radius: 12px;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f8fafc;
+  --sidebar: #f8fafc;
+  --surface: #ffffff;
+  --surface-raised: #f1f5f9;
+  --surface-hover: #e2e8f0;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --text: #0f172a;
+  --muted: #475569;
+  --subtle: #64748b;
+  --positive: #15803d;
+  --warning: #b45309;
+  --danger: #b91c1c;
+  --accent: #0f172a;
+  --accent-contrast: #ffffff;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.5 ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.page { max-width: 1320px; margin: 0 auto; padding: 28px 24px 80px; }
+.topbar {
+  display: flex; align-items: center; gap: 14px;
+  padding-bottom: 18px; margin-bottom: 22px;
+  border-bottom: 1px solid var(--border);
+}
+.brand { font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
+.crumb { color: var(--muted); font-size: 12.5px; }
+.spacer { flex: 1; }
+.ghost {
+  display: inline-flex; align-items: center; gap: 7px;
+  min-height: 32px; padding: 0 13px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); color: var(--text);
+  font-size: 12px; font-weight: 500; cursor: pointer;
+}
+.ghost:hover { border-color: var(--border-strong); background: var(--surface-hover); }
+h1 { font-size: 20px; font-weight: 650; letter-spacing: -0.02em; margin: 0 0 6px; }
+h2 {
+  font-size: 11px; font-weight: 650; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--subtle); margin: 0 0 10px;
+}
+.sub { color: var(--muted); font-size: 12.5px; margin: 0 0 18px; }
+
+.scope {
+  display: flex; align-items: center; gap: 9px;
+  padding: 10px 14px; margin-bottom: 20px;
+  border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface-raised); color: var(--muted); font-size: 12px;
+}
+.scope strong { color: var(--text); font-weight: 600; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--warning); flex: 0 0 auto; }
+
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr); gap: 20px; }
+@media (max-width: 1000px) { .cols { grid-template-columns: 1fr; } }
+.card {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); overflow: hidden;
+}
+.card-head {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 14px 16px; border-bottom: 1px solid var(--border);
+}
+.card-head .title { font-size: 13px; font-weight: 600; }
+.card-head .meta { color: var(--subtle); font-size: 11.5px; margin-left: auto; }
+.card-body { padding: 6px; }
+
+.issue {
+  display: flex; align-items: center; gap: 11px;
+  width: 100%; padding: 11px 12px; margin: 2px 0;
+  border: 1px solid transparent; border-radius: 9px;
+  background: transparent; color: inherit; text-align: left;
+  font: inherit; cursor: pointer;
+}
+.issue:hover { background: var(--surface-hover); }
+.issue[aria-selected="true"] { background: var(--surface-raised); border-color: var(--border-strong); }
+.key { font-size: 11.5px; font-weight: 600; color: var(--muted); min-width: 84px; font-variant-numeric: tabular-nums; }
+.issue-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pill {
+  display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto;
+  padding: 3px 9px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface-raised);
+  font-size: 11px; font-weight: 550; color: var(--muted);
+}
+.pill.is-found { color: var(--positive); border-color: color-mix(in srgb, var(--positive) 34%, transparent); }
+.pill.is-remote { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 34%, transparent); }
+.pill.is-none { color: var(--subtle); }
+.count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 5px;
+  background: var(--surface-hover); font-size: 10.5px; font-weight: 600; color: var(--muted);
+}
+
+.detail { padding: 16px; display: flex; flex-direction: column; gap: 20px; }
+.detail-key { font-size: 12px; font-weight: 650; color: var(--muted); font-variant-numeric: tabular-nums; }
+.detail-title { font-size: 14.5px; font-weight: 550; line-height: 1.45; margin: 5px 0 0; }
+
+.branch {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px;
+  background: var(--surface-raised); margin-bottom: 7px;
+}
+.branch:last-child { margin-bottom: 0; }
+.branch .name { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11.5px; word-break: break-all; }
+.branch .where { color: var(--muted); font-size: 11.5px; }
+.branch.is-remote { border-color: color-mix(in srgb, var(--warning) 30%, transparent); }
+.notice {
+  margin-top: 9px; padding: 10px 12px; border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
+  background: color-mix(in srgb, var(--warning) 9%, transparent);
+  color: var(--warning); font-size: 11.5px;
+}
+.empty {
+  padding: 14px 12px; border: 1px dashed var(--border-strong); border-radius: 9px;
+  color: var(--muted); font-size: 12px;
+}
+
+.suggestion {
+  padding: 13px 14px; border: 1px solid var(--border-strong); border-radius: 10px;
+  background: var(--surface-raised); margin-bottom: 9px;
+}
+.suggestion:last-child { margin-bottom: 0; }
+.suggestion.is-lead { border-color: color-mix(in srgb, var(--positive) 40%, transparent); }
+.suggestion-head { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
+.repo { font-weight: 650; font-size: 13.5px; }
+.reasons { display: flex; flex-direction: column; gap: 6px; }
+.reason { display: flex; gap: 8px; color: var(--muted); font-size: 11.5px; line-height: 1.45; }
+.reason .tick { color: var(--positive); flex: 0 0 auto; }
+.reason .w { color: var(--subtle); flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+.conf { margin-left: auto; font-size: 10.5px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; }
+.conf.high { color: var(--positive); }
+.conf.medium { color: var(--warning); }
+.conf.low { color: var(--muted); }
+.unavailable {
+  margin-top: 10px; padding: 9px 11px; border-radius: 8px;
+  background: var(--surface-hover); color: var(--subtle); font-size: 11px;
+}
+
+.primary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  min-height: 34px; padding: 0 15px; border: 1px solid transparent; border-radius: 8px;
+  background: var(--accent); color: var(--accent-contrast);
+  font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.primary:hover { opacity: 0.9; }
+.primary:disabled { opacity: 0.4; cursor: not-allowed; }
+.actions { display: flex; align-items: center; gap: 9px; margin-top: 13px; }
+
+.steps { display: flex; flex-direction: column; gap: 16px; }
+.step { display: grid; grid-template-columns: 24px 1fr; gap: 12px; }
+.step-no {
+  width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border-strong); background: var(--surface-raised);
+  font-size: 11px; font-weight: 650; color: var(--muted);
+}
+.step.is-done .step-no { background: var(--positive); border-color: var(--positive); color: var(--bg); }
+.step-label { font-size: 11px; font-weight: 650; letter-spacing: 0.07em; text-transform: uppercase; color: var(--subtle); margin-bottom: 7px; }
+.field {
+  width: 100%; min-height: 34px; padding: 7px 11px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); color: var(--text);
+  font: inherit; font-size: 12.5px;
+}
+.field.mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11.5px; }
+.field:focus-visible { outline: 2px solid var(--border-strong); outline-offset: 1px; }
+
+.bases { display: flex; flex-direction: column; gap: 6px; }
+.base {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); cursor: pointer; text-align: left; font: inherit; color: inherit; width: 100%;
+}
+.base:hover { border-color: var(--border-strong); background: var(--surface-hover); }
+.base[aria-pressed="true"] { border-color: var(--accent); background: var(--surface-hover); }
+.base .bname { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11.5px; font-weight: 600; }
+.base .when { color: var(--subtle); font-size: 11px; margin-left: auto; font-variant-numeric: tabular-nums; }
+.base .stale { color: var(--warning); font-size: 11px; margin-left: auto; }
+.tag {
+  padding: 2px 7px; border-radius: 5px; font-size: 10px; font-weight: 650;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  border: 1px solid var(--border-strong); color: var(--subtle);
+}
+.tag.is-default { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 34%, transparent); }
+.tag.is-remembered { color: var(--positive); border-color: color-mix(in srgb, var(--positive) 34%, transparent); }
+
+.remember { display: flex; align-items: center; gap: 9px; margin-top: 11px; color: var(--muted); font-size: 12px; cursor: pointer; }
+.remember input { width: 15px; height: 15px; accent-color: var(--accent); }
+
+.states { display: grid; grid-template-columns: repeat(auto-fit, minmax(268px, 1fr)); gap: 11px; margin-top: 34px; }
+.state {
+  padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface);
+}
+.state-code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11px; font-weight: 650; color: var(--warning); }
+.state-msg { color: var(--muted); font-size: 11.5px; margin-top: 7px; line-height: 1.5; }
+
+.modal-scrim {
+  position: fixed; inset: 0; z-index: 50; display: none;
+  align-items: center; justify-content: center; padding: 20px;
+  background: rgba(5, 6, 8, 0.72);
+}
+.modal-scrim.is-open { display: flex; }
+.modal {
+  width: min(560px, 100%); max-height: 88vh; overflow: auto;
+  border: 1px solid var(--border-strong); border-radius: 14px;
+  background: var(--surface); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+.modal-head { padding: 17px 20px 15px; border-bottom: 1px solid var(--border); }
+.modal-title { font-size: 15px; font-weight: 650; }
+.modal-note { color: var(--muted); font-size: 11.5px; margin-top: 5px; }
+.modal-body { padding: 18px 20px; }
+.modal-foot {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 20px; border-top: 1px solid var(--border);
+}
+.hint { color: var(--subtle); font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="topbar">
+    <span class="brand">Lunar</span>
+    <span class="crumb">Jira › Backlog</span>
+    <span class="spacer"></span>
+    <button class="ghost" id="theme">Switch theme</button>
+  </div>
+
+  <h1>Sprint #36 - Pangestu Squad</h1>
+  <p class="sub">7 issues · day 6 of 21 · board 2866</p>
+
+  <div class="scope">
+    <span class="dot"></span>
+    <span>Searching <strong>36</strong> of <strong>65</strong> repositories. <strong>29</strong> are not cloned locally, so they are checked on Bitbucket instead.</span>
+  </div>
+
+  <div class="cols">
+    <section class="card">
+      <div class="card-head">
+        <span class="title">Issues</span>
+        <span class="meta">click one</span>
+      </div>
+      <div class="card-body" id="issues" role="listbox" aria-label="Sprint issues"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <span class="title" id="detailTitle">Select an issue</span>
+        <span class="meta" id="detailMeta"></span>
+      </div>
+      <div class="detail" id="detail"></div>
+    </section>
+  </div>
+
+  <h2 style="margin-top:36px">Workspace readiness</h2>
+  <p class="sub">Every state, and the sentence it renders. Shown on both the Jira page and the Microservices page.</p>
+  <div class="states" id="states"></div>
+</div>
+
+<div class="modal-scrim" id="scrim" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modalTitle">Create branch</div>
+      <div class="modal-note" id="modalNote"></div>
+    </div>
+    <div class="modal-body">
+      <div class="steps">
+        <div class="step is-done">
+          <div class="step-no">1</div>
+          <div>
+            <div class="step-label">Branch name</div>
+            <input class="field mono" id="branchName" aria-label="Branch name" />
+            <div class="hint" style="margin-top:7px">Generated from the issue. Edit it if you want.</div>
+          </div>
+        </div>
+        <div class="step is-done">
+          <div class="step-no">2</div>
+          <div>
+            <div class="step-label">Repository</div>
+            <select class="field" id="repoSelect" aria-label="Repository"></select>
+            <div class="hint" style="margin-top:7px" id="repoHint"></div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-no">3</div>
+          <div>
+            <div class="step-label">Base branch</div>
+            <div class="bases" id="bases"></div>
+            <div class="hint" style="margin-top:9px">Lunar never picks this for you. A branch cut from the wrong base is hard to undo.</div>
+            <label class="remember"><input type="checkbox" id="remember" /> Remember this base for <span id="rememberRepo"></span></label>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="ghost" id="cancel">Cancel</button>
+      <span class="spacer"></span>
+      <span class="hint" id="createHint">Choose a base branch</span>
+      <button class="primary" id="create" disabled>Create branch</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const issues = [
+  {
+    key: "CRMMS-77745",
+    title: "Sebagai Maker & Approval di New MMS, I want to memiliki menu dan form terpisah untuk mengajukan program bulk MDR QRIS Statis",
+    status: "In Progress",
+    assignee: "Gilar",
+    branches: [],
+    suggestion: {
+      confidence: "high",
+      lead: "mms-api",
+      unavailable: [],
+      items: [
+        { repo: "mms-api", score: 9.0, cloned: true, reasons: [
+          { signal: "epic_siblings", weight: 5.0, text: "2 other issues in this epic were worked in mms-api" },
+          { signal: "explicit_hint", weight: 4.0, text: "the issue names mms-api" }
+        ]},
+        { repo: "atlas", score: 5.0, cloned: true, reasons: [
+          { signal: "epic_siblings", weight: 5.0, text: "1 other issue in this epic was worked in atlas" }
+        ]}
+      ]
+    }
+  },
+  {
+    key: "CRMMS-77739",
+    title: "Sebagai Maker & Approval di New MMS, I want to mengajukan program perubahan MDR secara bulk dengan pilihan tipe QRIS Open API",
+    status: "In Progress",
+    assignee: "Gilar",
+    branches: [
+      { repo: "atlas", branch: "feature/CRMMS-77911-Enhancement-Manage-User", source: "both", current: false, when: "3 days ago" },
+      { repo: "mms-api", branch: "feature/CRMMS-77911-Enhancement-Manage-User", source: "remote", current: false, when: null }
+    ],
+    suggestion: null
+  },
+  {
+    key: "CRMMS-77740",
+    title: "Sebagai Maker, Checker, Approval CM Perubahan Data, i want to dapat melihat dan mengubah PN Pengelola pada form Tindak Lanjut",
+    status: "In Progress",
+    assignee: "Ira",
+    branches: [
+      { repo: "merchant-service-go", branch: "feature/CRMMS-77740-CM-Perubahan-Data", source: "local", current: false, when: "5 days ago" }
+    ],
+    suggestion: null
+  },
+  {
+    key: "CRMMS-77758",
+    title: "Preparation & Regression Deployment | Enhancement - Mapping Channel & Sub Channel CM QRIS",
+    status: "To Do",
+    assignee: "Sifa",
+    branches: [],
+    suggestion: {
+      confidence: "medium",
+      lead: null,
+      unavailable: [
+        { signal: "code_index", reason: "aurora is not cloned, so its files cannot be searched" }
+      ],
+      items: [
+        { repo: "aurora", score: 4.0, cloned: false, reasons: [
+          { signal: "explicit_hint", weight: 4.0, text: "the issue names Channel & Sub Channel" }
+        ]},
+        { repo: "micro-cm-qris", score: 3.2, cloned: true, reasons: [
+          { signal: "confluence", weight: 1.5, text: "the linked wiki page names micro-cm-qris" },
+          { signal: "code_index", weight: 2.0, text: "mapping appears in 4 files" }
+        ]}
+      ]
+    }
+  },
+  {
+    key: "CRMMS-77759",
+    title: "Preparation & Regression Deployment | Report Menu - Implementasi Summary",
+    status: "To Do",
+    assignee: "Kyyk",
+    branches: [],
+    suggestion: {
+      confidence: "low",
+      lead: null,
+      unavailable: [],
+      items: [
+        { repo: "aurora", score: 1.2, cloned: false, reasons: [
+          { signal: "model", weight: 1.0, text: "the model reads this as a reporting change in the CM service" }
+        ]},
+        { repo: "micro-cm-qris", score: 1.1, cloned: true, reasons: [
+          { signal: "code_index", weight: 2.0, text: "summary appears in 2 files" }
+        ]}
+      ]
+    }
+  },
+  {
+    key: "CRMMS-77742",
+    title: "Deployment | Enhancement - Inisiasi Interface Send & Check",
+    status: "To Do",
+    assignee: "Yusuf",
+    branches: [],
+    suggestion: {
+      confidence: "high",
+      lead: "mms-api",
+      unavailable: [],
+      items: [
+        { repo: "mms-api", score: 5.0, cloned: true, reasons: [
+          { signal: "epic_siblings", weight: 5.0, text: "2 other issues in this epic were worked in mms-api" }
+        ]}
+      ]
+    }
+  },
+  {
+    key: "CRMMS-77743",
+    title: "Deployment | Migration ESB Service - Inquiry Rekening",
+    status: "To Do",
+    assignee: "Izat",
+    branches: [],
+    suggestion: {
+      confidence: "medium",
+      lead: null,
+      unavailable: [],
+      items: [
+        { repo: "echo", score: 3.0, cloned: true, reasons: [
+          { signal: "explicit_hint", weight: 4.0, text: "the issue names ESB Service" }
+        ]},
+        { repo: "mms-api", score: 2.4, cloned: true, reasons: [
+          { signal: "epic_siblings", weight: 5.0, text: "1 other issue in this epic was worked in mms-api" }
+        ]}
+      ]
+    }
+  }
+];
+
+const baseOptions = {
+  "mms-api": {
+    isCloned: true,
+    bitbucketDefault: "release/production",
+    remembered: null,
+    options: [
+      { name: "release/production", when: "23 Sep 2026", source: "bitbucket_default" },
+      { name: "pre/development", when: "2 Oct 2026", source: "trusted" }
+    ],
+    other: 41
+  },
+  "atlas": {
+    isCloned: true,
+    bitbucketDefault: "master",
+    remembered: null,
+    options: [
+      { name: "master", when: "13 Jul 2026", source: "trusted" },
+      { name: "development", when: "7 Sep 2026", source: "trusted" }
+    ],
+    other: 16
+  },
+  "aurora": {
+    isCloned: false,
+    bitbucketDefault: "main",
+    remembered: null,
+    options: [
+      { name: "master", when: "22 Sep 2026", source: "trusted" },
+      { name: "development", when: "2 Oct 2026", source: "trusted" },
+      { name: "main", when: null, source: "bitbucket_default" },
+      { name: "pre/development", when: "20 Aug 2026", source: "trusted" }
+    ],
+    other: 90
+  },
+  "micro-cm-qris": {
+    isCloned: true,
+    bitbucketDefault: "release/production",
+    remembered: "pre/development",
+    options: [
+      { name: "pre/development", when: "7 Sep 2026", source: "remembered" },
+      { name: "release/production", when: "8 Jul 2026", source: "bitbucket_default" }
+    ],
+    other: 33
+  },
+  "merchant-service-go": {
+    isCloned: true,
+    bitbucketDefault: "release/production",
+    remembered: null,
+    options: [
+      { name: "release/production", when: "23 Jun 2026", source: "bitbucket_default" }
+    ],
+    other: 12
+  },
+  "echo": {
+    isCloned: true,
+    bitbucketDefault: "release/production",
+    remembered: null,
+    options: [
+      { name: "release/production", when: "10 Sep 2026", source: "bitbucket_default" },
+      { name: "release/development", when: "28 Sep 2026", source: "trusted" }
+    ],
+    other: 8
+  }
+};
+
+const readiness = [
+  ["not-configured", "No workspace folder is configured. Choose the folder that holds your service repositories."],
+  ["invalid", "workspace root does not exist: /Users/erendt/BRI2"],
+  ["empty", "No repositories were found in /Users/erendt/BCA."],
+  ["single-repo", "/Users/erendt/BRI/aurora is itself a repository. Point Lunar at the folder that contains your repositories instead."],
+  ["foreign", "The repositories in /Users/erendt/BCA carry branches for other Jira projects, but none for the project you are viewing."],
+  ["partial", "Searching 36 of 65 repositories. 29 are not cloned locally."],
+  ["ready", "Nothing is shown when the workspace is ready."]
+];
+
+let selected = issues[0].key;
+let chosenBase = null;
+let modalIssue = null;
+
+const el = (id) => document.getElementById(id);
+
+function branchPill(issue) {
+  if (issue.branches.length === 0) return '<span class="pill is-none">no branch</span>';
+  const remoteOnly = issue.branches.every((b) => b.source === "remote");
+  if (remoteOnly) return '<span class="pill is-remote">not cloned</span>';
+  return '<span class="pill is-found">' + issue.branches.length + ' branch</span>';
+}
+
+function renderIssues() {
+  el("issues").innerHTML = issues.map((issue) => `
+    <button class="issue" role="option" data-key="${issue.key}" aria-selected="${issue.key === selected}">
+      <span class="key">${issue.key}</span>
+      <span class="issue-title">${issue.title}</span>
+      ${branchPill(issue)}
+    </button>`).join("");
+  el("issues").querySelectorAll(".issue").forEach((node) => {
+    node.addEventListener("click", () => { selected = node.dataset.key; renderIssues(); renderDetail(); });
+  });
+}
+
+function renderBranches(issue) {
+  if (issue.branches.length === 0) {
+    return `<div class="empty">No branch found in the 36 repositories Lunar can see, or in the 5 most likely repositories checked on Bitbucket.</div>`;
+  }
+  const rows = issue.branches.map((b) => `
+    <div class="branch ${b.source === "remote" ? "is-remote" : ""}">
+      <span class="name">${b.branch}</span>
+      <span class="when" style="margin-left:auto;color:var(--subtle);font-size:11px">${b.when || "not cloned"}</span>
+      <span class="where">in ${b.repo}</span>
+    </div>`).join("");
+  const remoteOnly = issue.branches.filter((b) => b.source === "remote");
+  const notice = remoteOnly.length
+    ? `<div class="notice">This branch exists on Bitbucket in ${remoteOnly[0].repo}, which is not in your workspace. Clone it rather than creating a second branch.</div>`
+    : "";
+  return rows + notice;
+}
+
+function renderSuggestion(issue) {
+  if (!issue.suggestion) return "";
+  const s = issue.suggestion;
+  const items = s.items.map((item, index) => `
+    <div class="suggestion ${s.lead === item.repo ? "is-lead" : ""}">
+      <div class="suggestion-head">
+        <span class="repo">${item.repo}</span>
+        ${item.cloned ? "" : '<span class="tag">not cloned</span>'}
+        ${index === 0 ? `<span class="conf ${s.confidence}">${s.confidence}</span>` : ""}
+      </div>
+      <div class="reasons">
+        ${item.reasons.map((r) => `
+          <div class="reason">
+            <span class="tick">•</span>
+            <span class="w">${r.weight.toFixed(1)}</span>
+            <span>${r.text}</span>
+          </div>`).join("")}
+      </div>
+    </div>`).join("");
+  const unavailable = s.unavailable.length
+    ? `<div class="unavailable">${s.unavailable.map((u) => "Unavailable: " + u.reason).join("<br />")}</div>`
+    : "";
+  const weak = s.confidence === "low"
+    ? `<div class="hint" style="margin-top:10px;color:var(--warning)">Lunar is not confident. The evidence is weak.</div>`
+    : "";
+  return `<div>
+    <h2>Suggested repository</h2>
+    ${items}
+    ${unavailable}
+    ${weak}
+    <div class="actions">
+      <button class="primary" id="openCreate">Create branch</button>
+      <button class="ghost">Choose another repository</button>
+    </div>
+  </div>`;
+}
+
+function renderDetail() {
+  const issue = issues.find((i) => i.key === selected);
+  el("detailTitle").textContent = issue.key;
+  el("detailMeta").textContent = issue.status + " · " + issue.assignee;
+  el("detail").innerHTML = `
+    <div>
+      <div class="detail-key">${issue.key}</div>
+      <p class="detail-title">${issue.title}</p>
+    </div>
+    <div>
+      <h2>Branches</h2>
+      ${renderBranches(issue)}
+    </div>
+    ${renderSuggestion(issue)}`;
+  const open = el("openCreate");
+  if (open) open.addEventListener("click", () => openModal(issue));
+}
+
+const FILLER = new Set([
+  "sebagai", "i", "want", "to", "di", "dan", "untuk", "yang", "dengan", "memiliki", "mengajukan",
+  "pada", "dari", "adalah", "ini", "itu", "agar", "dapat", "saya", "bisa", "akan", "the", "a", "an",
+  "of", "for", "and", "in", "on", "with", "so", "that", "my", "can", "have"
+]);
+
+const INTENT_MARKER = /\bi\s+want\s+to\b/i;
+const WORD_LIMIT = 5;
+
+function generateBranchName(issue) {
+  const text = issue.title;
+  const marker = text.match(INTENT_MARKER);
+  const subject = marker ? text.slice(marker.index + marker[0].length) : text;
+  const kept = subject.split(/[^A-Za-z0-9]+/).filter(Boolean).filter((w) => !FILLER.has(w.toLowerCase()));
+  return "feature/" + issue.key + "-" + kept.slice(0, WORD_LIMIT).map((w) =>
+    /^[A-Z0-9]{2,}$/.test(w) ? w : w[0].toUpperCase() + w.slice(1).toLowerCase()
+  ).join("-");
+}
+
+function openModal(issue) {
+  modalIssue = issue;
+  chosenBase = null;
+  el("modalNote").textContent = issue.key + " · " + (issue.suggestion ? "suggested repository preselected" : "choose a repository");
+  el("branchName").value = generateBranchName(issue);
+  const names = Object.keys(baseOptions);
+  const preferred = issue.suggestion && issue.suggestion.lead ? issue.suggestion.lead : names[0];
+  el("repoSelect").innerHTML = names.map((n) => `<option value="${n}" ${n === preferred ? "selected" : ""}>${n}</option>`).join("");
+  el("repoSelect").addEventListener("change", renderBases);
+  el("remember").checked = false;
+  el("remember").addEventListener("change", renderBases);
+  renderBases();
+  el("scrim").classList.add("is-open");
+}
+
+function renderBases() {
+  const repo = el("repoSelect").value;
+  const data = baseOptions[repo];
+  el("rememberRepo").textContent = repo;
+  const remembered = el("remember").checked ? chosenBase : data.remembered;
+  el("repoHint").textContent = data.isCloned
+    ? "Cloned locally. Branch creation runs on your machine."
+    : "Not cloned locally. Clone it first, or pick a repository you have.";
+  el("bases").innerHTML = data.options.map((option) => {
+    const isChosen = chosenBase === option.name;
+    const tag = option.source === "remembered" || (remembered === option.name && el("remember").checked)
+      ? '<span class="tag is-remembered">remembered</span>'
+      : option.source === "bitbucket_default" ? '<span class="tag is-default">bitbucket default</span>' : "";
+    const when = option.when ? `<span class="when">${option.when}</span>` : '<span class="stale">empty</span>';
+    return `<button class="base" data-name="${option.name}" aria-pressed="${isChosen}">
+      <span class="bname">${option.name}</span>
+      ${tag}
+      ${when}
+    </button>`;
+  }).join("") + `<div class="hint" style="margin-top:2px">${data.other} more branches, none of them feature or bugfix</div>`;
+  el("bases").querySelectorAll(".base").forEach((node) => {
+    node.addEventListener("click", () => { chosenBase = node.dataset.name; renderBases(); });
+  });
+  const ready = Boolean(chosenBase);
+  el("create").disabled = !ready;
+  el("createHint").textContent = ready
+    ? repo + " · from " + chosenBase
+    : "Choose a base branch";
+}
+
+el("cancel").addEventListener("click", () => el("scrim").classList.remove("is-open"));
+el("scrim").addEventListener("click", (event) => { if (event.target === el("scrim")) el("scrim").classList.remove("is-open"); });
+el("create").addEventListener("click", () => {
+  el("scrim").classList.remove("is-open");
+  el("createHint").textContent = "Created " + el("branchName").value + " in " + el("repoSelect").value + " from " + chosenBase;
+  const banner = document.querySelector(".scope");
+  banner.innerHTML = '<span class="dot" style="background:var(--positive)"></span><span>Created <strong>' + el("branchName").value + '</strong> in <strong>' + el("repoSelect").value + '</strong> from <strong>' + chosenBase + '</strong>. Nothing else was touched.</span>';
+});
+document.addEventListener("keydown", (event) => { if (event.key === "Escape") el("scrim").classList.remove("is-open"); });
+
+el("theme").addEventListener("click", () => {
+  const root = document.documentElement;
+  root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
+});
+
+el("states").innerHTML = readiness.map(([code, message]) => `
+  <div class="state">
+    <div class="state-code">${code}</div>
+    <div class="state-msg">${message}</div>
+  </div>`).join("");
+
+renderIssues();
+renderDetail();
+</script>
+</body>
+</html>

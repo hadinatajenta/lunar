@@ -225,6 +225,27 @@ GET /issues/{key}/branch-name
 source is "generated" when the name came from the summary, or "existing" when a branch for this key
 already exists and its name is being echoed back.
 The generated name is ALWAYS editable in the UI. It is never applied without the user seeing it.
+
+**Generation rule.** These summaries are written in Indonesian with an English intent clause, for
+example `Sebagai Maker & Approval di New MMS, I want to memiliki menu dan form terpisah untuk
+mengajukan program bulk MDR QRIS Statis`. Taking the first words produces
+`feature/CRMMS-77745-Sebagai-Maker-Approval`, which is useless.
+
+| Step | Detail |
+|---|---|
+| 1 | If the summary contains `i want to`, take everything after it. That clause is the actual intent and the preamble before it is a role description |
+| 2 | Otherwise use the whole summary |
+| 3 | Split on anything that is not a letter or a digit |
+| 4 | Drop filler words, including `sebagai`, `di`, `dan`, `untuk`, `yang`, `dengan`, `memiliki`, `mengajukan`, `pada`, `dapat`, and the English equivalents |
+| 5 | Keep at most 5 words |
+| 6 | Uppercase a word that is already all capitals or digits, otherwise capitalise its first letter |
+| 7 | Prefix with `feature/<KEY>-` |
+
+Measured against the real summaries this yields
+`feature/CRMMS-77745-Menu-Form-Terpisah-Program-Bulk`,
+`feature/CRMMS-77740-Melihat-Mengubah-PN-Pengelola-Form`, and for the summary
+`Enhancement Manage User` it yields `feature/CRMMS-77911-Enhancement-Manage-User`, which is
+byte-identical to the branch that actually exists in the workspace.
 ```
 
 ### 3.7 Base branch options for a repository
