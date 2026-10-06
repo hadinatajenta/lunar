@@ -1,6 +1,6 @@
 # Subagent workstreams
 
-Nine agents across three phases, at most three running at once. Every phase ends with its own QA
+Ten agents across three phases, at most three running at once. Every phase ends with its own QA
 agent, and the next phase does not start until that QA reports.
 
 The split follows file ownership, not convenience: no two agents in a phase write the same file.
@@ -22,7 +22,8 @@ foundation both later phases stand on.
 |---|---|---|
 | **2A** backend | The suggestion engine: signals S1 to S4, the scoring function, the confidence tiers, and the affinity table | S1 ranks the correct repository first on a seeded epic and its reason names the siblings used; low confidence is reported as low; a correction changes the next ranking |
 | **2B** frontend | The Jira issue surface: matched branches per issue, the suggestion panel with reasons, and the create branch modal | Every suggestion shows at least one reason; the branch name is editable and pre-filled but never applied silently; low confidence is not styled as a recommendation |
-| **2Q** QA | Tests only | Checks that the reasons shown match the scores produced, that a low confidence suggestion is never presented as certain, and that the modal cannot create a branch without confirmation |
+| **2C** backend and frontend | The workspace readiness states, the correspondence check, and the shared readiness panel on both pages | A path that is itself a repository reports that, a foreign workspace is reported rather than silently producing nothing, and no screen ever renders "not found" as "does not exist" |
+| **2Q** QA | Tests only | Checks that the reasons shown match the scores produced, that a low confidence suggestion is never presented as certain, that the modal cannot create a branch without confirmation, and that every readiness state is reachable and reads honestly |
 
 Phase 2 depends on Phase 1 for both the matcher and the git operation.
 

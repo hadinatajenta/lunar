@@ -191,6 +191,79 @@ gives something usable, but it will not always be right. **The name is therefore
 suggestion, never a final value**, and the generated text is shown in the field rather than applied
 silently.
 
+## Negative flows
+
+Both features depend on the workspace, and the workspace can be absent, wrong, or incomplete. What
+each case does today was measured rather than assumed.
+
+| Situation | Backend result | What the user sees |
+|---|---|---|
+| No path configured | Refused, "path is empty" | Folder missing state |
+| Path does not exist | Refused, "workspace root does not exist" | Folder missing state |
+| Path is a file | Refused, "not a directory" | Folder missing state |
+| Path is the home directory | Refused, sensitive root | Folder missing state |
+| Relative path | Refused, "must be absolute" | Folder missing state |
+| Path exists, holds no repositories | **Accepted, 0 repositories** | "No repositories were found in ..." |
+| **Path is itself a single repository** | **Accepted, 0 repositories** | "No repositories were found", which is misleading: the repository is right there, one level up from where we look |
+| **A different organisation's workspace** | **Accepted, its repositories** | Nothing fails, and nothing useful happens either |
+| Different organisation, allow list points at BRI | Refused, 403 | Correct |
+| **Incomplete workspace** | Accepted | **Wrong answers, silently** |
+
+### The one that can do harm
+
+**An incomplete workspace makes "no branch" a lie.** If the branch for an issue lives in a
+repository the user has not cloned, Lunar finds nothing and concludes the work has not started. The
+suggestion then offers to create a branch that already exists somewhere else. That is worse than no
+feature, because it is confidently wrong and the user acts on it.
+
+Three responses, all cheap:
+
+1. **Phrase the scope, never the absolute.** The screen says "not found in the 38 repositories Lunar
+   can see", never "no branch exists". This is the whole fix for the common case and it costs
+   nothing.
+2. **Show the scope where the decision is made.** The create confirmation states which repositories
+   were searched, so the user can notice that a repository is missing before agreeing.
+3. **Detect the gap against Bitbucket.** Bitbucket Server can list a project's repositories, which
+   the current client does not do; it only ever addresses a repository by name. Adding that call
+   turns "we searched 38" into "the project has 44 and 6 are not cloned locally". This is the honest
+   version and it is a small addition to an existing integration.
+
+### The one that looks fine and is not
+
+**A different organisation's workspace silently produces nothing.** Point the workspace at
+`/Users/xxx/BCA` and every path check passes. The repositories are real, the branches are real, and
+the key matcher works. But the Jira instance is BRI's, so no branch in that workspace will ever carry
+a key from the issues being viewed. Every issue reports no branch, and the user blames the feature.
+
+The fix is a correspondence check, not a path check: after scanning, ask whether any branch in the
+workspace carries a key belonging to the Jira project the user is actually looking at. If none do,
+say so plainly rather than reporting a clean scan of the wrong thing.
+
+```
+workspace readiness
+  not-configured   no path set
+  invalid          refused by the checks above, with its own reason
+  empty            valid path, no repositories inside
+  single-repo      the path is itself a repository, so say that instead of "none found"
+  foreign          repositories exist but none carry a key from this Jira project
+  partial          fewer repositories than the Bitbucket project holds
+  ready            repositories present and at least one carries a key from this project
+```
+
+### Where this state is shown
+
+The Microservices page already has a workspace state panel with a folder missing state. The Jira page
+has nothing, because until now it never needed the workspace. Once it reads branches, it needs the
+same treatment, so the readiness state is defined once and used by both pages rather than
+reimplemented.
+
+### What is never allowed
+
+- No branch is created without confirmation, and the confirmation always names the repository and
+  the search scope.
+- A missing workspace never falls back to a guess, an empty suggestion, or a sample repository.
+- "Not found" is never rendered as "does not exist".
+
 ## Out of scope
 
 - Creating the branch on the remote. Local only, consistent with every other git operation here.

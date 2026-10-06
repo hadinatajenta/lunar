@@ -45,6 +45,16 @@
 - [ ] Low confidence is not presented as certain
 - [ ] No branch can be created without confirmation
 
+## Phase 2b: workspace readiness
+
+### 2C backend and frontend
+- [ ] Readiness states defined once: not-configured, invalid, empty, single-repo, foreign, partial, ready
+- [ ] A path that is itself a repository says so instead of "none found"
+- [ ] The correspondence check reports when no branch carries a key from the current Jira project
+- [ ] "Not found in the N repositories Lunar can see", never "does not exist"
+- [ ] The Jira page shows the same readiness panel the Microservices page already has
+- [ ] The create confirmation names the repository and the number of repositories searched
+
 ## Phase 3: model signal and polish
 
 ### 3A model signal
