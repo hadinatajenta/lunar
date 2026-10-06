@@ -1,5 +1,10 @@
 # Task list
 
+> **`contracts.md` in this folder is frozen and authoritative.** Every endpoint, response field,
+> status code, TypeScript type, UI string and constant is defined there. Anything not defined there is
+> reported to the parent, not invented. Section 7 lists the decisions that must not be made locally;
+> changing one of those is a defect, not a judgement call.
+
 ## Phase 1: matcher and git operation
 
 ### 1A matcher
@@ -55,6 +60,8 @@
 - [ ] An unreachable Bitbucket degrades to the local tier and reports the limit
 
 ### 2D workspace readiness
+- [ ] All seven readiness states implemented and reachable
+- [ ] The readiness panel is shared by both pages, one implementation, not two
 - [ ] Readiness states defined once: not-configured, invalid, empty, single-repo, foreign, partial, ready
 - [ ] A path that is itself a repository says so instead of "none found"
 - [ ] The correspondence check handles a workspace drawn from several projects, since 12 local folders belong to no repository in NME

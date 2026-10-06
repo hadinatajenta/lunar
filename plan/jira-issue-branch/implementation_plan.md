@@ -1,5 +1,10 @@
 # Jira issue to branch: matching, repository suggestion, and branch creation
 
+> **`contracts.md` in this folder is frozen and authoritative.** Every endpoint, response field,
+> status code, TypeScript type, UI string and constant is defined there. Anything not defined there is
+> reported to the parent, not invented. Section 7 lists the decisions that must not be made locally;
+> changing one of those is a defect, not a judgement call.
+
 ## Objective
 
 Two capabilities, in the order they are used after sprint planning.

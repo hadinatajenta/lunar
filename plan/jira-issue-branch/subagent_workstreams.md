@@ -1,5 +1,10 @@
 # Subagent workstreams
 
+> **`contracts.md` in this folder is frozen and authoritative.** Every endpoint, response field,
+> status code, TypeScript type, UI string and constant is defined there. Anything not defined there is
+> reported to the parent, not invented. Section 7 lists the decisions that must not be made locally;
+> changing one of those is a defect, not a judgement call.
+
 Eleven agents across three phases, at most three running at once. Every phase ends with its own QA
 agent, and the next phase does not start until that QA reports.
 
