@@ -57,29 +57,30 @@ type JiraParent struct {
 }
 
 type JiraIssueFields struct {
-	Summary            string         `json:"summary"`
-	Description        string         `json:"description,omitempty"`
-	Updated            string         `json:"updated"`
-	Created            string         `json:"created,omitempty"`
-	Project            JiraProject    `json:"project"`
-	Status             JiraStatus     `json:"status"`
-	IssueType          *JiraIssueType `json:"issuetype,omitempty"`
-	Priority           *JiraPriority  `json:"priority,omitempty"`
-	Assignee           *JiraUser      `json:"assignee,omitempty"`
-	Parent             *JiraParent    `json:"parent,omitempty"`
-	DueDate            *string        `json:"duedate,omitempty"`
-	AcceptanceCriteria *string        `json:"customfield_15310,omitempty"`
+	Summary      string           `json:"summary"`
+	Description  string           `json:"description,omitempty"`
+	Updated      string           `json:"updated"`
+	Created      string           `json:"created,omitempty"`
+	Project      JiraProject      `json:"project"`
+	Status       JiraStatus       `json:"status"`
+	IssueType    *JiraIssueType   `json:"issuetype,omitempty"`
+	Priority     *JiraPriority    `json:"priority,omitempty"`
+	Assignee     *JiraUser        `json:"assignee,omitempty"`
+	Parent       *JiraParent      `json:"parent,omitempty"`
+	DueDate      *string          `json:"duedate,omitempty"`
+	SprintValues JiraSprintValues `json:"customfield_10104,omitempty"`
 }
 
 type JiraIssue struct {
-	ID         string          `json:"id"`
-	Key        string          `json:"key"`
-	Self       string          `json:"self"`
-	SprintName string          `json:"sprint_name,omitempty"`
-	Fields     JiraIssueFields `json:"fields"`
-	Kind       string          `json:"kind,omitempty"`
-	Points     int             `json:"points,omitempty"`
-	SubLabel   string          `json:"sub_label,omitempty"`
+	ID            string          `json:"id"`
+	Key           string          `json:"key"`
+	Self          string          `json:"self"`
+	SprintName    string          `json:"sprint_name,omitempty"`
+	SprintBoardID int             `json:"sprint_board_id,omitempty"`
+	Fields        JiraIssueFields `json:"fields"`
+	Kind          string          `json:"kind,omitempty"`
+	Points        int             `json:"points,omitempty"`
+	SubLabel      string          `json:"sub_label,omitempty"`
 }
 
 type JiraSprint struct {

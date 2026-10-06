@@ -34,14 +34,14 @@ func TestAtlassianJiraClient_ValidationErrors(t *testing.T) {
 	})
 
 	t.Run("GetBacklogSprints empty PAT", func(t *testing.T) {
-		_, err := client.GetBacklogSprints(ctx, "")
+		_, err := client.GetBacklogSprints(ctx, "", 0)
 		if !errors.Is(err, sharedErrors.ErrUnauthorized) {
 			t.Errorf("expected ErrUnauthorized, got %v", err)
 		}
 	})
 
 	t.Run("GetBacklogSprints invalid PAT", func(t *testing.T) {
-		_, err := client.GetBacklogSprints(ctx, "invalid")
+		_, err := client.GetBacklogSprints(ctx, "invalid", 0)
 		if !errors.Is(err, sharedErrors.ErrUnauthorized) {
 			t.Errorf("expected ErrUnauthorized, got %v", err)
 		}
@@ -84,7 +84,7 @@ func TestAtlassianJiraClient_MockSeedData(t *testing.T) {
 	})
 
 	t.Run("GetBacklogSprints returns seed sprints", func(t *testing.T) {
-		sprints, err := client.GetBacklogSprints(ctx, "mock")
+		sprints, err := client.GetBacklogSprints(ctx, "mock", 0)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -149,7 +149,7 @@ func TestAtlassianJiraClient_NetworkErrorAndFallback(t *testing.T) {
 			t.Fatal("expected fallback seed issues")
 		}
 
-		sprints, err := client.GetBacklogSprints(ctx, "valid-pat")
+		sprints, err := client.GetBacklogSprints(ctx, "valid-pat", 0)
 		if err != nil {
 			t.Fatalf("expected fallback to succeed, got %v", err)
 		}
@@ -178,7 +178,7 @@ func TestAtlassianJiraClient_NetworkErrorAndFallback(t *testing.T) {
 			t.Fatal("expected descriptive error")
 		}
 
-		_, err = client.GetBacklogSprints(ctx, "valid-pat")
+		_, err = client.GetBacklogSprints(ctx, "valid-pat", 0)
 		if err == nil {
 			t.Fatal("expected network error, got nil")
 		}
@@ -205,7 +205,7 @@ func TestAtlassianJiraClient_LiveHTTPHandling(t *testing.T) {
 			t.Errorf("expected ErrUnauthorized, got %v", err)
 		}
 
-		_, err = client.GetBacklogSprints(ctx, "expired-pat")
+		_, err = client.GetBacklogSprints(ctx, "expired-pat", 0)
 		if !errors.Is(err, sharedErrors.ErrUnauthorized) {
 			t.Errorf("expected ErrUnauthorized, got %v", err)
 		}
@@ -238,7 +238,7 @@ func TestAtlassianJiraClient_FailFastTransport(t *testing.T) {
 		client.SetFallbackEnabled(true)
 
 		startedAt := time.Now()
-		sprints, err := client.GetBacklogSprints(ctx, "valid-pat")
+		sprints, err := client.GetBacklogSprints(ctx, "valid-pat", 0)
 		elapsed := time.Since(startedAt)
 
 		if err != nil {
@@ -256,7 +256,7 @@ func TestAtlassianJiraClient_FailFastTransport(t *testing.T) {
 		client := NewAtlassianJiraClient("http://10.255.255.1")
 		client.SetFallbackEnabled(false)
 
-		sprints, err := client.GetBacklogSprints(ctx, "valid-pat")
+		sprints, err := client.GetBacklogSprints(ctx, "valid-pat", 0)
 		if err == nil {
 			t.Fatal("expected network error, got nil")
 		}
@@ -268,11 +268,11 @@ func TestAtlassianJiraClient_FailFastTransport(t *testing.T) {
 
 func TestAtlassianJiraClient_BacklogSprintsFetchConcurrently(t *testing.T) {
 	ctx := context.Background()
-	pathCounter := &sprintPathCounter{counts: make(map[string]int)}
+	pathCounter := newSprintPathCounter()
 	server, peakInFlight := startConcurrentSprintServer(t, pathCounter)
 
 	client := NewAtlassianJiraClient(server.URL)
-	sprints, err := client.GetBacklogSprints(ctx, "valid-pat")
+	sprints, err := client.GetBacklogSprints(ctx, "valid-pat", 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -308,7 +308,7 @@ func startConcurrentSprintServer(t *testing.T, pathCounter *sprintPathCounter) (
 	peakInFlight := 0
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		pathCounter.record(r.URL.Path)
+		pathCounter.record(r)
 		switch r.URL.Path {
 		case "/rest/agile/1.0/board/2646/sprint":
 			w.Header().Set("Content-Type", "application/json")
@@ -368,14 +368,23 @@ func releaseConcurrentArrival(stateMu *sync.Mutex, inFlight *int) {
 }
 
 type sprintPathCounter struct {
-	mu     sync.Mutex
-	counts map[string]int
+	mu      sync.Mutex
+	counts  map[string]int
+	queries map[string]string
 }
 
-func (c *sprintPathCounter) record(requestPath string) {
+func newSprintPathCounter() *sprintPathCounter {
+	return &sprintPathCounter{
+		counts:  make(map[string]int),
+		queries: make(map[string]string),
+	}
+}
+
+func (c *sprintPathCounter) record(request *http.Request) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.counts[requestPath]++
+	c.counts[request.URL.Path]++
+	c.queries[request.URL.Path] = request.URL.Query().Encode()
 }
 
 func (c *sprintPathCounter) countFor(requestPath string) int {
@@ -384,14 +393,20 @@ func (c *sprintPathCounter) countFor(requestPath string) int {
 	return c.counts[requestPath]
 }
 
-func newSprintFixtureServer(t *testing.T, sprintListJSON string) (*httptest.Server, *sprintPathCounter) {
+func (c *sprintPathCounter) queryFor(requestPath string) string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.queries[requestPath]
+}
+
+func newSprintFixtureServer(t *testing.T, boardID int, sprintListJSON string) (*httptest.Server, *sprintPathCounter) {
 	t.Helper()
-	pathCounter := &sprintPathCounter{counts: make(map[string]int)}
+	pathCounter := newSprintPathCounter()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		pathCounter.record(r.URL.Path)
+		pathCounter.record(r)
 		w.Header().Set("Content-Type", "application/json")
 		switch {
-		case r.URL.Path == "/rest/agile/1.0/board/2646/sprint":
+		case r.URL.Path == fmt.Sprintf("/rest/agile/1.0/board/%d/sprint", boardID):
 			fmt.Fprint(w, sprintListJSON)
 		case strings.HasPrefix(r.URL.Path, "/rest/agile/1.0/sprint/") && strings.HasSuffix(r.URL.Path, "/issue"):
 			fmt.Fprint(w, `{"issues":[{"id":"1","key":"CRMMS-1","fields":{"summary":"sample task"}}]}`)
@@ -423,14 +438,14 @@ func assertIssueFetchCount(t *testing.T, pathCounter *sprintPathCounter, sprintI
 }
 
 func TestAtlassianJiraClient_BacklogSprintsSkipsFutureFetchWhenActiveExists(t *testing.T) {
-	server, pathCounter := newSprintFixtureServer(t, `{"values":[
+	server, pathCounter := newSprintFixtureServer(t, 2646, `{"values":[
 		{"id":301,"name":"Sprint 10 - Zephyr","state":"active"},
 		{"id":302,"name":"Sprint 11 - Zephyr","state":"future"},
 		{"id":303,"name":"Sprint 12 - Zephyr","state":"future"}
 	]}`)
 
 	client := NewAtlassianJiraClient(server.URL)
-	sprints, err := client.GetBacklogSprints(context.Background(), "valid-pat")
+	sprints, err := client.GetBacklogSprints(context.Background(), "valid-pat", 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -448,14 +463,14 @@ func TestAtlassianJiraClient_BacklogSprintsSkipsFutureFetchWhenActiveExists(t *t
 }
 
 func TestAtlassianJiraClient_BacklogSprintsFetchesOnlyFirstFutureWithoutActive(t *testing.T) {
-	server, pathCounter := newSprintFixtureServer(t, `{"values":[
+	server, pathCounter := newSprintFixtureServer(t, 2646, `{"values":[
 		{"id":311,"name":"Sprint 20 - Zephyr","state":"future"},
 		{"id":312,"name":"Sprint 21 - Zephyr","state":"future"},
 		{"id":313,"name":"Sprint 22 - Zephyr","state":"future"}
 	]}`)
 
 	client := NewAtlassianJiraClient(server.URL)
-	sprints, err := client.GetBacklogSprints(context.Background(), "valid-pat")
+	sprints, err := client.GetBacklogSprints(context.Background(), "valid-pat", 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -473,7 +488,7 @@ func TestAtlassianJiraClient_BacklogSprintsFetchesOnlyFirstFutureWithoutActive(t
 }
 
 func TestAtlassianJiraClient_BacklogSprintsKeepPrioritySprintPerSquad(t *testing.T) {
-	server, pathCounter := newSprintFixtureServer(t, `{"values":[
+	server, pathCounter := newSprintFixtureServer(t, 2646, `{"values":[
 		{"id":401,"name":"Sprint 1 - Alpha","state":"active"},
 		{"id":402,"name":"Sprint 2 - Alpha","state":"future"},
 		{"id":403,"name":"Sprint 3 - Beta","state":"future"},
@@ -482,7 +497,7 @@ func TestAtlassianJiraClient_BacklogSprintsKeepPrioritySprintPerSquad(t *testing
 	]}`)
 
 	client := NewAtlassianJiraClient(server.URL)
-	sprints, err := client.GetBacklogSprints(context.Background(), "valid-pat")
+	sprints, err := client.GetBacklogSprints(context.Background(), "valid-pat", 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -522,8 +537,160 @@ func TestAtlassianJiraClient_SprintListUnauthorizedPropagates(t *testing.T) {
 	client := NewAtlassianJiraClient(server.URL)
 	client.SetFallbackEnabled(true)
 
-	_, err := client.GetBacklogSprints(context.Background(), "expired-pat")
+	_, err := client.GetBacklogSprints(context.Background(), "expired-pat", 0)
 	if !errors.Is(err, sharedErrors.ErrUnauthorized) {
 		t.Errorf("expected ErrUnauthorized, got %v", err)
+	}
+}
+
+func TestAtlassianJiraClient_BacklogSprintRequestUsesActiveStateOnly(t *testing.T) {
+	server, pathCounter := newSprintFixtureServer(t, 2646, `{"values":[
+		{"id":10983,"name":"Sprint 44 - Fortune Squad","state":"active","originBoardId":2646}
+	]}`)
+
+	client := NewAtlassianJiraClient(server.URL)
+	if _, err := client.GetBacklogSprints(context.Background(), "valid-pat", 0); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	rawQuery := pathCounter.queryFor("/rest/agile/1.0/board/2646/sprint")
+	if rawQuery != "state=active" {
+		t.Errorf("expected sprint request state=active only, got %q", rawQuery)
+	}
+}
+
+func TestAtlassianJiraClient_BacklogSprintsUsesDetectedBoard(t *testing.T) {
+	server, pathCounter := newSprintFixtureServer(t, 3946, `{"values":[
+		{"id":10103,"name":"Sprint Azzuri #5","state":"active","originBoardId":3946}
+	]}`)
+
+	client := NewAtlassianJiraClient(server.URL)
+	sprints, err := client.GetBacklogSprints(context.Background(), "valid-pat", 3946)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(sprints) != 1 || sprints[0].ID != 10103 {
+		t.Fatalf("expected sprint 10103 from board 3946, got %+v", sprints)
+	}
+	if hits := pathCounter.countFor("/rest/agile/1.0/board/3946/sprint"); hits != 1 {
+		t.Errorf("expected 1 request to board 3946, got %d", hits)
+	}
+	if hits := pathCounter.countFor("/rest/agile/1.0/board/2646/sprint"); hits != 0 {
+		t.Errorf("expected no request to fallback board 2646, got %d", hits)
+	}
+
+	issueQuery := pathCounter.queryFor("/rest/agile/1.0/sprint/10103/issue")
+	if !strings.Contains(issueQuery, "customfield_10104") {
+		t.Errorf("expected sprint field in sprint issue request, got %q", issueQuery)
+	}
+	if strings.Contains(issueQuery, "customfield_15310") {
+		t.Errorf("expected acceptance criteria field to be dropped, got %q", issueQuery)
+	}
+}
+
+func TestAtlassianJiraClient_BacklogSprintsReportsSprintIssueFailure(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.URL.Path == "/rest/agile/1.0/board/2646/sprint":
+			fmt.Fprint(w, `{"values":[{"id":10983,"name":"Sprint 44 - Fortune Squad","state":"active","originBoardId":2646}]}`)
+		case strings.HasPrefix(r.URL.Path, "/rest/agile/1.0/sprint/") && strings.HasSuffix(r.URL.Path, "/issue"):
+			w.WriteHeader(http.StatusInternalServerError)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	client := NewAtlassianJiraClient(server.URL)
+	sprints, err := client.GetBacklogSprints(context.Background(), "valid-pat", 2646)
+	if err == nil {
+		t.Fatalf("expected a failed sprint issue fetch to surface instead of an empty sprint, got %+v", sprints)
+	}
+	if !strings.Contains(err.Error(), "10983") {
+		t.Errorf("expected the failing sprint id in the error, got %v", err)
+	}
+}
+
+func TestAtlassianJiraClient_BacklogSprintsFallsBackToDefaultBoard(t *testing.T) {
+	server, pathCounter := newSprintFixtureServer(t, 2646, `{"values":[
+		{"id":10103,"name":"Sprint Azzuri #5","state":"active","originBoardId":3946},
+		{"id":10983,"name":"Sprint 44 - Fortune Squad","state":"active","originBoardId":2646}
+	]}`)
+
+	client := NewAtlassianJiraClient(server.URL)
+	sprints, err := client.GetBacklogSprints(context.Background(), "valid-pat", 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(sprints) != 2 {
+		t.Fatalf("expected both board sprints, got %+v", sprints)
+	}
+	if sprints[0].ID != 10103 || sprints[1].ID != 10983 {
+		t.Fatalf("expected sprints 10103 and 10983 from fallback board, got %+v", sprints)
+	}
+	if hits := pathCounter.countFor("/rest/agile/1.0/board/2646/sprint"); hits != 1 {
+		t.Errorf("expected 1 request to fallback board 2646, got %d", hits)
+	}
+}
+
+func TestAtlassianJiraClient_SearchMyIssuesParsesSprintField(t *testing.T) {
+	sprintValue := "com.atlassian.greenhopper.service.sprint.Sprint@1f2748[id=10983,rapidViewId=2646,state=ACTIVE,name=Sprint 44 - Fortune Squad,startDate=2026-09-18T16:30:00.000+07:00,goal=,synced=false]"
+	responseBody := `{"issues":[{"id":"1","key":"CRMMS-1","fields":{"summary":"sample","customfield_10104":"` + sprintValue + `"}}]}`
+
+	pathCounter := newSprintPathCounter()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		pathCounter.record(r)
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, responseBody)
+	}))
+	defer server.Close()
+
+	client := NewAtlassianJiraClient(server.URL)
+	issues, err := client.SearchMyIssues(context.Background(), "valid-pat")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(issues) != 1 {
+		t.Fatalf("expected 1 issue, got %d", len(issues))
+	}
+	if issues[0].SprintName != "Sprint 44 - Fortune Squad" {
+		t.Errorf("expected sprint name 'Sprint 44 - Fortune Squad', got %q", issues[0].SprintName)
+	}
+	if issues[0].SprintBoardID != 2646 {
+		t.Errorf("expected sprint board 2646, got %d", issues[0].SprintBoardID)
+	}
+
+	requestQuery := pathCounter.queryFor("/rest/api/2/search")
+	if !strings.Contains(requestQuery, "customfield_10104") {
+		t.Errorf("expected sprint field in search request, got %q", requestQuery)
+	}
+	if strings.Contains(requestQuery, "customfield_15310") {
+		t.Errorf("expected acceptance criteria field to be dropped, got %q", requestQuery)
+	}
+}
+
+func TestAtlassianJiraClient_IssueDetailRequestsSprintFieldOnly(t *testing.T) {
+	pathCounter := newSprintPathCounter()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		pathCounter.record(r)
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"id":"1","key":"CRMMS-1","fields":{"summary":"sample"}}`)
+	}))
+	defer server.Close()
+
+	client := NewAtlassianJiraClient(server.URL)
+	if _, err := client.GetIssueDetail(context.Background(), "valid-pat", "CRMMS-1"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	requestQuery := pathCounter.queryFor("/rest/api/2/issue/CRMMS-1")
+	if !strings.Contains(requestQuery, "customfield_10104") {
+		t.Errorf("expected sprint field in issue detail request, got %q", requestQuery)
+	}
+	if strings.Contains(requestQuery, "customfield_15310") {
+		t.Errorf("expected acceptance criteria field to be dropped, got %q", requestQuery)
 	}
 }

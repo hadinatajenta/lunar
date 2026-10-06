@@ -4,7 +4,7 @@ import "context"
 
 type JiraRepository interface {
 	SearchMyIssues(ctx context.Context, pat string) ([]JiraIssue, error)
-	GetBacklogSprints(ctx context.Context, pat string) ([]JiraSprint, error)
+	GetBacklogSprints(ctx context.Context, pat string, boardID int) ([]JiraSprint, error)
 	GetIssueDetail(ctx context.Context, pat string, issueKey string) (*JiraIssue, error)
 	VerifyPAT(ctx context.Context, pat string) (*JiraUser, error)
 	GetIssueRemoteLinks(ctx context.Context, pat string, issueKey string) ([]JiraRemoteLink, error)

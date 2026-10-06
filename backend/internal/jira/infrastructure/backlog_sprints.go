@@ -5,14 +5,7 @@ import (
 )
 
 func filterBacklogSprints(sprintList []domain.JiraSprint) []domain.JiraSprint {
-	filteredSprints := make([]domain.JiraSprint, 0, len(sprintList))
-	for _, sprint := range sprintList {
-		if sprint.OriginBoardID > 0 && sprint.OriginBoardID != JIRA_BACKLOG_BOARD_ID {
-			continue
-		}
-		filteredSprints = append(filteredSprints, sprint)
-	}
-	return filteredSprints
+	return sprintList
 }
 
 func selectPrioritySprints(sprints []domain.JiraSprint) []domain.JiraSprint {

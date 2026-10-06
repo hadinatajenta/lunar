@@ -64,7 +64,7 @@ func (m *mockJiraRepo) SearchMyIssues(ctx context.Context, pat string) ([]domain
 	return m.issues, nil
 }
 
-func (m *mockJiraRepo) GetBacklogSprints(ctx context.Context, pat string) ([]domain.JiraSprint, error) {
+func (m *mockJiraRepo) GetBacklogSprints(ctx context.Context, pat string, boardID int) ([]domain.JiraSprint, error) {
 	m.sprintCalls.Add(1)
 	if m.err != nil {
 		return nil, m.err
@@ -195,10 +195,21 @@ func TestJiraHandler_ListMyIssues(t *testing.T) {
 
 func TestJiraHandler_GetBacklog(t *testing.T) {
 	repo := &mockJiraRepo{
+		issues: []domain.JiraIssue{
+			{
+				ID:            "10101",
+				Key:           "CRMMS-77911",
+				SprintName:    "Sprint 44 - Fortune Squad",
+				SprintBoardID: 2646,
+				Fields: domain.JiraIssueFields{
+					Summary: "Merchant Onboarding Multi-Tier Verification Service",
+				},
+			},
+		},
 		sprints: []domain.JiraSprint{
 			{
 				ID:    44,
-				Name:  "Sprint 44 (MMS Modernization)",
+				Name:  "Sprint 44 - Fortune Squad",
 				State: "active",
 				Issues: []domain.JiraIssue{
 					{ID: "10101", Key: "CRMMS-77911"},
@@ -319,9 +330,11 @@ func TestJiraHandler_RefreshParamBypassesCache(t *testing.T) {
 	repo := &mockJiraRepo{
 		issues: []domain.JiraIssue{
 			{
-				ID:   "10101",
-				Key:  "CRMMS-77911",
-				Kind: "story",
+				ID:            "10101",
+				Key:           "CRMMS-77911",
+				Kind:          "story",
+				SprintName:    "Sprint 44 - Fortune Squad",
+				SprintBoardID: 2646,
 				Fields: domain.JiraIssueFields{
 					Summary: "Merchant Onboarding Multi-Tier Verification Service",
 				},
@@ -330,7 +343,7 @@ func TestJiraHandler_RefreshParamBypassesCache(t *testing.T) {
 		sprints: []domain.JiraSprint{
 			{
 				ID:    44,
-				Name:  "Sprint 44 (MMS Modernization)",
+				Name:  "Sprint 44 - Fortune Squad",
 				State: "active",
 				Issues: []domain.JiraIssue{
 					{ID: "10101", Key: "CRMMS-77911"},

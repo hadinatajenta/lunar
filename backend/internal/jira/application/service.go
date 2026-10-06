@@ -84,25 +84,30 @@ func (s *JiraService) GetBacklog(ctx context.Context, userID string, requestedSq
 }
 
 func (s *JiraService) buildBacklogResponse(ctx context.Context, pat string, requestedSquad string) (*domain.JiraBacklogResponse, error) {
-	allSprints, err := s.repo.GetBacklogSprints(ctx, pat)
+	myIssues, err := s.repo.SearchMyIssues(ctx, pat)
+	if err != nil {
+		return nil, err
+	}
+
+	detectedSquad := detectSquadFromIssues(myIssues)
+	detectedBoardID := detectBoardIDFromIssues(myIssues)
+
+	allSprints, err := s.repo.GetBacklogSprints(ctx, pat, detectedBoardID)
 	if err != nil {
 		return nil, err
 	}
 
 	availableSquads := collectAvailableSquads(allSprints)
 
-	detectedSquad := ""
-	myIssues, searchErr := s.repo.SearchMyIssues(ctx, pat)
-	if searchErr == nil {
-		detectedSquad = detectSquadFromIssues(myIssues)
-	}
-
 	targetSquad := strings.TrimSpace(requestedSquad)
 	if targetSquad == "" {
 		targetSquad = detectedSquad
-		if targetSquad == "" {
-			targetSquad = "all"
-		}
+	}
+	if targetSquad == "" {
+		return &domain.JiraBacklogResponse{
+			Sprints:         []domain.JiraSprint{},
+			AvailableSquads: availableSquads,
+		}, nil
 	}
 
 	return buildFilteredBacklog(allSprints, targetSquad, detectedSquad, availableSquads), nil
@@ -137,6 +142,20 @@ func detectSquadFromIssues(myIssues []domain.JiraIssue) string {
 		}
 	}
 	return ""
+}
+
+func detectBoardIDFromIssues(myIssues []domain.JiraIssue) int {
+	for _, issue := range myIssues {
+		if !isIssueDone(issue) && issue.SprintBoardID > 0 {
+			return issue.SprintBoardID
+		}
+	}
+	for _, issue := range myIssues {
+		if issue.SprintBoardID > 0 {
+			return issue.SprintBoardID
+		}
+	}
+	return 0
 }
 
 func isIssueDone(issue domain.JiraIssue) bool {

@@ -46,6 +46,7 @@ type mockJiraRepo struct {
 	detailErr   error
 	searchCalls atomic.Int64
 	sprintCalls atomic.Int64
+	lastBoardID atomic.Int64
 }
 
 func (m *mockJiraRepo) GetIssueRemoteLinks(ctx context.Context, pat string, issueKey string) ([]domain.JiraRemoteLink, error) {
@@ -69,8 +70,9 @@ func (m *mockJiraRepo) SearchMyIssues(ctx context.Context, pat string) ([]domain
 	return m.issues, nil
 }
 
-func (m *mockJiraRepo) GetBacklogSprints(ctx context.Context, pat string) ([]domain.JiraSprint, error) {
+func (m *mockJiraRepo) GetBacklogSprints(ctx context.Context, pat string, boardID int) ([]domain.JiraSprint, error) {
 	m.sprintCalls.Add(1)
+	m.lastBoardID.Store(int64(boardID))
 	if pat == "invalid" {
 		return nil, fmt.Errorf("%w: invalid or expired Jira PAT", sharedErrors.ErrUnauthorized)
 	}
@@ -727,4 +729,93 @@ func TestJiraService_DynamicSquadDetection(t *testing.T) {
 			t.Errorf("expected TotalIssues=5 across all sprints, got %d", backlog.TotalIssues)
 		}
 	})
+}
+
+func TestJiraService_UsesBoardDetectedFromIssues(t *testing.T) {
+	boardIssues := []domain.JiraIssue{
+		{ID: "10701", Key: "AZZ-101", SprintName: "Sprint Azzuri #5", SprintBoardID: 3946},
+	}
+	repo := &mockJiraRepo{
+		issues: []domain.JiraIssue{
+			{
+				ID:            "10701",
+				Key:           "AZZ-101",
+				SprintName:    "Sprint Azzuri #5",
+				SprintBoardID: 3946,
+				Fields: domain.JiraIssueFields{
+					Status: domain.JiraStatus{
+						Name: "In Progress",
+						StatusCategory: domain.JiraStatusCategory{
+							Key: "indeterminate",
+						},
+					},
+				},
+			},
+		},
+		sprints: []domain.JiraSprint{
+			{ID: 10103, Name: "Sprint Azzuri #5", State: "active", OriginBoardID: 3946, Issues: boardIssues},
+		},
+	}
+
+	service, configuredUserID, _ := setupTestService(repo)
+	backlog, err := service.GetBacklog(context.Background(), configuredUserID, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if detectedBoardID := repo.lastBoardID.Load(); detectedBoardID != 3946 {
+		t.Errorf("expected detected board 3946 to be used, got %d", detectedBoardID)
+	}
+	if backlog.DetectedSquad != "Azzuri" {
+		t.Errorf("expected detected squad 'Azzuri', got '%s'", backlog.DetectedSquad)
+	}
+	if len(backlog.Sprints) != 1 {
+		t.Fatalf("expected 1 sprint for Azzuri, got %d", len(backlog.Sprints))
+	}
+}
+
+func TestJiraService_WithoutDetectedSquadDoesNotWidenToAllSquads(t *testing.T) {
+	repo := &mockJiraRepo{
+		issues: []domain.JiraIssue{
+			{ID: "10101", Key: "CRMMS-77911", Fields: domain.JiraIssueFields{Summary: "task without sprint"}},
+		},
+		sprints: []domain.JiraSprint{
+			{
+				ID:    10983,
+				Name:  "Sprint 44 - Fortune Squad",
+				State: "active",
+				Issues: []domain.JiraIssue{
+					{ID: "10101", Key: "CRMMS-77911"},
+				},
+			},
+			{
+				ID:    10103,
+				Name:  "Sprint Azzuri #5",
+				State: "active",
+				Issues: []domain.JiraIssue{
+					{ID: "10701", Key: "AZZ-101"},
+				},
+			},
+		},
+	}
+
+	service, configuredUserID, _ := setupTestService(repo)
+	backlog, err := service.GetBacklog(context.Background(), configuredUserID, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if backlog.DetectedSquad != "" {
+		t.Errorf("expected no detected squad, got '%s'", backlog.DetectedSquad)
+	}
+	if len(backlog.Sprints) != 0 {
+		t.Fatalf("expected no sprints when no squad is detected, got %d", len(backlog.Sprints))
+	}
+	if backlog.TotalIssues != 0 {
+		t.Errorf("expected TotalIssues=0 when no squad is detected, got %d", backlog.TotalIssues)
+	}
+	if len(backlog.AvailableSquads) != 2 {
+		t.Errorf("expected 2 available squads, got %d", len(backlog.AvailableSquads))
+	}
+	if submittedBoardID := repo.lastBoardID.Load(); submittedBoardID != 0 {
+		t.Errorf("expected fallback board request when detection yields no board, got %d", submittedBoardID)
+	}
 }
