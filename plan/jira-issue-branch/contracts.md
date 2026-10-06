@@ -490,3 +490,148 @@ Each of these has been decided above, and a subagent changing one is a defect.
     feature.
 20. Never hide staleness when offering a base. Every option shows its last commit, so an empty branch
     is visible before it is chosen rather than after.
+
+## 8. Revisions from design review
+
+Three corrections, all measured against the real instance.
+
+### 8.1 One issue spans several repositories
+
+A new endpoint is built across three layers, in this order: the backend service creates the feature and
+its endpoint, the API gateway exposes it, and the frontend consumes it. A single issue therefore
+produces **up to three branches in three repositories**, not one.
+
+The suggestion returns a **set** of repositories, each with a role.
+
+```
+role is exactly one of: "frontend", "gateway", "backend", "unknown"
+```
+
+```
+GET /issues/{key}/repository-suggestions
+200 {
+  "key": "CRMMS-77911",
+  "confidence": "high",
+  "suggestions": [
+    { "repo": "fe-mms",        "role": "frontend", "score": 7.0, "is_cloned": false, "reasons": [...] },
+    { "repo": "mms-api",       "role": "gateway",  "score": 6.0, "is_cloned": true,  "reasons": [...] },
+    { "repo": "micro-user-mms","role": "backend",  "score": 9.0, "is_cloned": true,  "reasons": [...] }
+  ]
+}
+```
+
+**The role is read from the acceptance criteria, not guessed.** Measured on the real descriptions:
+CRMMS-77745 names the routes `/mdr-maintenance/menu-input-perubahan-mdr` and
+`/input-perubahan-mdr-qris-statis`, which are frontend paths, and the columns
+`mdr_qris_statis_on_us` and `mdr_qris_statis_off_us`, which are backend fields. One description
+therefore identifies both layers.
+
+### 8.2 Create spans several repositories, so partial failure is normal
+
+```
+POST /branches
+body {
+  "key": "CRMMS-77911",
+  "branch": "feature/CRMMS-77911-Enhancement-Manage-User",
+  "targets": [
+    { "repo": "fe-mms",         "base_branch": "release/development", "remember_base": false },
+    { "repo": "mms-api",        "base_branch": "release/production",  "remember_base": true },
+    { "repo": "micro-user-mms", "base_branch": "development",         "remember_base": false }
+  ]
+}
+
+207 {
+  "key": "CRMMS-77911",
+  "branch": "feature/CRMMS-77911-Enhancement-Manage-User",
+  "created": [ { "repo": "mms-api", "base_branch": "release/production", "head_commit": "..." } ],
+  "failed":  [ { "repo": "fe-mms", "reason": "the repository is not cloned" } ],
+  "skipped": [ { "repo": "micro-user-mms", "reason": "the branch already exists" } ]
+}
+```
+
+**207, not 201**, because the outcome is per target. A single status code cannot describe a request
+that partly succeeded.
+
+| Rule | Detail |
+|---|---|
+| Never roll back | A branch that was created stays created. Deleting it to make the response tidy is destructive and is not this feature's decision |
+| Report every target | Each target appears in exactly one of created, failed, or skipped. A target that is silently missing is a defect |
+| Continue past a failure | One unclonable repository does not stop the other two |
+| An existing branch is skipped, not failed | It is not an error that work already started |
+| base_branch is required per target | There is no default. 400 when any target omits it |
+
+### 8.3 The base branch and the repository are chosen in a dropdown, not a modal
+
+The design originally put the whole flow in a modal with steps. It is rejected: it hides the issue
+behind a scrim and it makes a per-repository choice feel like a wizard.
+
+| Element | Behaviour |
+|---|---|
+| Base branch | A trigger showing the chosen branch or "Choose a base branch". Clicking opens an **anchored popup** with a **search field** at the top, then the options. Same pattern as the AI model picker already in the application |
+| Repository | The same popup pattern, with search |
+| Placement | Dropup when there is not enough room below, dropdown otherwise, measured against the viewport |
+| Popup rendering | **Teleported to the document body** and positioned fixed. A popup nested inside a styled container inherits its selectors, which is exactly the bug that made the search field 22 pixels wide during design review |
+| Keyboard | Escape closes and returns focus to the trigger. Arrow keys move the active option. Enter selects |
+| Outside click | Closes |
+| Search | Filters by name, keeps its value while the list re-renders, and shows "No branch in {repo} matches {term}" when nothing matches |
+
+### 8.4 The branch name comes from the acceptance criteria
+
+Naming from the summary alone produces `feature/CRMMS-77745-Sebagai-Maker-Approval`, which is
+useless. The name is `feature/<KEY>-<Category>-<Core>`.
+
+Measured: for CRMMS-77911 the title is *"Sebagai Administrator, I want to melihat daftar user yang
+dikelompokkan berdasarkan Personal Number (PN), mengelola level/jabatan mereka dalam satu halaman
+detail, serta melihat riwayat perubahannya"* and the branch that actually exists is
+`feature/CRMMS-77911-Enhancement-Manage-User`.
+
+| Part | Source | Note |
+|---|---|---|
+| Category | **Inferred by the model** | `Enhancement` does not appear anywhere in that issue's summary or description. It is a human judgement about the kind of change, so it cannot be extracted |
+| Core | **The model reads the acceptance criteria** | The description contains `*1. Halaman Utama Manage User (Grouping by PN)*`, which is where "Manage User" comes from |
+
+The acceptance criteria live **inside the description**, not in a separate field:
+`customfield_15310`, the Acceptance Criteria field, is **null on every issue checked**, while the
+descriptions carry `h3. Deskripsi Acceptance Criteria (AC)` and numbered section headings.
+
+```
+GET /issues/{key}/branch-name
+200 {
+  "key": "CRMMS-77911",
+  "branch": "feature/CRMMS-77911-Enhancement-Manage-User",
+  "category": "Enhancement",
+  "core": "Manage-User",
+  "source": "model",
+  "evidence": "Halaman Utama Manage User (Grouping by PN)"
+}
+
+source is exactly one of:
+  "model"     the model read the summary, the description and the acceptance criteria
+  "fallback"  the model was unavailable or declined, so the keyword rule in 3.6 was used
+  "existing"  a branch for this key already exists and its name is echoed back
+```
+
+**The evidence field is mandatory.** It names the phrase the name was taken from, so the user can
+check the reasoning rather than accept a string.
+
+The name is generated **only when the user opens the create surface for one issue**, never for the
+whole sprint, because it costs a model call. It is cached per issue, and a name the user has edited is
+never overwritten.
+
+## 9. Additional rules
+
+21. Never assume one repository. A new endpoint spans the backend, the gateway, and the frontend, and
+    the suggestion returns all of them with their roles.
+22. Never return a single status code for a multi target create. Use 207 and account for every target
+    in created, failed, or skipped.
+23. Never roll back a branch that was created because a sibling target failed.
+24. Never put the base branch or the repository choice behind a modal. Use the anchored popup with a
+    search field, teleported to the body.
+25. Never nest the popup inside a container that styles inputs. The search field was 22 pixels wide
+    because `.target input` matched it.
+26. Never lose the search term when the option list re-renders.
+27. Never derive the branch name from the summary alone. Read the acceptance criteria inside the
+    description, and always return the phrase the name came from.
+28. Never generate a branch name for a whole sprint at once. One model call, on demand, per issue.
+29. Never overwrite a branch name the user has edited.
+
