@@ -7,6 +7,7 @@ type BitbucketRepository interface {
 	ListPullRequests(ctx context.Context, pat string, filter string) ([]PullRequest, error)
 	GetPullRequestDiff(ctx context.Context, pat string, repo string, prID string) (*PRDiff, error)
 	CreatePullRequest(ctx context.Context, pat string, req CreatePRRequest, author string) (*PullRequest, error)
+	SearchBranches(ctx context.Context, pat string, repo string, filterText string) ([]string, error)
 	PostPRComment(ctx context.Context, pat string, repo string, prID string, comment string, author string) (*PRComment, error)
 	ApplyReviewAction(ctx context.Context, pat string, repo string, prID string, action string) error
 	GenerateAIReview(ctx context.Context, prID string, repo string) (*AICodeReview, error)

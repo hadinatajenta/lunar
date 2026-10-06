@@ -20,6 +20,7 @@ const (
 	messageDeadlineFailed      = "the request deadline could not be extended for the git operation"
 	messageBranchNotFound      = "the branch does not exist in this repository"
 	messageWriteAllowlist      = "destructive git operations are disabled until LUNAR_WORKSPACE_ALLOWED_ROOTS names the workspace root"
+	messageBranchExists        = "the branch already exists in this repository"
 )
 
 type branchResponse struct {
@@ -187,6 +188,8 @@ func statusForGitOperationError(err error) int {
 		return http.StatusGatewayTimeout
 	case errors.Is(err, domain.ErrBranchNotFound):
 		return http.StatusNotFound
+	case errors.Is(err, domain.ErrBranchAlreadyExists):
+		return http.StatusConflict
 	case errors.Is(err, domain.ErrWritesRequireAllowlist):
 		return http.StatusForbidden
 	case errors.Is(err, domain.ErrInvalidBranchName),
@@ -205,6 +208,8 @@ func gitOperationErrorMessage(err error) string {
 		return messageBranchNameInvalid
 	case errors.Is(err, domain.ErrBranchNotFound):
 		return messageBranchNotFound
+	case errors.Is(err, domain.ErrBranchAlreadyExists):
+		return messageBranchExists
 	case errors.Is(err, domain.ErrWritesRequireAllowlist):
 		return messageWriteAllowlist
 	case errors.Is(err, domain.ErrInvalidRepoName):

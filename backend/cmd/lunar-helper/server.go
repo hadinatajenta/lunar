@@ -13,6 +13,7 @@ import (
 	codeindexapplication "lunar/backend/internal/codeindex/application"
 	codeindexdomain "lunar/backend/internal/codeindex/domain"
 	sharedHttp "lunar/backend/internal/shared/http"
+	workspaceapplication "lunar/backend/internal/workspace/application"
 	"lunar/backend/internal/workspace/domain"
 )
 
@@ -29,6 +30,8 @@ const (
 	stashPath        = "/stash"
 	discardPath      = "/discard"
 	exportPath       = "/export"
+
+	baseBranchOptionsPath = "/repos/{repo}/base-branch-options"
 
 	authorizationHeader = "Authorization"
 	bearerScheme        = "Bearer"
@@ -47,17 +50,18 @@ const (
 var defaultHelperOrigins = []string{"http://localhost:5174", "http://127.0.0.1:5174"}
 
 type helperServer struct {
-	reader       domain.GitReader
-	operator     domain.GitOperator
-	indexStore   codeindexdomain.IndexStore
-	indexer      *codeindexapplication.Indexer
-	allowedRoots []string
-	token        string
-	version      string
-	logger       *slog.Logger
-	buildTracker indexBuildTracker
-	buildContext context.Context
-	buildCancel  context.CancelFunc
+	reader           domain.GitReader
+	operator         domain.GitOperator
+	indexStore       codeindexdomain.IndexStore
+	indexer          *codeindexapplication.Indexer
+	allowedRoots     []string
+	token            string
+	version          string
+	logger           *slog.Logger
+	buildTracker     indexBuildTracker
+	buildContext     context.Context
+	buildCancel      context.CancelFunc
+	baseBranchMemory *workspaceapplication.RememberedBaseMemory
 }
 
 type helperDependencies struct {
@@ -75,16 +79,17 @@ type helperDependencies struct {
 func newHelperHandler(dependencies helperDependencies) (http.Handler, func()) {
 	buildContext, buildCancel := context.WithCancel(context.Background())
 	server := &helperServer{
-		reader:       dependencies.reader,
-		operator:     dependencies.operator,
-		indexStore:   dependencies.indexStore,
-		indexer:      dependencies.indexer,
-		allowedRoots: dependencies.allowedRoots,
-		token:        dependencies.token,
-		version:      dependencies.version,
-		logger:       dependencies.logger,
-		buildContext: buildContext,
-		buildCancel:  buildCancel,
+		reader:           dependencies.reader,
+		operator:         dependencies.operator,
+		indexStore:       dependencies.indexStore,
+		indexer:          dependencies.indexer,
+		allowedRoots:     dependencies.allowedRoots,
+		token:            dependencies.token,
+		version:          dependencies.version,
+		logger:           dependencies.logger,
+		buildContext:     buildContext,
+		buildCancel:      buildCancel,
+		baseBranchMemory: workspaceapplication.NewRememberedBaseMemory(),
 	}
 
 	mux := http.NewServeMux()
@@ -100,10 +105,13 @@ func newHelperHandler(dependencies helperDependencies) (http.Handler, func()) {
 	mux.Handle("POST "+stashPath, requireToken(dependencies.token, http.HandlerFunc(server.handleStash)))
 	mux.Handle("POST "+discardPath, requireToken(dependencies.token, http.HandlerFunc(server.handleDiscard)))
 	mux.Handle("POST "+exportPath, requireToken(dependencies.token, http.HandlerFunc(server.handleExport)))
+	mux.Handle("POST "+branchesPath, requireToken(dependencies.token, http.HandlerFunc(server.handleCreateBranches)))
+	mux.Handle("GET "+baseBranchOptionsPath, requireToken(dependencies.token, http.HandlerFunc(server.handleBaseBranchOptions)))
 	mux.Handle("GET "+indexStatusPath, requireToken(dependencies.token, http.HandlerFunc(server.handleIndexStatus)))
 	mux.Handle("POST "+indexBuildPath, requireToken(dependencies.token, http.HandlerFunc(server.handleIndexBuild)))
 	mux.Handle("GET "+searchPath, requireToken(dependencies.token, http.HandlerFunc(server.handleSearch)))
 	mux.Handle("POST "+agentAskPath, requireToken(dependencies.token, http.HandlerFunc(server.handleAgentAsk)))
+	registerIssueBranchRoutes(mux, dependencies)
 
 	handler := loggingMiddleware(dependencies.logger)(corsMiddleware(dependencies.allowedOrigins)(mux))
 	return handler, server.stop

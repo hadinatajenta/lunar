@@ -179,36 +179,34 @@ Every suggestion MUST carry at least one reason. A suggestion with no reason is 
 
 ### 3.5 Create a branch
 
-```
-POST /branches
-body { "repo": "mms-api", "branch": "feature/CRMMS-77911-Enhancement-Manage-User", "base_branch": "master", "remember_base": true }
+**The endpoint is defined in section 8.2, not here.** An earlier draft of this section described a
+single-repository form returning 201. That form is withdrawn: creating several branches at once is the
+real case, and one status code cannot describe a request that partly succeeded. The endpoint takes a
+key, a branch name and an array of targets, and returns **207** with `created`, `failed` and
+`skipped`. Section 8.2 is authoritative.
 
-base_branch is REQUIRED. There is no default and there is no fallback. A request without it is
-refused with 400, so that no branch can ever be created from a base the user did not see.
-remember_base is optional and defaults to false.
+`base_branch` is REQUIRED on every target. There is no default and no fallback. A request where any
+target omits it is refused with 400 **before anything is created**, so that no branch can ever be
+created from a base the user did not see. This is rule 18.
 
-201 {
-  "repo": "mms-api",
-  "branch": "feature/CRMMS-77911-Enhancement-Manage-User",
-  "base_branch": "master",
-  "head_commit": "6a1f0c9d2b7e4f8a1c3d5e7f9a0b2c4d6e8f0a1b"
-}
+**Before creating in a repository, that repository is checked on Bitbucket for a branch carrying this
+key.** One call, one repository. It catches the case where the branch exists on the remote and the
+local clone is behind, which the local scan cannot see. A match skips that target and names the
+existing branch; an error fails that target and creates nothing, so the guard is never bypassed.
 
-The response is 201, not 200, because a branch was created.
+| Code | Condition |
+|---|---|
+| 400 | Invalid branch name, invalid base branch name, invalid repository name, empty key, or an empty targets array. All are request level, and nothing is created |
+| 401 | No session, on the backend surface |
+| 403 | The workspace root is outside `LUNAR_WORKSPACE_ALLOWED_ROOTS`, or no allow list is configured |
+| 404 | The repository does not exist, from the operation itself |
+| 409 | The branch already exists, from the operation itself. Inside the multi-target response this is a **skip**, not a failure |
+| 409 | The working tree has uncommitted changes |
+| 500 | The write deadline could not be extended. Inherited from the existing git routes, and the only code outside section 2 |
+| 502 | git failed |
+| 504 | git timed out |
 
-**Before creating, the backend checks the named repository on Bitbucket for a branch carrying this
-key.** This is one call, and it is the last line of defence against a duplicate: it catches the case
-where the branch already exists on the remote but the repository is not cloned locally, which the
-local scan cannot see. If a match is found the request fails with 409 naming the existing branch,
-rather than creating a second one.
-
-400  invalid branch name
-403  the workspace root is outside the allow list
-404  the repository does not exist
-409  the branch already exists
-409  the working tree has uncommitted changes
-502  git failed
-504  git timed out
+Everything else is reported per target inside the 207.
 ```
 
 ### 3.6 Branch name suggestion
@@ -278,7 +276,7 @@ GET /repos/{repo}/base-branch-options
     { "name": "master", "last_commit_relative": "2 weeks ago", "source": "trusted" },
     { "name": "development", "last_commit_relative": "4 days ago", "source": "trusted" },
     { "name": "main", "last_commit_relative": null, "source": "bitbucket_default" },
-    { "name": "pre/development", "last_commit_relative": "7 weeks ago", "source": "trusted" }
+    { "name": "pre/development", "last_commit_relative": "7 weeks ago", "source": "other" }
   ],
   "other_branch_count": 90
 }
@@ -899,4 +897,39 @@ deliberate.
 55. Never hide the age of a branch that is being offered as a base.
 56. Never let a base choice be silent about a dependency. Branching from unpromoted work is stated.
 57. Never invent a staleness threshold. Show the age and let the user judge.
+
+## 22. Key extraction, and one accepted false positive
+
+Measured across all 210 branches in the real workspace:
+
+| Token shape | Count | What they are |
+|---|---|---|
+| All uppercase, for example `CRMMS-12290` | **40 distinct** | Every real Jira key present |
+| All lowercase, for example `max-30` | **1 distinct, 3 occurrences** | A false positive, from the branch name `...-tid-max-30-CRMMS-12290` |
+| Mixed case | 0 | none |
+
+The pattern cannot tell `max-30` from a key by shape alone, so extraction is case insensitive and
+`max-30` is indexed as if it were a key.
+
+**It was tightened and then deliberately reverted.** Requiring an uppercase prefix would have rejected
+exactly that one token and no real key, which looked like a clean win. It is not, because the two
+failure directions are not equally costly:
+
+| Direction | Consequence |
+|---|---|
+| False positive, an extra token in the index | Nothing measured. It cannot match any real issue key, and it does not change the foreign check or any lookup |
+| False negative, a real key missed because a branch wrote it lowercase | Lunar reports no branch where one exists, and offers to create a duplicate. **This is the exact failure the whole design exists to prevent** |
+
+So the rule stays case insensitive. A stray token is cheaper than a missed branch.
+
+## 23. Rules for key extraction
+
+58. Never tighten key matching in a way that risks missing a real key. Missing a branch is the
+    dangerous direction; an extra token is not.
+59. Never index a key without normalising it to uppercase, so a lookup and an index entry cannot
+    disagree on case.
+60. Never let a longer key absorb a shorter prefix. `CRMMS-6397` must not match a `CRMMS-63970`
+    branch, and this is the one guard that must never be relaxed.
+61. Never assume a boundary pair exists in the real workspace. It was believed to, it does not, so the
+    pair is asserted on scratch repositories and the real workspace run only logs what it found.
 

@@ -180,7 +180,7 @@ alongside the other signals rather than replacing them.
 | Write permission | Reuses `resolveWritableRepository`, so it returns 403 unless the workspace root is inside `LUNAR_WORKSPACE_ALLOWED_ROOTS` |
 | Already exists | Refused with 409, naming the existing branch |
 | Dirty working tree | Refused with the same message the existing checkout guard uses, since creating and switching carries uncommitted changes across |
-| Base branch | Defaults to the repository's current branch, overridable |
+| Base branch | **Chosen by the user, never defaulted.** Required per target, and a request that omits it is refused with 400 before anything is created. Section 19 explains why every automatic rule was withdrawn |
 
 It is implemented as `git checkout -b <name> <base>` through the existing hardened runner: fixed
 binary, argument array, no shell, no credential prompt.

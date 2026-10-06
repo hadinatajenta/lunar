@@ -67,12 +67,8 @@ func (i *GitInspector) CheckoutBranch(ctx context.Context, rootPath string, repo
 		return "", err
 	}
 
-	trackedChangeCount, err := readTrackedChangeCount(ctx, repositoryPath)
-	if err != nil {
-		return "", fmt.Errorf("read working tree state: %w", err)
-	}
-	if trackedChangeCount > 0 {
-		return "", fmt.Errorf("%w: %d tracked paths have uncommitted changes", domain.ErrWorkingTreeDirty, trackedChangeCount)
+	if err := requireCleanTrackedWorkingTree(ctx, repositoryPath); err != nil {
+		return "", err
 	}
 
 	if _, err := runGit(ctx, repositoryPath, "checkout", validBranchName, "--"); err != nil {

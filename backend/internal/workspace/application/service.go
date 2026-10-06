@@ -13,12 +13,23 @@ import (
 )
 
 type WorkspaceService struct {
-	workspaceRepo domain.WorkspaceRepository
-	selectionRepo domain.SelectionRepository
-	gitReader     domain.GitReader
-	gitOperator   domain.GitOperator
-	allowedRoots  []string
-	encryptionKey string
+	workspaceRepo      domain.WorkspaceRepository
+	selectionRepo      domain.SelectionRepository
+	gitReader          domain.GitReader
+	gitOperator        domain.GitOperator
+	branchOperations   domain.BranchOperations
+	remoteBranchFinder RemoteBranchFinder
+	baseBranchMemory   *RememberedBaseMemory
+	allowedRoots       []string
+	encryptionKey      string
+}
+
+type WorkspaceServiceOption func(*WorkspaceService)
+
+func WithRemoteBranchFinder(finder RemoteBranchFinder) WorkspaceServiceOption {
+	return func(service *WorkspaceService) {
+		service.remoteBranchFinder = finder
+	}
 }
 
 func NewWorkspaceService(
@@ -28,15 +39,27 @@ func NewWorkspaceService(
 	gitOperator domain.GitOperator,
 	allowedRoots []string,
 	encryptionKey string,
+	options ...WorkspaceServiceOption,
 ) *WorkspaceService {
-	return &WorkspaceService{
-		workspaceRepo: workspaceRepo,
-		selectionRepo: selectionRepo,
-		gitReader:     gitReader,
-		gitOperator:   gitOperator,
-		allowedRoots:  allowedRoots,
-		encryptionKey: encryptionKey,
+	service := &WorkspaceService{
+		workspaceRepo:    workspaceRepo,
+		selectionRepo:    selectionRepo,
+		gitReader:        gitReader,
+		gitOperator:      gitOperator,
+		baseBranchMemory: NewRememberedBaseMemory(),
+		allowedRoots:     allowedRoots,
+		encryptionKey:    encryptionKey,
 	}
+
+	if operations, ok := gitOperator.(domain.BranchOperations); ok {
+		service.branchOperations = operations
+	}
+
+	for _, option := range options {
+		option(service)
+	}
+
+	return service
 }
 
 func (s *WorkspaceService) GetWorkspace(ctx context.Context, userID string) (*WorkspaceConfig, error) {

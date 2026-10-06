@@ -123,8 +123,11 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 		workspaceGitReader,
 		cfg.WorkspaceAllowedRoots,
 		cfg.EncryptionKey,
+		workspaceApp.WithRemoteBranchFinder(bitbucketService),
 	)
 	workspaceHandler := workspaceTransport.NewWorkspaceHandler(workspaceService)
+	issueBranchService := workspaceApp.NewIssueBranchService(workspaceGitReader)
+	issueBranchHandler := jiraTransport.NewIssueBranchHandler(issueBranchService, workspaceService, jiraService)
 
 	postmanPipeline := postmanApp.NewPipeline(
 		postmanInfra.NewSelector(),
@@ -202,6 +205,8 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	mux.Handle("GET /api/jira/backlog", authMiddleware(http.HandlerFunc(jiraHandler.GetBacklog)))
 	mux.Handle("GET /api/jira/issues/remotelinks", authMiddleware(http.HandlerFunc(jiraHandler.ListIssueRemoteLinks)))
 	mux.Handle("GET /api/jira/issues/{key}", authMiddleware(http.HandlerFunc(jiraHandler.GetIssueDetail)))
+	mux.Handle("GET /api/jira/issues/{key}/branches", authMiddleware(http.HandlerFunc(issueBranchHandler.GetIssueBranches)))
+	mux.Handle("GET /api/jira/sprint/branches", authMiddleware(http.HandlerFunc(issueBranchHandler.GetSprintBranches)))
 
 	mux.Handle("GET /api/confluence/documents", authMiddleware(http.HandlerFunc(confluenceHandler.ListDocuments)))
 	mux.Handle("GET /api/confluence/documents/{id}", authMiddleware(http.HandlerFunc(confluenceHandler.GetDocument)))
@@ -220,6 +225,8 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	mux.Handle("POST /api/workspace/stash", authMiddleware(http.HandlerFunc(workspaceHandler.StashRepository)))
 	mux.Handle("POST /api/workspace/discard", authMiddleware(http.HandlerFunc(workspaceHandler.DiscardRepository)))
 	mux.Handle("POST /api/workspace/export", authMiddleware(http.HandlerFunc(exportHandler.Export)))
+	mux.Handle("POST /api/workspace/branches", authMiddleware(http.HandlerFunc(workspaceHandler.CreateBranches)))
+	mux.Handle("GET /api/workspace/repos/{repo}/base-branch-options", authMiddleware(http.HandlerFunc(workspaceHandler.ListBaseBranchOptions)))
 
 	handler := sharedHttp.CORSMiddleware(cfg.CORSOrigin)(loggingMiddleware(mux))
 

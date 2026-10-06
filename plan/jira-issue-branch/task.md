@@ -18,7 +18,7 @@
 ### 1B create branch
 - [ ] `CreateBranch` through the hardened git runner
 - [ ] `base_branch` is REQUIRED on create; a request without it is refused with 400
-- [ ] Base branch options endpoint: remembered, Bitbucket default, trusted names by recency, never a feature or bugfix branch
+- [ ] Base branch options endpoint: remembered, Bitbucket default, trusted names by recency, then everything else. Nothing filtered by name, because branching from another team's branch is a real workflow
 - [ ] Every option carries its last commit, so staleness is visible before choosing
 - [ ] The base is remembered per repository when the user asks, and is never resolved automatically
 - [ ] Name validation reuses the existing validator

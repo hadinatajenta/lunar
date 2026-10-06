@@ -69,6 +69,10 @@ func (m *mockBitbucketRepo) GenerateAIReview(ctx context.Context, prID string, r
 	}, nil
 }
 
+func (m *mockBitbucketRepo) SearchBranches(ctx context.Context, pat string, repo string, filterText string) ([]string, error) {
+	return []string{}, nil
+}
+
 func (m *mockBitbucketRepo) ResetSeedData() {}
 
 func TestBitbucketService(t *testing.T) {
