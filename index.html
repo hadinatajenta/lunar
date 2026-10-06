@@ -34,7 +34,7 @@ body { margin: 0; background: var(--bg); color: var(--text);
   font-size: 12px; font-weight: 500; cursor: pointer; }
 .ghost:hover { border-color: var(--border-strong); background: var(--surface-hover); }
 h1 { font-size: 20px; font-weight: 650; letter-spacing: -0.02em; margin: 0 0 5px; }
-h2 { font-size: 11px; font-weight: 650; letter-spacing: 0.09em; text-transform: uppercase; color: var(--subtle); margin: 0 0 10px; }
+h2 { font-size: 11px; font-weight: 650; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
 .sub { color: var(--muted); font-size: 12.5px; margin: 0 0 16px; }
 .scope { display: flex; align-items: center; gap: 9px; padding: 10px 14px; margin-bottom: 18px;
   border: 1px solid var(--border); border-radius: 10px; background: var(--surface-raised); color: var(--muted); font-size: 12px; }
@@ -62,6 +62,7 @@ h2 { font-size: 11px; font-weight: 650; letter-spacing: 0.09em; text-transform: 
 .pill.is-none { color: var(--subtle); }
 .detail { padding: 15px; display: flex; flex-direction: column; gap: 19px; }
 .detail-key { font-size: 12px; font-weight: 650; color: var(--muted); font-variant-numeric: tabular-nums; }
+.derived b { color: var(--text); }
 .detail-title { font-size: 14px; font-weight: 550; line-height: 1.5; margin: 5px 0 0; }
 .branch { display: flex; align-items: center; gap: 9px; padding: 9px 11px; border: 1px solid var(--border);
   border-radius: 9px; background: var(--surface-raised); margin-bottom: 6px; }
@@ -79,16 +80,21 @@ h2 { font-size: 11px; font-weight: 650; letter-spacing: 0.09em; text-transform: 
 .target:last-child { margin-bottom: 0; }
 .target.is-off { opacity: 0.45; }
 .target > input { width: 15px; height: 15px; accent-color: var(--accent); flex: 0 0 auto; }
-.remove { border: 0; background: transparent; color: var(--subtle); font-size: 15px; line-height: 1;
-  cursor: pointer; padding: 0 4px; margin-left: 4px; }
-.remove:hover { color: var(--danger); }
+.remove { border: 0; background: transparent; color: var(--muted); font-size: 16px; line-height: 1;
+  cursor: pointer; padding: 0 5px; margin-left: 5px; border-radius: 5px; }
+.remove:hover { color: var(--danger); background: var(--surface-hover); }
 .tag.is-manual { color: var(--text); border-color: var(--border-strong); }
-.trigger.add { justify-content: center; border-style: dashed; margin-top: 6px; }
-.trigger.add:hover { border-color: var(--border-strong); background: var(--surface-hover); }
+.trigger.add { justify-content: flex-start; gap: 8px; width: auto; margin-top: 8px;
+  border: 1px solid var(--border-strong); background: var(--surface-raised);
+  color: var(--text); font-weight: 600; font-size: 12px; padding: 0 14px; min-height: 34px; }
+.trigger.add:hover { background: var(--surface-hover); border-color: var(--muted); }
+.trigger.add .plus { font-size: 15px; line-height: 1; color: var(--muted); font-weight: 500; }
+.add-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.add-row .hint { color: var(--muted); }
 button.role { cursor: pointer; font: inherit; }
 button.role:hover { border-color: var(--border-strong); color: var(--text); }
 .target .repo { font-weight: 600; font-size: 12.5px; display: flex; align-items: center; gap: 7px; }
-.target .sub-line { color: var(--subtle); font-size: 11px; margin-top: 2px; }
+.target .sub-line { color: var(--muted); font-size: 11px; margin-top: 2px; }
 .role { padding: 2px 7px; border-radius: 5px; font-size: 9.5px; font-weight: 650; letter-spacing: 0.05em;
   text-transform: uppercase; border: 1px solid var(--border-strong); color: var(--subtle); }
 .role.frontend { color: var(--positive); border-color: color-mix(in srgb, var(--positive) 34%, transparent); }
@@ -142,7 +148,7 @@ button.role:hover { border-color: var(--border-strong); color: var(--text); }
 .primary:hover { opacity: 0.9; }
 .primary:disabled { opacity: 0.4; cursor: not-allowed; }
 .actions { display: flex; align-items: center; gap: 9px; margin-top: 12px; }
-.hint { color: var(--subtle); font-size: 11px; }
+.hint { color: var(--muted); font-size: 11px; }
 .failure { margin-top: 9px; padding: 10px 12px; border-radius: 9px;
   border: 1px solid color-mix(in srgb, var(--danger) 32%, transparent);
   background: color-mix(in srgb, var(--danger) 9%, transparent); color: var(--danger); font-size: 11.5px; }
@@ -458,13 +464,15 @@ function renderTargets(issue) {
   return `<div>
     <h2>Where this will be built</h2>
     ${suggestion}${rows}
-    <div class="picker" data-picker="repo">
-      <button class="trigger add" data-open-repo="${issue.key}" aria-haspopup="listbox" aria-expanded="${openRepoPicker === issue.key}">
-        <span class="placeholder">+ Add another repository</span>
-      </button>
-      ${repoPopup}
+    <div class="add-row">
+      <div class="picker" data-picker="repo">
+        <button class="trigger add" data-open-repo="${issue.key}" aria-haspopup="listbox" aria-expanded="${openRepoPicker === issue.key}">
+          <span class="plus">+</span><span>Add repository</span>
+        </button>
+        ${repoPopup}
+      </div>
+      <span class="hint">Lunar suggests from the acceptance criteria. Add one it missed.</span>
     </div>
-    <div class="hint" style="margin-top:9px">Lunar suggests repositories from the acceptance criteria. Untick what you do not need, or add one it missed.</div>
     ${feedbackNote}
   </div>`;
 }

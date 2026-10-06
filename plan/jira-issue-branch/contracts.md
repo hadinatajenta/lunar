@@ -704,3 +704,46 @@ Feedback is fire and forget. It never blocks the create flow and it never change
 36. Never treat an addition and a confirmation as the same evidence. An addition is the stronger
     signal, because it is the case where Lunar was silent.
 
+## 11. Contrast, measured
+
+The design was reviewed and the Add control was reported as hard to see, especially in the dark
+theme. It was measured rather than adjusted by eye.
+
+| Element | Dark, before | Dark, after | Light, after | WCAG AA |
+|---|---|---|---|---|
+| Add repository | **3.42** | 16.38 | 16.30 | 4.5 |
+| Section heading | **3.42** | 6.18 | 7.58 | 4.5 |
+| Instruction text | **3.42** | 6.18 | 7.58 | 4.5 |
+
+The cause is a single token: `--subtle` is `#626a75` in the dark theme, which is 3.42 to 1 against
+`--surface` `#101217`. The light theme uses `#64748b` and reaches 4.76, so **only the dark theme
+failed**. This is an application wide token, not a defect in this feature, and it is recorded here
+because it was found here.
+
+| Rule | Detail |
+|---|---|
+| Interactive text never uses `--subtle` | A control must reach 4.5 to 1. The Add control uses `--text` at 16.38 |
+| Supporting text uses `--muted` | `--muted` reaches 6.18 in dark and 7.58 in light, so headings and instructions use it |
+| `--subtle` is for decoration only | Dividers, disabled states, and the placeholder inside an already focused field |
+
+## 12. Placement
+
+The Add control was centred below the rows inside a dashed border, which read as a separator rather
+than a control: centred text looks like a label, and a dashed border looks like a placeholder.
+
+| Before | After |
+|---|---|
+| Centred, full width, dashed border, `--subtle` text | **Left aligned**, sized to its content, solid border, raised background, `--text` label, `+` prefix |
+| Instruction text below it, on its own line | Instruction text **beside** it, on the same row, so the control and its explanation read as one unit |
+
+A control that adds something belongs in the flow, aligned with the content it adds to, not centred
+beneath it.
+
+## 13. Rules for visibility
+
+37. Never centre a control that adds content. Align it with the content it adds to.
+38. Never style an actionable control with a dashed border or placeholder text. Dashed reads as
+    absent, and placeholder colour reads as disabled.
+39. Never put interactive text below 4.5 to 1. Measure it, do not judge it by eye.
+40. Never use `--subtle` on a control. It reaches only 3.42 to 1 in the dark theme.
+
