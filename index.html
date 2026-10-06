@@ -79,6 +79,14 @@ h2 { font-size: 11px; font-weight: 650; letter-spacing: 0.09em; text-transform: 
 .target:last-child { margin-bottom: 0; }
 .target.is-off { opacity: 0.45; }
 .target > input { width: 15px; height: 15px; accent-color: var(--accent); flex: 0 0 auto; }
+.remove { border: 0; background: transparent; color: var(--subtle); font-size: 15px; line-height: 1;
+  cursor: pointer; padding: 0 4px; margin-left: 4px; }
+.remove:hover { color: var(--danger); }
+.tag.is-manual { color: var(--text); border-color: var(--border-strong); }
+.trigger.add { justify-content: center; border-style: dashed; margin-top: 6px; }
+.trigger.add:hover { border-color: var(--border-strong); background: var(--surface-hover); }
+button.role { cursor: pointer; font: inherit; }
+button.role:hover { border-color: var(--border-strong); color: var(--text); }
 .target .repo { font-weight: 600; font-size: 12.5px; display: flex; align-items: center; gap: 7px; }
 .target .sub-line { color: var(--subtle); font-size: 11px; margin-top: 2px; }
 .role { padding: 2px 7px; border-radius: 5px; font-size: 9.5px; font-weight: 650; letter-spacing: 0.05em;
@@ -86,6 +94,7 @@ h2 { font-size: 11px; font-weight: 650; letter-spacing: 0.09em; text-transform: 
 .role.frontend { color: var(--positive); border-color: color-mix(in srgb, var(--positive) 34%, transparent); }
 .role.gateway { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 34%, transparent); }
 .role.backend { color: var(--text); border-color: var(--border-strong); }
+.role.unknown { color: var(--subtle); border-style: dashed; }
 .picker { position: relative; }
 .trigger { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 32px; padding: 0 11px;
   border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text);
@@ -176,7 +185,7 @@ h2 { font-size: 11px; font-weight: 650; letter-spacing: 0.09em; text-transform: 
 </div>
 
 <script>
-const ROLE_LABEL = { frontend: "frontend", gateway: "api gateway", backend: "backend" };
+const ROLE_LABEL = { frontend: "frontend", gateway: "api gateway", backend: "backend", unknown: "set role" };
 
 const issues = [
   {
@@ -236,9 +245,7 @@ const issues = [
     acHeadings: [],
     name: { category: "Enhancement", core: "Report-Menu-Summary", source: "fallback", evidence: "the summary, because the model was not asked" },
     branches: [],
-    targets: [
-      { repo: "aurora", role: "backend", cloned: false, base: null, because: "the model reads this as a reporting change" }
-    ]
+    targets: []
   }
 ];
 
@@ -277,6 +284,44 @@ const baseOptions = {
     ]}
 };
 
+const ALL_REPOS = [
+  { repo: "fe-mms", project: "NME", cloned: false },
+  { repo: "mms-api", project: "NME", cloned: true },
+  { repo: "micro-user-mms", project: "NME", cloned: true },
+  { repo: "micro-cm-qris", project: "NME", cloned: true },
+  { repo: "micro-cm-edc", project: "NME", cloned: true },
+  { repo: "micro-mms", project: "NME", cloned: true },
+  { repo: "micro-mocash", project: "NME", cloned: true },
+  { repo: "micro-interface", project: "NME", cloned: true },
+  { repo: "micro-user", project: "NME", cloned: true },
+  { repo: "mocash_api", project: "NME", cloned: true },
+  { repo: "service_qris", project: "NME", cloned: true },
+  { repo: "merchant-service-go", project: "NME", cloned: true },
+  { repo: "merchant-service-laravel", project: "NME", cloned: true },
+  { repo: "helper-service", project: "NME", cloned: true },
+  { repo: "sahara-mms", project: "NME", cloned: true },
+  { repo: "ganges-mms", project: "NME", cloned: true },
+  { repo: "vue-kanji", project: "NME", cloned: true },
+  { repo: "aurora", project: "NME", cloned: false },
+  { repo: "atlas", project: "NME", cloned: true },
+  { repo: "panama", project: "NME", cloned: true },
+  { repo: "pacific", project: "NME", cloned: true },
+  { repo: "rinjani", project: "NME", cloned: true },
+  { repo: "semeru", project: "NME", cloned: true },
+  { repo: "slamet", project: "NME", cloned: true },
+  { repo: "zenith", project: "NME", cloned: true },
+  { repo: "elbrus", project: "NME", cloned: false },
+  { repo: "gearbox", project: "NME", cloned: false },
+  { repo: "administrasi-service", project: "NME", cloned: false },
+  { repo: "helm-fe", project: "NME", cloned: false },
+  { repo: "helm-api", project: "NME", cloned: false },
+  { repo: "echo-manage", project: "NME", cloned: false },
+  { repo: "exogenic", project: "NME", cloned: false },
+  { repo: "amazon", project: "NME", cloned: false }
+];
+
+const ROLE_CHOICES = ["frontend", "gateway", "backend", "unknown"];
+
 const readiness = [
   ["not-configured", "No workspace folder is configured. Choose the folder that holds your service repositories."],
   ["invalid", "workspace root does not exist: /Users/erendt/BRI2"],
@@ -292,6 +337,11 @@ let chosen = {};
 let created = {};
 let openPicker = null;
 const filters = {};
+const manual = {};
+const manualRoles = {};
+const feedback = {};
+let openRepoPicker = null;
+let rolePicker = null;
 
 const el = (id) => document.getElementById(id);
 const current = () => issues.find((i) => i.key === selected);
@@ -311,7 +361,7 @@ function renderIssues() {
       ${branchPill(issue)}
     </button>`).join("");
   el("issues").querySelectorAll(".issue").forEach((node) => {
-    node.addEventListener("click", () => { selected = node.dataset.key; openPicker = null; renderIssues(); renderDetail(); });
+    node.addEventListener("click", () => { selected = node.dataset.key; openPicker = null; openRepoPicker = null; renderIssues(); renderDetail(); });
   });
 }
 
@@ -332,20 +382,45 @@ function renderBranches(issue) {
   return rows + notice;
 }
 
+function optionsFor(repo) {
+  if (baseOptions[repo]) return baseOptions[repo];
+  const known = ALL_REPOS.find((entry) => entry.repo === repo);
+  return {
+    cloned: known ? known.cloned : false,
+    bitbucketDefault: "release/production",
+    remembered: null,
+    other: 12,
+    options: [{ name: "release/production", when: null, source: "bitbucket_default" }]
+  };
+}
+
+function allTargets(issue) {
+  const added = (manual[issue.key] || []).map((repo) => ({
+    repo,
+    role: manualRoles[issue.key + "__" + repo] || "unknown",
+    cloned: optionsFor(repo).cloned,
+    because: "added by you",
+    manual: true
+  }));
+  return issue.targets.concat(added);
+}
+
 function renderTargets(issue) {
-  if (issue.targets.length === 0) return "";
-  const rows = issue.targets.map((target) => {
+  const targets = allTargets(issue);
+  const suggestion = issue.targets.length === 0
+    ? `<div class="empty" style="margin-bottom:6px">Lunar could not suggest a repository from the acceptance criteria. Choose one yourself.</div>`
+    : "";
+  const rows = targets.map((target) => {
     const key = issue.key + "__" + target.repo;
     const isOn = !created[key];
     const base = chosen[key];
-    const isCloned = baseOptions[target.repo].cloned;
-    const options = baseOptions[target.repo].options;
+    const data = optionsFor(target.repo);
     const label = base
       ? '<span class="bname">' + base + "</span>"
       : '<span class="placeholder">Choose a base branch</span>';
     const tag = base
       ? (() => {
-          const found = options.find((o) => o.name === base);
+          const found = data.options.find((o) => o.name === base);
           if (!found) return "";
           if (found.source === "remembered") return '<span class="tag is-remembered">remembered</span>';
           if (found.source === "bitbucket_default") return '<span class="tag is-default">bitbucket default</span>';
@@ -353,11 +428,19 @@ function renderTargets(issue) {
         })()
       : "";
     const popup = openPicker === key ? renderPopup(issue, target, key) : "";
+    const rolePicker = target.manual
+      ? `<button class="role ${target.role}" data-role="${key}" aria-label="Role for ${target.repo}">${ROLE_LABEL[target.role]} ▾</button>`
+      : `<span class="role ${target.role}">${ROLE_LABEL[target.role]}</span>`;
+    const remove = target.manual
+      ? `<button class="remove" data-remove="${key}" aria-label="Remove ${target.repo}">×</button>`
+      : "";
+    const roleMenu = rolePicker === null ? "" : "";
     return `<div class="target ${isOn ? "" : "is-off"}">
       <input type="checkbox" ${isOn ? "checked" : ""} data-toggle="${key}" aria-label="Include ${target.repo}" />
       <div>
-        <div class="repo">${target.repo} <span class="role ${target.role}">${ROLE_LABEL[target.role]}</span>
-          ${target.cloned ? "" : '<span class="tag">not cloned</span>'}</div>
+        <div class="repo">${target.repo} ${rolePicker}
+          ${data.cloned ? "" : '<span class="tag">not cloned</span>'}
+          ${target.manual ? '<span class="tag is-manual">added by you</span>' : ""}</div>
         <div class="sub-line">${target.because}</div>
       </div>
       <div class="picker" data-picker="${key}">
@@ -368,10 +451,44 @@ function renderTargets(issue) {
       </div>
     </div>`;
   }).join("");
+  const repoPopup = openRepoPicker === issue.key ? renderRepoPopup(issue) : "";
+  const feedbackNote = feedback[issue.key]
+    ? `<div class="notice">Recorded: ${feedback[issue.key]}. Lunar will rank this repository higher for the next issue in the same epic.</div>`
+    : "";
   return `<div>
     <h2>Where this will be built</h2>
-    ${rows}
-    <div class="hint" style="margin-top:9px">Lunar suggests the repositories from the acceptance criteria. Untick any you do not need.</div>
+    ${suggestion}${rows}
+    <div class="picker" data-picker="repo">
+      <button class="trigger add" data-open-repo="${issue.key}" aria-haspopup="listbox" aria-expanded="${openRepoPicker === issue.key}">
+        <span class="placeholder">+ Add another repository</span>
+      </button>
+      ${repoPopup}
+    </div>
+    <div class="hint" style="margin-top:9px">Lunar suggests repositories from the acceptance criteria. Untick what you do not need, or add one it missed.</div>
+    ${feedbackNote}
+  </div>`;
+}
+
+function renderRepoPopup(issue) {
+  const key = "repo__" + issue.key;
+  const raw = filters[key] || "";
+  const taken = allTargets(issue).map((t) => t.repo);
+  const filter = raw.toLowerCase();
+  const matching = ALL_REPOS.filter((entry) => !taken.includes(entry.repo))
+    .filter((entry) => entry.repo.toLowerCase().includes(filter) || entry.project.toLowerCase().includes(filter));
+  const list = matching.length
+    ? matching.map((entry) => `
+        <button class="option" data-add="${issue.key}" data-repo="${entry.repo}">
+          <span class="oname">${entry.repo}</span>
+          <span class="tag">${entry.project}</span>
+          ${entry.cloned ? "" : '<span class="tag">not cloned</span>'}
+        </button>`).join("")
+    : '<div class="option-empty">No repository matches "' + raw + '"</div>';
+  return `<div class="popup is-open is-dropdown" data-popup="${key}">
+    <div class="popup-head">
+      <input class="search" id="search-${key}" value="${raw}" placeholder="Search all repositories" aria-label="Search all repositories" />
+    </div>
+    <div class="popup-list">${list}</div>
   </div>`;
 }
 
@@ -398,18 +515,23 @@ function renderPopup(issue, target, key) {
 }
 
 function renderCreate(issue) {
-  if (issue.targets.length === 0) return "";
+  const targets = allTargets(issue);
+  if (targets.length === 0) return "";
   const key = issue.key;
   const name = "feature/" + key + "-" + issue.name.category + "-" + issue.name.core;
-  const active = issue.targets.filter((t) => !created[key + "__" + t.repo]);
+  const active = targets.filter((t) => !created[key + "__" + t.repo]);
   const allChosen = active.length > 0 && active.every((t) => chosen[key + "__" + t.repo]);
-  const blocked = active.filter((t) => !baseOptions[t.repo].cloned);
-  const alreadyDone = issue.targets.filter((t) => created[key + "__" + t.repo]);
+  const blocked = active.filter((t) => !optionsFor(t.repo).cloned);
+  const alreadyDone = targets.filter((t) => created[key + "__" + t.repo]);
   const evidence = issue.name.source === "model"
     ? `Read from the acceptance criteria: <b>${issue.name.evidence}</b>`
     : `The model was not asked, so this came from <b>${issue.name.evidence}</b>. Ask the model to improve it.`;
+  const willFail = active.filter((t) => !optionsFor(t.repo).cloned);
   const failure = alreadyDone.length && active.length
     ? `<div class="failure">Created ${alreadyDone.map((t) => t.repo).join(", ")}. Failed on ${active[0].repo}: the repository is not cloned, so no branch can be created there. Clone it and retry, or untick it.</div>`
+    : "";
+  const warning = !failure && willFail.length
+    ? `<div class="failure">${willFail.map((t) => t.repo).join(", ")} ${willFail.length > 1 ? "are" : "is"} not cloned, so ${willFail.length > 1 ? "those branches" : "that branch"} cannot be created. Untick or clone first.</div>`
     : "";
   const done = alreadyDone.length && !active.length
     ? `<div class="notice">Created ${alreadyDone.length} branches from ${chosen[key + "__" + alreadyDone[0].repo] || "the chosen base"}.</div>`
@@ -419,10 +541,10 @@ function renderCreate(issue) {
     <input class="field mono" id="branchName" value="${name}" aria-label="Branch name" />
     <div class="derived">${evidence}</div>
     <div class="actions">
-      <button class="primary" id="create" ${allChosen ? "" : "disabled"}>${active.length ? "Create " + active.length + " branches" : "Created"}</button>
+      <button class="primary" id="create" ${allChosen ? "" : "disabled"}>${active.length ? "Create " + active.length + (active.length === 1 ? " branch" : " branches") : "Created"}</button>
       <span class="hint">${allChosen ? "from " + active.map((t) => chosen[key + "__" + t.repo]).join(", ") : "Choose a base branch for every repository you keep"}</span>
     </div>
-    ${failure}${done}
+    ${warning}${failure}${done}
   </div>`;
 }
 
@@ -460,6 +582,50 @@ function bind() {
       renderDetail();
     });
   });
+  el("detail").querySelectorAll("[data-open-repo]").forEach((node) => {
+    node.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const key = node.dataset.openRepo;
+      openRepoPicker = openRepoPicker === key ? null : key;
+      renderDetail();
+      const search = el("search-repo__" + key);
+      if (search) search.focus();
+    });
+  });
+  el("detail").querySelectorAll("[data-add]").forEach((node) => {
+    node.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const key = node.dataset.add;
+      const repo = node.dataset.repo;
+      if (!manual[key]) manual[key] = [];
+      if (!manual[key].includes(repo)) manual[key].push(repo);
+      manualRoles[key + "__" + repo] = "unknown";
+      feedback[key] = repo + " was added by you, not suggested";
+      openRepoPicker = null;
+      filters["repo__" + key] = "";
+      renderDetail();
+    });
+  });
+  el("detail").querySelectorAll("[data-remove]").forEach((node) => {
+    node.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const key = node.dataset.remove;
+      const issueKey = key.split("__")[0];
+      const repo = key.split("__")[1];
+      manual[issueKey] = (manual[issueKey] || []).filter((entry) => entry !== repo);
+      feedback[issueKey] = repo + " was removed from the suggestion";
+      renderDetail();
+    });
+  });
+  el("detail").querySelectorAll("[data-role]").forEach((node) => {
+    node.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const key = node.dataset.role;
+      const currentRole = manualRoles[key] || "unknown";
+      manualRoles[key] = ROLE_CHOICES[(ROLE_CHOICES.indexOf(currentRole) + 1) % ROLE_CHOICES.length];
+      renderDetail();
+    });
+  });
   el("detail").querySelectorAll("[data-toggle]").forEach((node) => {
     node.addEventListener("change", () => { created[node.dataset.toggle] = !node.checked; renderDetail(); });
   });
@@ -477,15 +643,20 @@ function bind() {
   const create = el("create");
   if (create) create.addEventListener("click", () => {
     const issue = current();
-    issue.targets.forEach((t) => { created[issue.key + "__" + t.repo] = true; });
+    const targets = allTargets(issue);
+    targets.forEach((t) => { created[issue.key + "__" + t.repo] = true; });
     renderDetail();
-    el("scope").innerHTML = '<span class="dot" style="background:var(--positive)"></span><span>Created <strong>' + issue.targets.length + " branches</strong> in " + issue.targets.map((t) => t.repo).join(", ") + ". Nothing else was touched.</span>";
+    el("scope").innerHTML = '<span class="dot" style="background:var(--positive)"></span><span>Created <strong>' + targets.length + " branches</strong> in " + targets.map((t) => t.repo).join(", ") + ". Nothing else was touched.</span>";
   });
 }
 
-document.addEventListener("click", () => { if (openPicker) { openPicker = null; renderDetail(); } });
+document.addEventListener("click", () => {
+  if (openPicker || openRepoPicker) { openPicker = null; openRepoPicker = null; renderDetail(); }
+});
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && openPicker) { openPicker = null; renderDetail(); }
+  if (event.key === "Escape" && (openPicker || openRepoPicker)) {
+    openPicker = null; openRepoPicker = null; renderDetail();
+  }
 });
 el("theme").addEventListener("click", () => {
   const root = document.documentElement;

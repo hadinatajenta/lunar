@@ -635,3 +635,72 @@ never overwritten.
 28. Never generate a branch name for a whole sprint at once. One model call, on demand, per issue.
 29. Never overwrite a branch name the user has edited.
 
+### 8.5 The suggestion is a convenience, the manual choice is the ground truth
+
+The first design offered only checkboxes over the suggested repositories. If the suggestion was wrong,
+incomplete, or empty, the user had no way forward. That is a dead end, and it is fixed here.
+
+| Control | Behaviour |
+|---|---|
+| Add another repository | A trigger below the suggestions, always present, opening the same anchored popup with search over **every** repository, local and remote, across every accessible project |
+| Role | A manually added repository gets a **role selector**, because the role drives the create order and the grouping. It cycles frontend, api gateway, backend, unknown |
+| Source | A manually added row is labelled "added by you" and its reason reads "added by you", so it is never confused with a suggestion |
+| Remove | A manual row can be removed. A suggested row is unticked instead, which is a different signal |
+| Empty suggestion | When nothing could be suggested, the panel says so and the Add control is the only path. It never presents an empty list without a way forward |
+| Not cloned | Shown on the row and warned about before create, but the row can still be planned |
+
+**A repository the catalogue does not contain cannot be added**, because the picker lists real
+repositories only. When the user cannot find theirs, the panel states how many the workspace has and
+how many Bitbucket has, so the gap is visible rather than mysterious.
+
+### 8.6 What the corrections teach the ranking
+
+Every interaction is a signal, and they are not equal.
+
+| Action | Signal | Weight |
+|---|---|---|
+| A repository is **added** that was not suggested | Strongest positive | High |
+| A suggested repository is **removed** | Strong negative | Medium |
+| A suggested repository is **unticked** for this issue | Weak negative, may be scoped to this issue only | Low |
+| A suggested repository is **kept** | Weak positive | Low |
+
+An addition outranks everything because it is the only case where Lunar was silent about a repository
+that mattered. That is the same principle as the correction outweighing the confirmation in 8.4.
+
+```
+GET /issues/{key}/repository-suggestions
+200 {
+  "key": "CRMMS-77911",
+  "confidence": "high",
+  "suggestions": [ ... ],
+  "catalogue": { "local_repository_count": 36, "remote_repository_count": 65 },
+  "signals_unavailable": [ ... ]
+}
+
+GET /repositories?search=
+200 {
+  "repositories": [ { "repo": "micro-cm-qris", "project": "NME", "is_cloned": true } ],
+  "local_repository_count": 36,
+  "remote_repository_count": 65
+}
+
+POST /issues/{key}/repository-feedback
+body { "repo": "micro-cm-qris", "action": "added" }
+action is exactly one of: "added", "removed", "unticked", "kept"
+202 { "recorded": true }
+```
+
+Feedback is fire and forget. It never blocks the create flow and it never changes what is on screen.
+
+## 10. Rules for the manual path
+
+30. Never present suggestions without a way to add a repository that was not suggested.
+31. Never present an empty suggestion list without the Add control and a sentence explaining it.
+32. Never allow a repository that does not exist. The picker lists real repositories only, from every
+    accessible project, and states how many there are when the search finds nothing.
+33. Never label a manually added repository as a suggestion. It reads "added by you".
+34. Never let a not cloned repository block planning, only creating. Warn on the row and before create.
+35. Never let feedback block or alter the current screen. It is recorded and shown, nothing more.
+36. Never treat an addition and a confirmation as the same evidence. An addition is the stronger
+    signal, because it is the case where Lunar was silent.
+
