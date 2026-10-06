@@ -207,6 +207,7 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	mux.Handle("GET /api/jira/issues/{key}", authMiddleware(http.HandlerFunc(jiraHandler.GetIssueDetail)))
 	mux.Handle("GET /api/jira/issues/{key}/branches", authMiddleware(http.HandlerFunc(issueBranchHandler.GetIssueBranches)))
 	mux.Handle("GET /api/jira/sprint/branches", authMiddleware(http.HandlerFunc(issueBranchHandler.GetSprintBranches)))
+	jiraTransport.RegisterBranchNameRoutes(mux, authMiddleware, jiraApp.NewBranchNameService(jiraService, jiraInfra.NewModelJSONClient(llmClient, copilotService)))
 
 	mux.Handle("GET /api/confluence/documents", authMiddleware(http.HandlerFunc(confluenceHandler.ListDocuments)))
 	mux.Handle("GET /api/confluence/documents/{id}", authMiddleware(http.HandlerFunc(confluenceHandler.GetDocument)))
@@ -228,7 +229,7 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	mux.Handle("POST /api/workspace/branches", authMiddleware(http.HandlerFunc(workspaceHandler.CreateBranches)))
 	mux.Handle("GET /api/workspace/repos/{repo}/base-branch-options", authMiddleware(http.HandlerFunc(workspaceHandler.ListBaseBranchOptions)))
 	workspaceTransport.RegisterWorkspaceReadinessRoute(mux, authMiddleware, workspaceService, workspaceGitReader, cfg.WorkspaceAllowedRoots, nil)
-	workspaceTransport.RegisterRepositoryRoutes(mux, authMiddleware, workspaceService, workspaceGitReader, jiraService, issueBranchService)
+	workspaceTransport.RegisterRepositoryRoutes(mux, authMiddleware, workspaceService, workspaceGitReader, jiraService, issueBranchService, workspaceApp.NewRepositoryModelRanker(jiraInfra.NewModelJSONClient(llmClient, copilotService)))
 
 	handler := sharedHttp.CORSMiddleware(cfg.CORSOrigin)(loggingMiddleware(mux))
 

@@ -37,14 +37,14 @@ func NewRepositorySuggestionHandler(service *workspaceApp.RepositorySuggestionSe
 	return &RepositorySuggestionHandler{service: service}
 }
 
-func RegisterRepositoryRoutes(mux *http.ServeMux, authMiddleware func(http.Handler) http.Handler, workspaceRoots workspaceApp.WorkspaceRootSource, local workspaceApp.LocalRepositorySource, issues workspaceApp.IssueContextSource, branches workspaceApp.BranchMatchSource) {
+func RegisterRepositoryRoutes(mux *http.ServeMux, authMiddleware func(http.Handler) http.Handler, workspaceRoots workspaceApp.WorkspaceRootSource, local workspaceApp.LocalRepositorySource, issues workspaceApp.IssueContextSource, branches workspaceApp.BranchMatchSource, ranker workspaceApp.RepositoryRanker) {
 	catalogue := workspaceApp.NewRepositoryCatalogueService(workspaceRoots, local, nil)
 	service := workspaceApp.NewRepositorySuggestionService(workspaceApp.RepositorySuggestionDependencies{
 		Catalogue:      catalogue,
 		WorkspaceRoots: workspaceRoots,
 		Issues:         issues,
 		Branches:       branches,
-	})
+	}, workspaceApp.WithRepositoryRanker(ranker))
 	handler := NewRepositorySuggestionHandler(service)
 
 	mux.Handle("GET /api/jira/issues/{key}/repository-suggestions", authMiddleware(http.HandlerFunc(handler.GetRepositorySuggestions)))
