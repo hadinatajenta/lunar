@@ -58,7 +58,7 @@ func branchNameTestIssue() *jiraDomain.JiraIssue {
 
 func newBranchNameTestMux(reader jiraApp.BranchNameIssueSource, client jiraApp.ModelCompletionClient) *http.ServeMux {
 	mux := http.NewServeMux()
-	RegisterBranchNameRoutes(mux, func(next http.Handler) http.Handler { return next }, jiraApp.NewBranchNameService(reader, client))
+	RegisterBranchNameRoutes(mux, func(next http.Handler) http.Handler { return next }, jiraApp.NewBranchNameService(reader, client, nil))
 
 	return mux
 }
@@ -66,7 +66,7 @@ func newBranchNameTestMux(reader jiraApp.BranchNameIssueSource, client jiraApp.M
 func TestBranchNameHandlerReturnsTheWholeSuggestion(t *testing.T) {
 	mux := newBranchNameTestMux(
 		stubBranchNameIssueReader{issue: branchNameTestIssue()},
-		stubBranchNameCompletion{answer: `{"category":"Enhancement","core":"Manage-User","evidence":"Halaman Utama Manage User (Grouping by PN)"}`},
+		stubBranchNameCompletion{answer: `{"category":"Enhancement","category_choice":"new","core":"Manage-User","evidence":"Halaman Utama Manage User (Grouping by PN)"}`},
 	)
 
 	recorder := performIssueBranchRequest(t, mux, "user-a", "/api/jira/issues/"+branchNameTestKey+"/branch-name")

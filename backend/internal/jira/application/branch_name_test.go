@@ -6,76 +6,15 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	jiraDomain "lunar/backend/internal/jira/domain"
 	sharedErrors "lunar/backend/internal/shared/errors"
 )
 
-const branchNameIssueSummary = "Sebagai Administrator, I want to melihat daftar user yang dikelompokkan berdasarkan Personal Number (PN), mengelola level/jabatan mereka dalam satu halaman detail, serta melihat riwayat perubahannya"
-
-const branchNameModelAnswer = `{"category":"Enhancement","core":"Manage-User","evidence":"Halaman Utama Manage User (Grouping by PN)"}`
-
-const branchNameFallbackCore = "Melihat-Daftar-User-Dikelompokkan-Berdasarkan"
-
-type stubBranchNameIssues struct {
-	issue    *jiraDomain.JiraIssue
-	err      error
-	requests []string
-}
-
-func (s *stubBranchNameIssues) GetIssueDetail(_ context.Context, userID string, issueKey string) (*jiraDomain.JiraIssue, error) {
-	s.requests = append(s.requests, userID+"|"+issueKey)
-	if s.err != nil {
-		return nil, s.err
-	}
-
-	return s.issue, nil
-}
-
-type stubBranchNameModel struct {
-	answers     []string
-	err         error
-	calls       int
-	prompts     []string
-	hasDeadline bool
-	budget      time.Duration
-}
-
-func (s *stubBranchNameModel) CompleteJSON(ctx context.Context, _ string, _ string, prompt string) (string, error) {
-	s.calls++
-	s.prompts = append(s.prompts, prompt)
-	if deadline, ok := ctx.Deadline(); ok {
-		s.hasDeadline = true
-		s.budget = time.Until(deadline)
-	}
-	if s.err != nil {
-		return "", s.err
-	}
-	if len(s.answers) == 0 {
-		return "", fmt.Errorf("the stub model holds no answer")
-	}
-	if s.calls <= len(s.answers) {
-		return s.answers[s.calls-1], nil
-	}
-
-	return s.answers[len(s.answers)-1], nil
-}
-
-func branchNameIssue() *jiraDomain.JiraIssue {
-	return &jiraDomain.JiraIssue{
-		Key: "CRMMS-77911",
-		Fields: jiraDomain.JiraIssueFields{
-			Summary:     branchNameIssueSummary,
-			Description: acceptanceDescription,
-		},
-	}
-}
-
 func TestSuggestReturnsTheModelNameAndItsEvidence(t *testing.T) {
 	issues := &stubBranchNameIssues{issue: branchNameIssue()}
 	model := &stubBranchNameModel{answers: []string{branchNameModelAnswer}}
-	service := NewBranchNameService(issues, model)
+	service := NewBranchNameService(issues, model, nil)
 
 	suggestion, err := service.Suggest(context.Background(), "user-a", "crmms-77911")
 	if err != nil {
@@ -113,7 +52,7 @@ func TestSuggestReturnsTheModelNameAndItsEvidence(t *testing.T) {
 func TestSuggestCachesTheModelNamePerIssueAndUser(t *testing.T) {
 	issues := &stubBranchNameIssues{issue: branchNameIssue()}
 	model := &stubBranchNameModel{answers: []string{branchNameModelAnswer}}
-	service := NewBranchNameService(issues, model)
+	service := NewBranchNameService(issues, model, nil)
 
 	first, err := service.Suggest(context.Background(), "user-a", "CRMMS-77911")
 	if err != nil {
@@ -146,7 +85,7 @@ func TestSuggestReturnsTheFallbackWhenTheModelFails(t *testing.T) {
 		},
 	}}
 	model := &stubBranchNameModel{err: errors.New("no AI provider is configured")}
-	service := NewBranchNameService(issues, model)
+	service := NewBranchNameService(issues, model, nil)
 
 	suggestion, err := service.Suggest(context.Background(), "user-a", "CRMMS-77745")
 	if err != nil {
@@ -172,7 +111,7 @@ func TestSuggestReturnsTheFallbackWhenTheModelFails(t *testing.T) {
 func TestSuggestAsksTheModelAgainAfterAFallback(t *testing.T) {
 	issues := &stubBranchNameIssues{issue: branchNameIssue()}
 	model := &stubBranchNameModel{err: errors.New("the provider is down")}
-	service := NewBranchNameService(issues, model)
+	service := NewBranchNameService(issues, model, nil)
 
 	first, err := service.Suggest(context.Background(), "user-a", "CRMMS-77911")
 	if err != nil {
@@ -198,8 +137,8 @@ func TestSuggestAsksTheModelAgainAfterAFallback(t *testing.T) {
 
 func TestSuggestNormalisesTheModelSegments(t *testing.T) {
 	issues := &stubBranchNameIssues{issue: branchNameIssue()}
-	model := &stubBranchNameModel{answers: []string{`{"category":"enhancement","core":"manage user","evidence":"Halaman Utama Manage User (Grouping by PN)"}`}}
-	service := NewBranchNameService(issues, model)
+	model := &stubBranchNameModel{answers: []string{`{"category":"enhancement","category_choice":"new","core":"manage user","evidence":"Halaman Utama Manage User (Grouping by PN)"}`}}
+	service := NewBranchNameService(issues, model, nil)
 
 	suggestion, err := service.Suggest(context.Background(), "user-a", "CRMMS-77911")
 	if err != nil {
@@ -216,15 +155,15 @@ func TestSuggestFallsBackForAMalformedModelAnswer(t *testing.T) {
 		answer string
 	}{
 		{name: "not json", answer: "Manage-User"},
-		{name: "missing evidence", answer: `{"category":"Enhancement","core":"Manage-User","evidence":""}`},
-		{name: "too many core words", answer: `{"category":"Enhancement","core":"Manage User Grouping Detail PN","evidence":"Halaman Utama Manage User (Grouping by PN)"}`},
+		{name: "missing evidence", answer: `{"category":"Enhancement","category_choice":"new","core":"Manage-User","evidence":""}`},
+		{name: "too many core words", answer: `{"category":"Enhancement","category_choice":"new","core":"Manage User Grouping Detail PN List","evidence":"Halaman Utama Manage User (Grouping by PN)"}`},
 	}
 
 	for _, testCase := range tests {
 		t.Run(testCase.name, func(t *testing.T) {
 			issues := &stubBranchNameIssues{issue: branchNameIssue()}
 			model := &stubBranchNameModel{answers: []string{testCase.answer}}
-			service := NewBranchNameService(issues, model)
+			service := NewBranchNameService(issues, model, nil)
 
 			suggestion, err := service.Suggest(context.Background(), "user-a", "CRMMS-77911")
 			if err != nil {
@@ -245,8 +184,8 @@ func TestSuggestFallsBackForAMalformedModelAnswer(t *testing.T) {
 
 func TestSuggestRefusesModelEvidenceThatIsNotInTheIssue(t *testing.T) {
 	issues := &stubBranchNameIssues{issue: branchNameIssue()}
-	model := &stubBranchNameModel{answers: []string{`{"category":"Enhancement","core":"Manage-User","evidence":"Totally Invented Heading"}`}}
-	service := NewBranchNameService(issues, model)
+	model := &stubBranchNameModel{answers: []string{`{"category":"Enhancement","category_choice":"new","core":"Manage-User","evidence":"Totally Invented Heading"}`}}
+	service := NewBranchNameService(issues, model, nil)
 
 	suggestion, err := service.Suggest(context.Background(), "user-a", "CRMMS-77911")
 	if err != nil {
@@ -260,7 +199,7 @@ func TestSuggestRefusesModelEvidenceThatIsNotInTheIssue(t *testing.T) {
 func TestSuggestRejectsAnInvalidIssueKey(t *testing.T) {
 	issues := &stubBranchNameIssues{issue: branchNameIssue()}
 	model := &stubBranchNameModel{answers: []string{branchNameModelAnswer}}
-	service := NewBranchNameService(issues, model)
+	service := NewBranchNameService(issues, model, nil)
 
 	if _, err := service.Suggest(context.Background(), "user-a", "not a key"); !errors.Is(err, sharedErrors.ErrBadRequest) {
 		t.Fatalf("error = %v, want a bad request", err)
@@ -273,7 +212,7 @@ func TestSuggestRejectsAnInvalidIssueKey(t *testing.T) {
 func TestSuggestPropagatesTheJiraFailure(t *testing.T) {
 	issues := &stubBranchNameIssues{err: fmt.Errorf("%w: Jira PAT is not configured", sharedErrors.ErrUnauthorized)}
 	model := &stubBranchNameModel{answers: []string{branchNameModelAnswer}}
-	service := NewBranchNameService(issues, model)
+	service := NewBranchNameService(issues, model, nil)
 
 	if _, err := service.Suggest(context.Background(), "user-a", "CRMMS-77911"); !errors.Is(err, sharedErrors.ErrUnauthorized) {
 		t.Fatalf("error = %v, want unauthorized", err)
@@ -286,7 +225,7 @@ func TestSuggestPropagatesTheJiraFailure(t *testing.T) {
 func TestSuggestRejectsAnEmptyAnswerFromJira(t *testing.T) {
 	issues := &stubBranchNameIssues{}
 	model := &stubBranchNameModel{answers: []string{branchNameModelAnswer}}
-	service := NewBranchNameService(issues, model)
+	service := NewBranchNameService(issues, model, nil)
 
 	if _, err := service.Suggest(context.Background(), "user-a", "CRMMS-77911"); !errors.Is(err, sharedErrors.ErrBadGateway) {
 		t.Fatalf("error = %v, want a bad gateway", err)
@@ -295,7 +234,7 @@ func TestSuggestRejectsAnEmptyAnswerFromJira(t *testing.T) {
 
 func TestSuggestWithoutAModelReturnsTheFallback(t *testing.T) {
 	issues := &stubBranchNameIssues{issue: branchNameIssue()}
-	service := NewBranchNameService(issues, nil)
+	service := NewBranchNameService(issues, nil, nil)
 
 	suggestion, err := service.Suggest(context.Background(), "user-a", "CRMMS-77911")
 	if err != nil {
@@ -309,9 +248,34 @@ func TestSuggestWithoutAModelReturnsTheFallback(t *testing.T) {
 func TestSuggestRefusesAnIssueWithoutASummary(t *testing.T) {
 	issues := &stubBranchNameIssues{issue: &jiraDomain.JiraIssue{Key: "CRMMS-77911"}}
 	model := &stubBranchNameModel{err: errors.New("no AI provider is configured")}
-	service := NewBranchNameService(issues, model)
+	service := NewBranchNameService(issues, model, nil)
 
 	if _, err := service.Suggest(context.Background(), "user-a", "CRMMS-77911"); !errors.Is(err, sharedErrors.ErrBadGateway) {
 		t.Fatalf("error = %v, want a bad gateway, because a name without evidence is a defect", err)
+	}
+}
+
+func TestCategoryRepeatsCoreMatchesWholeWords(t *testing.T) {
+	tests := []struct {
+		name     string
+		category string
+		core     string
+		want     bool
+	}{
+		{name: "leading word", category: "Manage", core: "Manage-User", want: true},
+		{name: "trailing word", category: "User", core: "Manage-User", want: true},
+		{name: "different case", category: "manage", core: "Manage-User", want: true},
+		{name: "second word of a two word category", category: "Detail-User", core: "Manage-User", want: true},
+		{name: "no shared word", category: "Enhancement", core: "Manage-User", want: false},
+		{name: "only a substring", category: "Manage", core: "Management-User", want: false},
+		{name: "no category", category: "", core: "Manage-User", want: false},
+	}
+
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			if got := categoryRepeatsCore(testCase.category, testCase.core); got != testCase.want {
+				t.Fatalf("categoryRepeatsCore(%q, %q) = %t, want %t", testCase.category, testCase.core, got, testCase.want)
+			}
+		})
 	}
 }

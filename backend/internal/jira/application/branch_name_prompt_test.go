@@ -1,6 +1,7 @@
 package application
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -56,7 +57,7 @@ func TestBranchNamePromptCarriesTheIssueAndTheCriteria(t *testing.T) {
 		},
 	}
 
-	prompt := BranchNamePrompt(issue)
+	prompt := BranchNamePrompt(issue, CategoryVocabulary{})
 	for _, wanted := range []string{
 		"CRMMS-77911",
 		"Sebagai Administrator, I want to melihat daftar user",
@@ -75,7 +76,7 @@ func TestBranchNamePromptIsBoundedForALongDescription(t *testing.T) {
 	prompt := BranchNamePrompt(&jiraDomain.JiraIssue{
 		Key:    "CRMMS-77911",
 		Fields: jiraDomain.JiraIssueFields{Description: description},
-	})
+	}, CategoryVocabulary{})
 
 	if len([]rune(prompt)) > maximumDescriptionRunes+maximumAcceptanceCriteriaRunes+1000 {
 		t.Fatalf("the prompt grew to %d runes", len([]rune(prompt)))
@@ -83,7 +84,7 @@ func TestBranchNamePromptIsBoundedForALongDescription(t *testing.T) {
 }
 
 func TestParseBranchNameResponseNormalisesTheSegments(t *testing.T) {
-	category, core, evidence, err := ParseBranchNameResponse(`{"category":"enhancement","core":"manage user","evidence":"Halaman Utama Manage User (Grouping by PN)"}`)
+	category, core, evidence, err := ParseBranchNameResponse(`{"category":"enhancement","category_choice":"new","core":"manage user","evidence":"Halaman Utama Manage User (Grouping by PN)"}`, CategoryVocabulary{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -102,15 +103,17 @@ func TestParseBranchNameResponseRejectsMalformedAnswers(t *testing.T) {
 	}{
 		{name: "not json", answer: "Manage-User"},
 		{name: "missing fields", answer: `{"category":"Enhancement"}`},
-		{name: "refusal", answer: `{"category":"","core":"","evidence":""}`},
-		{name: "empty evidence", answer: `{"category":"Enhancement","core":"Manage-User","evidence":"  "}`},
-		{name: "category too long", answer: `{"category":"Enhancement Refactor Cleanup","core":"Manage-User","evidence":"Halaman"}`},
-		{name: "core too long", answer: `{"category":"Enhancement","core":"Manage User Grouping Detail PN List","evidence":"Halaman"}`},
+		{name: "refusal", answer: `{"category":"","category_choice":"","core":"","evidence":""}`},
+		{name: "empty evidence", answer: `{"category":"Enhancement","category_choice":"new","core":"Manage-User","evidence":"  "}`},
+		{name: "category too long", answer: `{"category":"Enhancement Refactor Cleanup","category_choice":"new","core":"Manage-User","evidence":"Halaman"}`},
+		{name: "core too long", answer: `{"category":"Enhancement","category_choice":"new","core":"Manage User Grouping Detail PN List","evidence":"Halaman"}`},
+		{name: "unstated choice", answer: `{"category":"Enhancement","core":"Manage-User","evidence":"Halaman"}`},
+		{name: "unobserved choice", answer: `{"category":"Enhancement","category_choice":"observed","core":"Manage-User","evidence":"Halaman"}`},
 	}
 
 	for _, testCase := range tests {
 		t.Run(testCase.name, func(t *testing.T) {
-			if _, _, _, err := ParseBranchNameResponse(testCase.answer); err == nil {
+			if _, _, _, err := ParseBranchNameResponse(testCase.answer, CategoryVocabulary{}); err == nil {
 				t.Fatalf("expected an error for %q", testCase.answer)
 			}
 		})
@@ -130,5 +133,60 @@ func TestContainsEvidenceIgnoresCaseAndWhitespace(t *testing.T) {
 	}
 	if containsEvidence(text, "  ") {
 		t.Fatal("a blank phrase must not count as evidence")
+	}
+}
+
+func TestBranchNamePromptListsTheObservedCategoriesWithTheirCounts(t *testing.T) {
+	issue := &jiraDomain.JiraIssue{Key: "CRMMS-77911", Fields: jiraDomain.JiraIssueFields{Summary: "Sebagai Administrator, I want to melihat daftar user"}}
+	prompt := BranchNamePrompt(issue, BuildCategoryVocabulary(map[string]int{"Manage": 9, "Report": 8, "Enhancement": 3}))
+
+	manageIndex := strings.Index(prompt, "Manage (9)")
+	reportIndex := strings.Index(prompt, "Report (8)")
+	enhancementIndex := strings.Index(prompt, "Enhancement (3)")
+	if manageIndex < 0 || reportIndex < 0 || enhancementIndex < 0 {
+		t.Fatalf("the prompt must list every observed category with its count, got %q", prompt)
+	}
+	if manageIndex > reportIndex || reportIndex > enhancementIndex {
+		t.Fatalf("the observed categories must be most common first, got %q", prompt)
+	}
+}
+
+func TestBranchNamePromptReportsTheCappedVocabulary(t *testing.T) {
+	counts := make(map[string]int)
+	for index := 0; index < 20; index++ {
+		counts[fmt.Sprintf("Category%02d", index)] = index + 1
+	}
+
+	prompt := BranchNamePrompt(&jiraDomain.JiraIssue{Key: "CRMMS-77911"}, BuildCategoryVocabulary(counts))
+	if !strings.Contains(prompt, "the 12 most common of 20 observed") {
+		t.Fatalf("the prompt must report the cap and the observed total, got %q", prompt)
+	}
+	if strings.Contains(prompt, "Category00") {
+		t.Fatalf("a category behind the cap must not reach the prompt, got %q", prompt)
+	}
+}
+
+func TestBranchNamePromptAsksForAFreeCategoryWithoutAVocabulary(t *testing.T) {
+	prompt := BranchNamePrompt(&jiraDomain.JiraIssue{Key: "CRMMS-77911"}, CategoryVocabulary{})
+	if !strings.Contains(prompt, "none were found") {
+		t.Fatalf("an empty vocabulary must ask for a new category, got %q", prompt)
+	}
+}
+
+func TestBranchNamePromptDoesNotOfferAnEchoableFallbackSentence(t *testing.T) {
+	description := "Deskripsi tanpa heading acceptance criteria, hanya paragraf biasa."
+	prompt := BranchNamePrompt(&jiraDomain.JiraIssue{
+		Key:    "CRMMS-77739",
+		Fields: jiraDomain.JiraIssueFields{Summary: "Sebagai Administrator, I want to melihat daftar user", Description: description},
+	}, CategoryVocabulary{})
+
+	if strings.Contains(prompt, "none could be located") {
+		t.Fatalf("the model must not be able to quote a fallback sentence back as evidence, got %q", prompt)
+	}
+	if strings.Contains(prompt, "Acceptance criteria headings:") {
+		t.Fatalf("an empty headings list must not be announced, got %q", prompt)
+	}
+	if !strings.Contains(prompt, description) {
+		t.Fatalf("the description must still be carried, got %q", prompt)
 	}
 }

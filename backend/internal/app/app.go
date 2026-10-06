@@ -207,7 +207,7 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	mux.Handle("GET /api/jira/issues/{key}", authMiddleware(http.HandlerFunc(jiraHandler.GetIssueDetail)))
 	mux.Handle("GET /api/jira/issues/{key}/branches", authMiddleware(http.HandlerFunc(issueBranchHandler.GetIssueBranches)))
 	mux.Handle("GET /api/jira/sprint/branches", authMiddleware(http.HandlerFunc(issueBranchHandler.GetSprintBranches)))
-	jiraTransport.RegisterBranchNameRoutes(mux, authMiddleware, jiraApp.NewBranchNameService(jiraService, jiraInfra.NewModelJSONClient(llmClient, copilotService)))
+	jiraTransport.RegisterBranchNameRoutes(mux, authMiddleware, jiraApp.NewBranchNameService(jiraService, jiraInfra.NewModelJSONClient(llmClient, copilotService), workspaceApp.NewIssueCategoryVocabulary(workspaceService, issueBranchService)))
 
 	mux.Handle("GET /api/confluence/documents", authMiddleware(http.HandlerFunc(confluenceHandler.ListDocuments)))
 	mux.Handle("GET /api/confluence/documents/{id}", authMiddleware(http.HandlerFunc(confluenceHandler.GetDocument)))
