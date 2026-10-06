@@ -35,6 +35,9 @@ func TestSuggestReturnsTheModelNameAndItsEvidence(t *testing.T) {
 	if suggestion.Evidence != "Halaman Utama Manage User (Grouping by PN)" {
 		t.Fatalf("evidence = %q", suggestion.Evidence)
 	}
+	if suggestion.EvidenceSource != EvidenceSourceAcceptanceCriteria {
+		t.Fatalf("evidence source = %q, want the acceptance criteria", suggestion.EvidenceSource)
+	}
 	if model.calls != 1 {
 		t.Fatalf("the model must be asked once, got %d calls", model.calls)
 	}
@@ -105,6 +108,9 @@ func TestSuggestReturnsTheFallbackWhenTheModelFails(t *testing.T) {
 	}
 	if suggestion.Evidence != "memiliki menu dan form terpisah untuk mengajukan program bulk MDR QRIS Statis" {
 		t.Fatalf("evidence = %q", suggestion.Evidence)
+	}
+	if suggestion.EvidenceSource != EvidenceSourceSummary {
+		t.Fatalf("the fallback names from the summary, evidence source = %q", suggestion.EvidenceSource)
 	}
 }
 

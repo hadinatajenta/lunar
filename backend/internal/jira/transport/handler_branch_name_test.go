@@ -83,7 +83,7 @@ func TestBranchNameHandlerReturnsTheWholeSuggestion(t *testing.T) {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
-	wantKeys := []string{"branch", "category", "core", "evidence", "key", "source"}
+	wantKeys := []string{"branch", "category", "core", "evidence", "evidence_source", "key", "source"}
 	if strings.Join(keys, ",") != strings.Join(wantKeys, ",") {
 		t.Fatalf("response fields = %v, want %v", keys, wantKeys)
 	}
@@ -106,6 +106,9 @@ func TestBranchNameHandlerReturnsTheWholeSuggestion(t *testing.T) {
 	}
 	if suggestion.Evidence != "Halaman Utama Manage User (Grouping by PN)" {
 		t.Fatalf("evidence = %q", suggestion.Evidence)
+	}
+	if suggestion.EvidenceSource != jiraApp.EvidenceSourceAcceptanceCriteria {
+		t.Fatalf("evidence source = %q", suggestion.EvidenceSource)
 	}
 }
 
@@ -132,6 +135,9 @@ func TestBranchNameHandlerReturns200WithTheFallbackWhenTheModelFails(t *testing.
 	}
 	if suggestion.Evidence != "melihat daftar user" {
 		t.Fatalf("evidence = %q", suggestion.Evidence)
+	}
+	if suggestion.EvidenceSource != jiraApp.EvidenceSourceSummary {
+		t.Fatalf("evidence source = %q, want the summary", suggestion.EvidenceSource)
 	}
 }
 

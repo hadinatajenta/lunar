@@ -10,12 +10,13 @@ const (
 )
 
 type BranchNameSuggestion struct {
-	Key      string `json:"key"`
-	Branch   string `json:"branch"`
-	Category string `json:"category"`
-	Core     string `json:"core"`
-	Source   string `json:"source"`
-	Evidence string `json:"evidence"`
+	Key            string `json:"key"`
+	Branch         string `json:"branch"`
+	Category       string `json:"category"`
+	Core           string `json:"core"`
+	Source         string `json:"source"`
+	Evidence       string `json:"evidence"`
+	EvidenceSource string `json:"evidence_source"`
 }
 
 func BuildBranchName(key string, category string, core string) string {

@@ -132,8 +132,9 @@ func (s *BranchNameService) modelSuggestion(ctx context.Context, userID string, 
 	} else if _, observed := vocabulary.Resolve(category); !observed && vocabulary.ObservedTotal > 0 {
 		log.Printf("the model proposed the branch category %q for %s, which no observed branch uses", category, key)
 	}
-	if !containsEvidence(issueText(issue), evidence) {
-		return nil, fmt.Errorf("model branch name for %s: the evidence %q does not appear in the issue", key, evidence)
+	evidenceOrigin, err := evidenceSource(issue, evidence)
+	if err != nil {
+		return nil, fmt.Errorf("model branch name for %s: %w", key, err)
 	}
 
 	branch, err := buildBranchName(key, category, core)
@@ -142,12 +143,13 @@ func (s *BranchNameService) modelSuggestion(ctx context.Context, userID string, 
 	}
 
 	return &jiraDomain.BranchNameSuggestion{
-		Key:      key,
-		Branch:   branch,
-		Category: category,
-		Core:     core,
-		Source:   jiraDomain.BranchNameSourceModel,
-		Evidence: evidence,
+		Key:            key,
+		Branch:         branch,
+		Category:       category,
+		Core:           core,
+		Source:         jiraDomain.BranchNameSourceModel,
+		Evidence:       evidence,
+		EvidenceSource: evidenceOrigin,
 	}, nil
 }
 
@@ -181,12 +183,13 @@ func fallbackSuggestion(issue *jiraDomain.JiraIssue) (*jiraDomain.BranchNameSugg
 	}
 
 	return &jiraDomain.BranchNameSuggestion{
-		Key:      key,
-		Branch:   branch,
-		Category: "",
-		Core:     core,
-		Source:   jiraDomain.BranchNameSourceFallback,
-		Evidence: evidence,
+		Key:            key,
+		Branch:         branch,
+		Category:       "",
+		Core:           core,
+		Source:         jiraDomain.BranchNameSourceFallback,
+		Evidence:       evidence,
+		EvidenceSource: EvidenceSourceSummary,
 	}, nil
 }
 
@@ -205,8 +208,4 @@ func branchNameCacheKey(userID string, issueKey string) string {
 
 func issueKey(issue *jiraDomain.JiraIssue) string {
 	return strings.ToUpper(strings.TrimSpace(issue.Key))
-}
-
-func issueText(issue *jiraDomain.JiraIssue) string {
-	return strings.TrimSpace(issue.Fields.Summary + "\n" + issue.Fields.Description)
 }
