@@ -296,17 +296,27 @@ part of that universe, not the source of truth.
 
 ### Two tiers
 
-| Tier | Source | Cost | Coverage | Used for |
+| Tier | Source | Cost | Scope | Used for |
 |---|---|---|---|---|
-| Fast | Local workspace scan | About 2 seconds | 55% | Every request, and every keystroke-level interaction |
-| Authoritative | Bitbucket branch search per repository | One call per repository, cacheable | 100% | Answering "does a branch exist", and verifying a suggestion |
+| Fast | Local workspace scan | About 2 seconds | 55% of the project | Every request, and every keystroke-level interaction |
+| Authoritative | Bitbucket branch search per repository | One call per repository, cacheable | The **candidate repositories only**, capped at 5 | Verifying that a branch does not already exist in a repository that matters |
+
+**Checking all 65 repositories was rejected.** The cost is 65 calls, and the benefit only exists in
+repositories that were plausible to begin with. The authoritative tier is therefore scoped to the
+suggestion's top candidates, capped at five.
 
 The authoritative tier is **not** run on every page load. It runs where its answer changes a decision:
 
-1. When the local scan would report **no branch**, because that is the case where being wrong creates a
-   duplicate.
-2. When the user asks to create a branch, so the confirmation is based on the complete picture.
+1. When the local scan would report **no branch**, against the candidate repositories.
+2. **When a branch is about to be created, against the named repository.** This is one call, and it is
+   the last line of defence: it catches a branch that exists on the remote while the repository is not
+   cloned locally, which is exactly the case that would otherwise produce a duplicate. It closes the
+   dangerous path at the single point where it matters, regardless of whether the repository was ever
+   a candidate.
 3. When the user explicitly refreshes.
+
+The consequence must be stated rather than hidden: the screen says how many repositories were checked
+on Bitbucket, and never implies the whole project was.
 
 ### What an incomplete workspace does to each signal
 

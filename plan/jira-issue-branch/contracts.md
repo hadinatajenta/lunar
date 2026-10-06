@@ -41,7 +41,8 @@ upstream URLs.
 |---|---|---|
 | Local scan cache TTL | 30 seconds | Branches change slowly, and a page can request the same scan several times |
 | Bitbucket scan cache TTL | 10 minutes | The expensive tier, and branches do not move that fast |
-| Bitbucket concurrency | 6 in flight | 65 repositories at 6 in flight stays inside the existing client timeout |
+| Bitbucket concurrency | 4 in flight | Only the candidate repositories are ever checked, so the pool stays small |
+| Remote candidate limit | **5 repositories** | The authoritative check is scoped to the suggestion's top candidates, not the whole project. Checking all 65 was rejected: the cost is 65 calls against a benefit that only matters in the repositories that were plausible in the first place |
 | Bitbucket request timeout | 20 seconds | Matches the raised Jira client timeout |
 | Git scan timeout | 5 seconds per repository | Matches `GitCommandTimeout` |
 | Key pattern | `(?i)\b[A-Z][A-Z0-9]{1,9}-[0-9]{1,6}(?![0-9])` | The negative lookahead is mandatory: `CRMMS-6397` must not match `CRMMS-63970` |
@@ -68,7 +69,9 @@ state is exactly one of:
   "invalid"         refused, see message
   "empty"           valid path, no repositories inside
   "single-repo"     the path is itself a repository
-  "foreign"         repositories exist, none carry a key from the Jira project in view
+  "foreign"         branches carrying Jira keys exist, and none of those keys belong to the
+                    Jira project currently in view. A workspace with no keyed branches yet is
+                    NOT foreign, because a fresh workspace is a normal starting state
   "partial"         fewer repositories locally than the projects hold
   "ready"           repositories present and at least one carries a key from this project
 
@@ -96,13 +99,22 @@ GET /issues/{key}/branches
       "behind": 0
     }
   ],
-  "scope": { "local_repository_count": 36, "remote_repository_count": 65, "coverage_percent": 55, "verified_remotely": true }
+  "scope": {
+    "local_repository_count": 36,
+    "remote_repository_count": 65,
+    "coverage_percent": 55,
+    "verified_remotely": true,
+    "remote_repositories_checked": 5
+  }
 }
 
 source is exactly one of:
   "local"     found by the local scan only
-  "remote"    found on Bitbucket only, so the repository is NOT cloned
+  "remote"    found on Bitbucket among the candidate repositories, and the repository is NOT cloned
   "both"      found by both
+
+remote_repositories_checked is how many repositories were actually asked of Bitbucket. It is at
+most the remote candidate limit. **The screen must never imply that all 65 were checked.**
 
 last_commit, last_commit_relative, ahead and behind are null when the source is "remote",
 because they require a clone.
@@ -180,6 +192,12 @@ body { "repo": "mms-api", "branch": "feature/CRMMS-77911-Enhancement-Manage-User
 base_branch is optional. When omitted the repository's current branch is used.
 The response is 201, not 200, because a branch was created.
 
+**Before creating, the backend checks the named repository on Bitbucket for a branch carrying this
+key.** This is one call, and it is the last line of defence against a duplicate: it catches the case
+where the branch already exists on the remote but the repository is not cloned locally, which the
+local scan cannot see. If a match is found the request fails with 409 naming the existing branch,
+rather than creating a second one.
+
 400  invalid branch name
 403  the workspace root is outside the allow list
 404  the repository does not exist
@@ -218,6 +236,7 @@ export interface WorkspaceScope {
   remote_repository_count: number
   coverage_percent: number
   verified_remotely: boolean
+  remote_repositories_checked: number
 }
 
 export interface WorkspaceReadiness {
@@ -290,7 +309,7 @@ Copy is frozen so that two agents cannot produce two different sentences for the
 | invalid | the backend `message`, shown verbatim |
 | empty | "No repositories were found in {root_path}." |
 | single-repo | "{root_path} is itself a repository. Point Lunar at the folder that contains your repositories instead." |
-| foreign | "The repositories in {root_path} do not contain any branch for the Jira project you are viewing." |
+| foreign | "The repositories in {root_path} carry branches for other Jira projects, but none for the project you are viewing." |
 | partial | "Searching {local_repository_count} of {remote_repository_count} repositories. {missing_repository_count} are not cloned locally." |
 | ready | nothing is shown |
 
@@ -302,6 +321,7 @@ Copy is frozen so that two agents cannot produce two different sentences for the
 | a match whose source is remote | "in {repo}, which is not in your workspace" plus a clone hint |
 | no matches, scope complete | "No branch found for {key} in the {local_repository_count} repositories Lunar can see." |
 | no matches, scope partial | "No branch found in the {local_repository_count} of {remote_repository_count} repositories Lunar can see. {missing_repository_count} are not cloned locally." |
+| no matches, remote checked | "No branch found in the {local_repository_count} repositories Lunar can see, or in the {remote_repositories_checked} most likely repositories checked on Bitbucket." |
 | no matches, Bitbucket unreachable | "No branch found locally. Bitbucket could not be reached, so this is not conclusive." |
 
 **"does not exist" must never be rendered.** Only "not found in N repositories".
@@ -354,3 +374,8 @@ Each of these has been decided above, and a subagent changing one is a defect.
 12. Never invent a status code outside section 2.
 13. Never add a response field the frontend does not need, and never remove one it does.
 14. Never write to disk. The only mutation in this whole feature is the one branch creation.
+15. Never check more than the remote candidate limit of repositories on Bitbucket, and never imply
+    that the whole project was checked. The one exception is the single repository named in a create
+    request, which is always verified.
+16. Never report a workspace as foreign merely because it has no keyed branches yet. Foreign requires
+    that keyed branches exist and none of them belong to the project in view.
