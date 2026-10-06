@@ -82,6 +82,13 @@ h2 { font-size: 11px; font-weight: 650; letter-spacing: 0.09em; text-transform: 
 .target.is-outcome { grid-template-columns: 22px 1fr auto; }
 .target.is-ok { border-color: color-mix(in srgb, var(--positive) 34%, transparent); }
 .target.is-failed { border-color: color-mix(in srgb, var(--danger) 34%, transparent); }
+.target.is-conflict { grid-template-columns: 22px 1fr auto;
+  border-color: color-mix(in srgb, var(--warning) 40%, transparent);
+  background: color-mix(in srgb, var(--warning) 6%, transparent); }
+.target.is-conflict .mark { color: var(--warning); }
+.ghost.small { min-height: 30px; padding: 0 11px; font-size: 11.5px; }
+.linkbtn { border: 0; background: transparent; color: var(--text); font: inherit; font-size: 11.5px;
+  font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; padding: 0 3px; }
 .mark { font-size: 13px; font-weight: 700; text-align: center; }
 .target.is-ok .mark { color: var(--positive); }
 .target.is-failed .mark { color: var(--danger); }
@@ -368,6 +375,18 @@ const filters = {};
 const manual = {};
 const feedback = {};
 const createState = {};
+const conflictChoice = {};
+const EXISTING = {
+  "CRMMS-77911": {
+    "atlas": { branch: "feature/CRMMS-77911-Enhancement-Manage-User", cloned: true },
+    "mms-api": { branch: "feature/CRMMS-77911-Enhancement-Manage-User", cloned: false },
+    "micro-user-mms": { branch: "feature/CRMMS-77911-Manage-User-Fix", cloned: true }
+  },
+  "CRMMS-77739": {
+    "atlas": { branch: "feature/CRMMS-77911-Enhancement-Manage-User", cloned: true },
+    "mms-api": { branch: "feature/CRMMS-77911-Enhancement-Manage-User", cloned: false }
+  }
+};
 const FAILURES = {
   "micro-user-mms": "The working tree has uncommitted changes. Commit or stash them, then retry.",
   "fe-mms": "The repository is not cloned, so no branch can be created there.",
@@ -442,6 +461,15 @@ function optionsFor(repo) {
   };
 }
 
+function existingFor(issueKey, repo) {
+  const forIssue = EXISTING[issueKey];
+  return forIssue ? forIssue[repo] || null : null;
+}
+
+function sameName(issue, existing) {
+  return existing.branch === branchNameFor(issue);
+}
+
 function allTargets(issue) {
   const added = (manual[issue.key] || []).map((repo) => ({
     repo,
@@ -479,6 +507,45 @@ function renderTargets(issue) {
       ? `<button class="remove" data-remove="${key}" aria-label="Remove ${target.repo}">×</button>`
       : "";
     const name = branchNameFor(issue);
+    const existing = existingFor(issue.key, target.repo);
+    const choice = conflictChoice[key];
+    if (existing && !createState[key] && choice !== "new") {
+      if (sameName(issue, existing)) {
+        return `<div class="target is-outcome is-ok">
+          <span class="mark">✓</span>
+          <div>
+            <div class="repo">${target.repo}</div>
+            <div class="sub-line">Already exists with this name, left alone</div>
+            <div class="sub-line mono-line">${existing.branch}${existing.cloned ? "" : " · on Bitbucket, not cloned"}</div>
+          </div>
+          <div class="outcome-side"></div>
+        </div>`;
+      }
+      if (choice === "use") {
+        return `<div class="target is-outcome is-ok">
+          <span class="mark">✓</span>
+          <div>
+            <div class="repo">${target.repo}</div>
+            <div class="sub-line">Using the existing branch</div>
+            <div class="sub-line mono-line">${existing.branch}</div>
+          </div>
+          <div class="outcome-side"><button class="retry" data-reconsider="${key}">Change</button></div>
+        </div>`;
+      }
+      return `<div class="target is-conflict">
+        <span class="mark">!</span>
+        <div>
+          <div class="repo">${target.repo}</div>
+          <div class="sub-line is-reason">A branch for this issue already exists here, under a different name.</div>
+          <div class="sub-line mono-line">${existing.branch}</div>
+          <div class="sub-line">The name Lunar would create is ${name}.</div>
+        </div>
+        <div class="outcome-side">
+          <button class="retry" data-conflict="${key}" data-choice="use">Use the existing one</button>
+          <button class="ghost small" data-conflict="${key}" data-choice="new">Create a new one anyway</button>
+        </div>
+      </div>`;
+    }
     const outcome = createState[key];
     if (outcome) {
       const isCreated = outcome.status === "created" || outcome.status === "exists";
@@ -497,12 +564,16 @@ function renderTargets(issue) {
         </div>
       </div>`;
     }
+    const secondWarning = existing && choice === "new"
+      ? `<div class="sub-line is-reason">${existing.branch} already exists here. Creating another splits the work for this issue across two branches.</div>`
+      : "";
     return `<div class="target ${isOn ? "" : "is-off"}">
       <input type="checkbox" ${isOn ? "checked" : ""} data-toggle="${key}" aria-label="Include ${target.repo}" />
       <div>
         <div class="repo">${target.repo}
           ${data.cloned ? "" : '<span class="tag">not cloned</span>'}</div>
         ${target.because ? `<div class="sub-line">${target.because}</div>` : ""}
+        ${secondWarning}
       </div>
       <div class="picker" data-picker="${key}">
         <button class="trigger" data-open="${key}" aria-haspopup="listbox" aria-expanded="${openPicker === key}">
@@ -512,6 +583,11 @@ function renderTargets(issue) {
       </div>
     </div>`;
   }).join("");
+  const elsewhere = Object.keys(EXISTING[issue.key] || {})
+    .filter((repo) => !targets.some((t) => t.repo === repo));
+  const elsewhereNote = elsewhere.length
+    ? `<div class="notice">A branch for this issue also exists in ${elsewhere.join(", ")}, which ${elsewhere.length > 1 ? "are" : "is"} not in this list. ${elsewhere.map((repo) => '<button class="linkbtn" data-add="' + issue.key + '" data-repo="' + repo + '">Add ' + repo + "</button>").join(" ")}</div>`
+    : "";
   const repoPopup = openRepoPicker === issue.key ? renderRepoPopup(issue) : "";
   const feedbackNote = feedback[issue.key]
     ? `<div class="notice">Recorded: ${feedback[issue.key]}. Lunar will rank this repository higher for the next issue in the same epic.</div>`
@@ -519,6 +595,7 @@ function renderTargets(issue) {
   return `<div>
     <h2>Where this will be built</h2>
     ${suggestion}${rows}
+    ${elsewhereNote}
     <div class="add-row">
       <div class="picker" data-picker="repo">
         <button class="trigger add" data-open-repo="${issue.key}" aria-haspopup="listbox" aria-expanded="${openRepoPicker === issue.key}">
@@ -717,6 +794,20 @@ function bind() {
       if (next) { next.focus(); next.setSelectionRange(caret, caret); }
     });
     node.addEventListener("click", (event) => event.stopPropagation());
+  });
+  el("detail").querySelectorAll("[data-conflict]").forEach((node) => {
+    node.addEventListener("click", (event) => {
+      event.stopPropagation();
+      conflictChoice[node.dataset.conflict] = node.dataset.choice;
+      renderDetail();
+    });
+  });
+  el("detail").querySelectorAll("[data-reconsider]").forEach((node) => {
+    node.addEventListener("click", (event) => {
+      event.stopPropagation();
+      delete conflictChoice[node.dataset.reconsider];
+      renderDetail();
+    });
   });
   el("detail").querySelectorAll("[data-retry]").forEach((node) => {
     node.addEventListener("click", (event) => {
