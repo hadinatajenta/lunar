@@ -185,6 +185,41 @@ alongside the other signals rather than replacing them.
 It is implemented as `git checkout -b <name> <base>` through the existing hardened runner: fixed
 binary, argument array, no shell, no credential prompt.
 
+### Choosing the base branch
+
+The repositories do not agree on a name, and the checked-out branch is not a safe default. Both were
+measured.
+
+| Remote default | Repositories |
+|---|---|
+| `master` | 23 |
+| `release/production` | 10 |
+| `main` | 4 |
+| `init` | 2, outside any convention, so flagged rather than used silently |
+
+And the checked-out branch differs from the default in most repositories:
+
+| Repository | Remote default | Actually checked out |
+|---|---|---|
+| `atlas` | `master` | `feature/CRMMS-77911-Enhancement-Manage-User` |
+| `aurora` | `main` | `feature/CRMMS-69759-Maintenance-MDR-Program` |
+| `mms` | `main` | `new_development3` |
+| `micro-cm-qris` | `release/production` | `pre/development` |
+| `merchant-service-laravel` | `release/production` | `feature/CRMMS-77913-Optimasi-Fitur-Risk-Checking` |
+
+Defaulting to the current branch would therefore branch a new feature off another feature branch, or
+off a stale one, which is exactly the mistake worth designing out.
+
+The base is resolved in this order: a remembered choice for the repository, then the local
+`origin/HEAD` which is present in all 36 repositories, then Bitbucket's `default-branch` endpoint
+which answers for the 41 repositories that are not cloned, then the trusted list, and only then the
+current branch, flagged.
+
+Bitbucket was verified to answer for repositories that were never cloned: `elbrus` returns `main`,
+`administrasi-service` and `gearbox` return `master`.
+
+The base is always shown before the branch is created, with a picker of the alternatives.
+
 ### Branch name generation
 
 The convention is `feature/<KEY>-<FeatureName>`. Generating the feature name from the summary is

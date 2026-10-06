@@ -46,6 +46,7 @@ upstream URLs.
 | Bitbucket request timeout | 20 seconds | Matches the raised Jira client timeout |
 | Git scan timeout | 5 seconds per repository | Matches `GitCommandTimeout` |
 | Key pattern | `(?i)\b[A-Z][A-Z0-9]{1,9}-[0-9]{1,6}(?![0-9])` | The negative lookahead is mandatory: `CRMMS-6397` must not match `CRMMS-63970` |
+| Trusted base branch names | `master`, `main`, `release/production`, `develop`, `development` | A remote default outside this set is shown but flagged for confirmation, because it is unusual rather than necessarily wrong |
 
 ## 3. Endpoints
 
@@ -189,7 +190,8 @@ body { "repo": "mms-api", "branch": "feature/CRMMS-77911-Enhancement-Manage-User
   "head_commit": "6a1f0c9d2b7e4f8a1c3d5e7f9a0b2c4d6e8f0a1b"
 }
 
-base_branch is optional. When omitted the repository's current branch is used.
+base_branch is optional. When omitted it is resolved by the rule in 3.7, which never falls back to
+whatever happens to be checked out.
 The response is 201, not 200, because a branch was created.
 
 **Before creating, the backend checks the named repository on Bitbucket for a branch carrying this
@@ -222,6 +224,53 @@ source is "generated" when the name came from the summary, or "existing" when a 
 already exists and its name is being echoed back.
 The generated name is ALWAYS editable in the UI. It is never applied without the user seeing it.
 ```
+
+### 3.7 Base branch for a repository
+
+```
+GET /repos/{repo}/base-branch
+
+200 {
+  "repo": "aurora",
+  "base_branch": "main",
+  "resolved_from": "remote_default",
+  "is_trusted": true,
+  "alternatives": ["release/production", "development"],
+  "is_cloned": true
+}
+
+resolved_from is exactly one of:
+  "user_choice"      a remembered choice for this repository
+  "local_default"    the local remote HEAD, git symbolic-ref refs/remotes/origin/HEAD
+  "remote_default"   Bitbucket's default-branch endpoint
+  "convention"       the trusted list, in order, when neither default could be read
+  "current_branch"   the last resort, used only when nothing else resolved. is_trusted is then
+                     reported so the screen can warn
+
+is_trusted is true when base_branch is in the trusted list.
+alternatives is every other branch matching the trusted list, capped at 5, for the picker.
+```
+
+**Resolution order, and why.**
+
+| Priority | Source | Coverage measured on the real workspace |
+|---|---|---|
+| 1 | A remembered user choice for the repository | n/a |
+| 2 | Local `origin/HEAD` | **36 of 36 repositories** |
+| 3 | Bitbucket `/default-branch` | Every repository, including the ones never cloned |
+| 4 | The trusted list, in order | Only when neither default could be read |
+| 5 | The current branch | Last resort, and flagged |
+
+**The checked-out branch must never be the default.** Measured on the real workspace, the checked-out
+branch differs from the remote default in most repositories: `atlas` sits on
+`feature/CRMMS-77911-Enhancement-Manage-User` while its default is `master`; `mms` sits on
+`new_development3` while its default is `main`; `micro-cm-qris` sits on `pre/development` while its
+default is `release/production`. Branching a new feature from another feature branch, or from a stale
+one, is the defect this ordering exists to prevent.
+
+**The repositories do not agree on a name, which is why the default is read rather than assumed.**
+Across the 36 repositories: 23 default to `master`, 10 to `release/production`, 4 to `main`, and 2
+report `init`, which is outside the trusted list and is therefore flagged rather than silently used.
 
 ## 4. Frontend types
 
@@ -260,6 +309,15 @@ export interface IssueBranchMatch {
   last_commit_relative: string | null
   ahead: number | null
   behind: number | null
+}
+
+export interface RepositoryBaseBranch {
+  repo: string
+  base_branch: string
+  resolved_from: "user_choice" | "local_default" | "remote_default" | "convention" | "current_branch"
+  is_trusted: boolean
+  alternatives: string[]
+  is_cloned: boolean
 }
 
 export interface IssueBranches {
@@ -343,6 +401,12 @@ A low confidence suggestion **must not** use the same visual treatment as a high
 The confirmation always states: the repository, the branch name, the base branch, and how many
 repositories were searched. The name field is pre-filled and editable.
 
+| Situation | Rendered |
+|---|---|
+| base resolved from a default | "branching from {base_branch}", with a picker of the alternatives |
+| base is not in the trusted list | "branching from {base_branch}, which is not a usual base. Confirm this is right." |
+| base came from the current branch | "Lunar could not read this repository's default branch, so it would branch from {base_branch}, which is currently checked out. Confirm this is right." |
+
 ## 6. Component ownership
 
 | Component | Owns |
@@ -379,3 +443,6 @@ Each of these has been decided above, and a subagent changing one is a defect.
     request, which is always verified.
 16. Never report a workspace as foreign merely because it has no keyed branches yet. Foreign requires
     that keyed branches exist and none of them belong to the project in view.
+17. Never default the base branch to whatever is checked out. Read the remote default, and treat the
+    current branch as a flagged last resort only.
+18. Never create a branch without showing the base branch it will come from.

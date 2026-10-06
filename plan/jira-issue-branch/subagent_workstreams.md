@@ -15,7 +15,7 @@ The split follows file ownership, not convenience: no two agents in a phase writ
 | Agent | Owns | Definition of done |
 |---|---|---|
 | **1A** backend | New `backend/internal/jira/**` and a new workspace scan surface: the key matcher, the single workspace scan producing a key to branches map, and `GET /api/jira/issues/{key}/branches` plus the sprint bulk variant | The boundary test passes for the real `CRMMS-6397` / `CRMMS-63970` pair; a scan of `/Users/erendt/BRI` finds 83 keyed branches and takes about two seconds; a key with no match returns an empty array |
-| **1B** backend | `backend/internal/workspace/**` only: `CreateBranch` and its transport routes on both surfaces | Refuses a duplicate with 409, a traversal name with 400, a dirty tree with the existing message, and a root outside the allow list with 403. Unit tested on scratch repositories, never on the real ones |
+| **1B** backend | `backend/internal/workspace/**` only: `CreateBranch`, base branch resolution, and their transport routes on both surfaces | Refuses a duplicate with 409, a traversal name with 400, a dirty tree with the existing message, and a root outside the allow list with 403. Resolves the base from the remote default rather than the checked-out branch, flags a base outside the trusted list, and is unit tested on scratch repositories, never on the real ones |
 | **1Q** QA | Tests only | Verifies both, adversarially reviews the matcher for false positives and the git operation for anything that could touch a real repository |
 
 Phase 1 has no frontend work. The matcher and the git operation are useful on their own and are the

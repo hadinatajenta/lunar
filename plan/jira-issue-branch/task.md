@@ -17,6 +17,10 @@
 
 ### 1B create branch
 - [ ] `CreateBranch` through the hardened git runner
+- [ ] Base branch resolution: remembered choice, then local `origin/HEAD`, then Bitbucket `default-branch`, then the trusted list, then the current branch flagged
+- [ ] The current branch is never the silent default
+- [ ] A base outside the trusted list is flagged, not silently used
+- [ ] The base is shown before creating, with a picker of alternatives
 - [ ] Name validation reuses the existing validator
 - [ ] Duplicate branch returns 409
 - [ ] Dirty tree returns the existing checkout guard message
