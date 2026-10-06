@@ -613,6 +613,22 @@ func TestAtlassianJiraClient_BacklogSprintsReportsSprintIssueFailure(t *testing.
 	}
 }
 
+func TestAtlassianJiraClient_SprintIssueRequestExcludesSubTasks(t *testing.T) {
+	server, pathCounter := newSprintFixtureServer(t, 2866, `{"values":[
+		{"id":10966,"name":"Sprint #36 - Pangestu Squad","state":"active","originBoardId":2866}
+	]}`)
+
+	client := NewAtlassianJiraClient(server.URL)
+	if _, err := client.GetBacklogSprints(context.Background(), "valid-pat", 2866); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	issueQuery := pathCounter.queryFor("/rest/agile/1.0/sprint/10966/issue")
+	if !strings.Contains(issueQuery, "issuetype+not+in+subTaskIssueTypes") && !strings.Contains(issueQuery, "issuetype%20not%20in%20subTaskIssueTypes") {
+		t.Errorf("expected sub-tasks to be excluded from the sprint issue request, got %q", issueQuery)
+	}
+}
+
 func TestAtlassianJiraClient_BacklogSprintsFallsBackToDefaultBoard(t *testing.T) {
 	server, pathCounter := newSprintFixtureServer(t, 2646, `{"values":[
 		{"id":10103,"name":"Sprint Azzuri #5","state":"active","originBoardId":3946},

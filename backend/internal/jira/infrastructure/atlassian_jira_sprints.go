@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 
@@ -138,8 +139,8 @@ func (c *AtlassianJiraClient) enrichSprintIssues(ctx context.Context, pat string
 }
 
 func (c *AtlassianJiraClient) fetchSprintIssues(ctx context.Context, pat string, sprint domain.JiraSprint) ([]domain.JiraIssue, error) {
-	issueURL := fmt.Sprintf("%s/rest/agile/1.0/sprint/%d/issue?fields=summary,status,assignee,issuetype,priority,parent,"+JIRA_SPRINT_FIELD+"&maxResults=100",
-		c.baseURL, sprint.ID)
+	issueURL := fmt.Sprintf("%s/rest/agile/1.0/sprint/%d/issue?fields=summary,status,assignee,issuetype,priority,parent,"+JIRA_SPRINT_FIELD+"&maxResults=%d&jql=%s",
+		c.baseURL, sprint.ID, JIRA_SPRINT_ISSUE_LIMIT, url.QueryEscape(JIRA_PARENT_ISSUES_ONLY_JQL))
 	ireq, err := http.NewRequestWithContext(ctx, http.MethodGet, issueURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("build sprint issue request: %w", err)

@@ -22,6 +22,8 @@ const (
 	JIRA_FALLBACK_BOARD_ID       = 2646
 	JIRA_SPRINT_FIELD            = "customfield_10104"
 	BACKLOG_SPRINT_FETCH_LIMIT   = 4
+	JIRA_SPRINT_ISSUE_LIMIT      = 200
+	JIRA_PARENT_ISSUES_ONLY_JQL  = "issuetype not in subTaskIssueTypes()"
 )
 
 type AtlassianJiraClient struct {
