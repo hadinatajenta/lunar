@@ -17,8 +17,6 @@ const {
   currentCategory,
   currentDocType,
   detectedSquad,
-  availableSquads,
-  selectedSquad,
   columnLimits,
   selectedIssue,
   isLoading,
@@ -35,7 +33,6 @@ const {
   setActiveTab,
   setCategory,
   setDocType,
-  setSquad,
   fetchData,
   initialize
 } = useJira()
@@ -280,10 +277,7 @@ onMounted(() => {
         <BacklogList
           v-else
           :sprints="sprints"
-          :available-squads="availableSquads"
-          :selected-squad="selectedSquad"
-          :detected-squad="detectedSquad"
-          @select-squad="setSquad"
+          :squad-name="detectedSquad"
           @select-issue="openModal"
         />
       </div>

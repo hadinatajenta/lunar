@@ -42,20 +42,31 @@ test.describe("Jira BRI - Issue Detail Modal Positive Flows", () => {
   )
 
   test(
-    "JIRA-MODAL-003 user can toggle read more and read less description button",
+    "JIRA-MODAL-003 user can open the full description on Jira in a new tab",
     {
-      tag: ["@jira", "@positive", "@modal"]
+      tag: ["@jira", "@positive", "@modal", "@external-link"]
     },
     async ({ page, jiraPage }) => {
       await jiraPage.goto()
       await page.getByTestId("kanban-card-CRMMS-77911").click()
       await expect(jiraPage.issueModal).toBeVisible()
       await expect(jiraPage.btnReadMore).toBeVisible()
-      await expect(jiraPage.btnReadMore).toHaveText("Read more")
+      await expect(jiraPage.btnReadMore).toHaveText("Open full description in Jira")
+
+      await page.context().route("https://jira.bri.co.id/**", async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "text/html",
+          body: "<!doctype html><title>CRMMS-77911 - Jira</title>"
+        })
+      })
+
+      const newTabPromise = page.context().waitForEvent("page")
       await jiraPage.btnReadMore.click()
-      await expect(jiraPage.btnReadMore).toHaveText("Read less")
-      await jiraPage.btnReadMore.click()
-      await expect(jiraPage.btnReadMore).toHaveText("Read more")
+      const newTab = await newTabPromise
+
+      await expect(newTab).toHaveURL("https://jira.bri.co.id/browse/CRMMS-77911")
+      await expect(page).toHaveURL(/\/jira$/)
     }
   )
 
@@ -134,6 +145,56 @@ test.describe("Jira BRI - Issue Detail Modal Positive Flows", () => {
       await wikiSection.getByTestId("wiki-link-item").click()
       await expect(page).toHaveURL("/confluence/101")
       await expect(jiraPage.issueModal).not.toBeVisible()
+    }
+  )
+
+  test(
+    "JIRA-MODAL-008 modal footer keeps Open in Jira and Close aligned on one row",
+    {
+      tag: ["@jira", "@positive", "@modal", "@layout"]
+    },
+    async ({ page, jiraPage }) => {
+      await jiraPage.goto()
+      await page.getByTestId("kanban-card-CRMMS-77911").click()
+      await expect(jiraPage.issueModal).toBeVisible()
+
+      const modalFooter = page.locator(".modal-footer")
+      await expect(modalFooter).toHaveCount(1)
+      await expect(page.locator(".modal-body .modal-footer")).toHaveCount(0)
+      const footerDisplay = await modalFooter.evaluate(
+        (element): string => getComputedStyle(element).display
+      )
+      expect(footerDisplay).toBe("flex")
+
+      const openInJiraButton = page.getByTestId("btn-open-jira")
+      const footerCloseButton = page.getByTestId("btn-footer-close")
+      await expect(openInJiraButton).toBeVisible()
+      await expect(footerCloseButton).toBeVisible()
+
+      const openInJiraBox = await openInJiraButton.boundingBox()
+      const footerCloseBox = await footerCloseButton.boundingBox()
+      expect(openInJiraBox).not.toBeNull()
+      expect(footerCloseBox).not.toBeNull()
+      if (!openInJiraBox || !footerCloseBox) {
+        throw new Error("Modal footer buttons did not render measurable boxes")
+      }
+
+      expect(Math.abs(openInJiraBox.y - footerCloseBox.y)).toBeLessThanOrEqual(2)
+      expect(Math.abs(openInJiraBox.height - footerCloseBox.height)).toBeLessThanOrEqual(2)
+      expect(footerCloseBox.x).toBeGreaterThan(openInJiraBox.x + openInJiraBox.width)
+
+      const footerBox = await modalFooter.boundingBox()
+      await page.locator(".modal-body").evaluate((element): void => {
+        const scrollableBody = element as HTMLElement
+        scrollableBody.scrollTop = scrollableBody.scrollHeight
+      })
+      const scrolledFooterBox = await modalFooter.boundingBox()
+      expect(footerBox).not.toBeNull()
+      expect(scrolledFooterBox).not.toBeNull()
+      if (!footerBox || !scrolledFooterBox) {
+        throw new Error("Modal footer did not render a measurable box")
+      }
+      expect(Math.abs(scrolledFooterBox.y - footerBox.y)).toBeLessThanOrEqual(1)
     }
   )
 })

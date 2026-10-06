@@ -21,6 +21,7 @@ test.describe("Jira BRI - Backlog & Sprints Positive Flows", () => {
       await expect(jiraPage.backlogSprints).toHaveCount(2)
       await expect(jiraPage.backlogContainer).toContainText("ACTIVE")
       await expect(jiraPage.backlogIssues).toHaveCount(2)
+      await expect(page.getByTestId("backlog-squad-label")).toBeVisible()
       await captureEvidence(page, "jira", "03_jira_backlog_view.png", true)
     }
   )
@@ -40,6 +41,57 @@ test.describe("Jira BRI - Backlog & Sprints Positive Flows", () => {
       await expect(jiraPage.modalTitle).toContainText("Sebagai Administrator")
       await jiraPage.btnCloseModal.click()
       await expect(jiraPage.issueModal).not.toBeVisible()
+    }
+  )
+
+  test(
+    "JIRA-BACKLOG-003 active sprint starts expanded and every other sprint starts collapsed",
+    {
+      tag: ["@jira", "@positive", "@backlog"]
+    },
+    async ({ page, jiraPage }) => {
+      await jiraPage.goto()
+      await jiraPage.tabBacklog.click()
+
+      const activeSprintHeader = page.getByTestId("sprint-header-sprint-44")
+      const futureSprintHeader = page.getByTestId("sprint-header-sprint-45")
+
+      await expect(activeSprintHeader).toHaveAttribute("aria-expanded", "true")
+      await expect(page.getByTestId("backlog-issue-CRMMS-77911")).toBeVisible()
+      await expect(futureSprintHeader).toHaveAttribute("aria-expanded", "false")
+      await expect(page.getByTestId("backlog-issue-CRMMS-8812")).toBeHidden()
+    }
+  )
+
+  test(
+    "JIRA-BACKLOG-004 sprint header toggles by mouse and keyboard and reports aria-expanded",
+    {
+      tag: ["@jira", "@positive", "@backlog", "@accessibility"]
+    },
+    async ({ page, jiraPage }) => {
+      await jiraPage.goto()
+      await jiraPage.tabBacklog.click()
+
+      const futureSprintHeader = page.getByTestId("sprint-header-sprint-45")
+      await expect(futureSprintHeader).toHaveAttribute(
+        "aria-controls",
+        "backlog-sprint-issues-sprint-45"
+      )
+      await expect(page.locator("#backlog-sprint-issues-sprint-45")).toHaveCount(1)
+      await expect(futureSprintHeader).toHaveAttribute("aria-expanded", "false")
+      await expect(page.getByTestId("backlog-issue-CRMMS-8812")).toBeHidden()
+
+      await futureSprintHeader.click()
+      await expect(futureSprintHeader).toHaveAttribute("aria-expanded", "true")
+      await expect(page.getByTestId("backlog-issue-CRMMS-8812")).toBeVisible()
+
+      await futureSprintHeader.press("Enter")
+      await expect(futureSprintHeader).toHaveAttribute("aria-expanded", "false")
+      await expect(page.getByTestId("backlog-issue-CRMMS-8812")).toBeHidden()
+
+      await futureSprintHeader.press("Space")
+      await expect(futureSprintHeader).toHaveAttribute("aria-expanded", "true")
+      await expect(page.getByTestId("backlog-issue-CRMMS-8812")).toBeVisible()
     }
   )
 })

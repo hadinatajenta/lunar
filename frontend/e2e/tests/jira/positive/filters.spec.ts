@@ -2,7 +2,7 @@ import { test, expect } from "../../../fixtures/authenticated.fixture"
 import { routeSecrets, routeStandardJira } from "../../../helpers/route-mock"
 import { mockAssignedIssues } from "../../../data/jira.data"
 
-test.describe("Jira BRI - Filters & Squad Views", () => {
+test.describe("Jira BRI - Filters & Squad Context", () => {
   test(
     "JIRA-FILTER-001 user can filter by category",
     {
@@ -84,7 +84,7 @@ test.describe("Jira BRI - Filters & Squad Views", () => {
   )
 
   test(
-    "JIRA-SQUAD-001 user sees squad filter pills and can filter sprints by squad",
+    "JIRA-SQUAD-001 squad filter bar is gone and the backlog shows whose sprint is on screen",
     {
       tag: ["@jira", "@positive", "@squad"]
     },
@@ -125,10 +125,51 @@ test.describe("Jira BRI - Filters & Squad Views", () => {
       await jiraPage.goto()
       await jiraPage.tabBacklog.click()
 
-      await expect(jiraPage.squadFilterBar).toBeVisible()
-      await expect(page.getByTestId("squad-pill-fortune-squad")).toHaveClass(/is-active/)
-      await expect(page.getByTestId("squad-pill-fortune-squad")).toContainText("Yours")
-      await expect(page.getByTestId("squad-pill-azzuri")).toBeVisible()
+      await expect(jiraPage.backlogContainer).toBeVisible()
+      await expect(jiraPage.squadFilterBar).toHaveCount(0)
+      await expect(page.getByTestId("squad-pill-all")).toHaveCount(0)
+      await expect(page.getByTestId("squad-pill-fortune-squad")).toHaveCount(0)
+      await expect(page.getByTestId("backlog-squad-label")).toHaveText("Fortune Squad")
+      await expect(jiraPage.backlogContainer).not.toContainText("All squads")
+    }
+  )
+
+  test(
+    "JIRA-SQUAD-002 backlog states plainly when no squad could be detected",
+    {
+      tag: ["@jira", "@positive", "@squad"]
+    },
+    async ({ page, jiraPage }) => {
+      await routeSecrets(page, { hasJiraPat: true })
+
+      await page.route(/\/api\/jira\/issues/, async (route) => {
+        await route.fulfill({ status: 200, json: mockAssignedIssues })
+      })
+      await page.route(/\/api\/jira\/backlog/, async (route) => {
+        await route.fulfill({
+          status: 200,
+          json: {
+            sprints: [
+              {
+                id: "sprint-44",
+                name: "Sprint 44",
+                is_active: true,
+                dates: "Sep 15 - Sep 29",
+                issues: []
+              }
+            ],
+            total_issues: 0
+          }
+        })
+      })
+
+      await jiraPage.goto()
+      await jiraPage.tabBacklog.click()
+
+      await expect(page.getByTestId("backlog-squad-label")).toHaveText(
+        "No squad could be detected for your account"
+      )
+      await expect(jiraPage.backlogContainer).not.toContainText("Fortune Squad")
     }
   )
 })

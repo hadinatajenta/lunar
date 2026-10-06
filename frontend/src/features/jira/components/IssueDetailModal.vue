@@ -18,7 +18,6 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
-const isDescriptionExpanded = ref(false)
 const remoteLinks = ref<JiraRemoteLink[]>([])
 const isLoadingRemoteLinks = ref(false)
 
@@ -60,7 +59,6 @@ const loadRemoteLinks = async (issueKey: string) => {
 watch(
   () => props.issue,
   (newIssue) => {
-    isDescriptionExpanded.value = false
     if (newIssue) {
       const key = newIssue.key || newIssue.id
       if (key) {
@@ -156,7 +154,7 @@ const displayedDescription = computed(() => {
   return props.issue.description || props.issue.title || "No description provided."
 })
 
-const isExpandable = computed(() => displayedDescription.value.length > 80)
+const isDescriptionTruncated = computed(() => displayedDescription.value.length > 80)
 
 const jiraUrl = computed(() => {
   if (!props.issue) return "#"
@@ -245,17 +243,17 @@ const openInJira = () => {
           <div class="description-section">
             <p class="section-label">Description</p>
             <div class="description-body" data-testid="modal-issue-desc">
-              <p :class="['description-text', { 'is-clamped': !isDescriptionExpanded && isExpandable }]">
+              <p :class="['description-text', { 'is-clamped': isDescriptionTruncated }]">
                 {{ displayedDescription }}
               </p>
               <button
-                v-if="isExpandable"
+                v-if="isDescriptionTruncated"
                 class="btn-read-more"
                 type="button"
                 data-testid="btn-read-more"
-                @click="isDescriptionExpanded = !isDescriptionExpanded"
+                @click="openInJira"
               >
-                {{ isDescriptionExpanded ? 'Read less' : 'Read more' }}
+                Open full description in Jira
               </button>
             </div>
           </div>
@@ -314,6 +312,7 @@ const openInJira = () => {
           <button
             class="btn btn-primary"
             type="button"
+            data-testid="btn-footer-close"
             @click="emit('close')"
           >
             Close
@@ -408,7 +407,7 @@ const openInJira = () => {
 }
 
 .modal-close:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-hover);
   border-color: var(--border-strong);
   color: var(--text);
 }
@@ -437,7 +436,7 @@ const openInJira = () => {
 }
 
 .modal-body::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--border-strong);
   border-radius: 3px;
 }
 
@@ -483,16 +482,16 @@ const openInJira = () => {
 }
 
 .priority-dot.is-high {
-  background: #c69090;
-  box-shadow: 0 0 8px rgba(198, 144, 144, 0.5);
+  background: var(--danger);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--danger) 50%, transparent);
 }
 
 .priority-dot.is-medium {
-  background: #bba984;
+  background: var(--warning);
 }
 
 .priority-dot.is-low {
-  background: #9fb6a6;
+  background: var(--positive);
 }
 
 .description-section {
@@ -519,7 +518,7 @@ const openInJira = () => {
 
 .description-text {
   margin: 0;
-  color: #bfc6cf;
+  color: var(--text);
   font-size: 13px;
   line-height: 1.65;
   white-space: pre-wrap;
@@ -623,6 +622,20 @@ const openInJira = () => {
   border-radius: 10px;
   background: var(--surface-raised);
   flex-shrink: 0;
+}
+
+.modal-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  padding: 14px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.modal-footer .btn {
+  flex: 0 0 auto;
 }
 
 .spacer {

@@ -103,9 +103,11 @@ Source: `frontend/src/features/dashboard/`, `backend/internal/dashboard/`.
 | Subfeature | Detail |
 |---|---|
 | Assigned to me | Issues assigned to the signed-in user |
-| Backlog | Issues in the active sprint, as a kanban board |
+| Backlog | The active sprint of the signed-in user's own squad, grouped by sprint with each group collapsible. The active sprint starts expanded |
+| Squad scoping | The squad and the board are read from the signed-in user's own issues, so each user sees their own squad's sprint. When no squad can be determined the backlog is empty and says so, rather than showing another squad's work |
+| Sprint detail | Opening an issue shows its fields, remote links, and a link to the issue on BRI Jira |
 | Kanban board | Columns by status, five cards per column with load more |
-| Issue detail | Modal with issue fields and remote links |
+| Issue detail | Modal with issue fields, remote links, and an explicit link to the issue on BRI Jira |
 | Issue type filters | All, DEV documents, bug or defect, subtasks |
 | Document filter | Technical documents derived from issues |
 | Refresh | Re-fetches issues on demand |
@@ -118,6 +120,25 @@ machine look as though it had live tickets, with no indication that the data was
 fallback is disabled and must stay disabled.
 
 `GET /api/jira/issues`, `/api/jira/backlog`, `/api/jira/issues/{key}`, `/api/jira/issues/remotelinks`.
+
+### 3.1 How the backlog decides whose sprint to show
+
+The backlog used to read a single hardcoded board, which meant every user saw the same squad's
+sprint regardless of who they were. The board is now derived from the user's own work.
+
+| Step | Detail |
+|---|---|
+| Sprint field | The user's issues are read with `customfield_10104`, which is this instance's Sprint field. The field previously requested, `customfield_15310`, is Acceptance Criteria and is never populated, so squad detection silently returned nothing for every user |
+| Squad | The squad name is parsed out of the sprint title, so `Sprint 44 - Fortune Squad` and `Sprint #36 - Pangestu Squad` both resolve |
+| Board | The sprint value carries the owning board as `rapidViewId`, and that board is the one the backlog reads. A single board is used only as a last resort when nothing is detected |
+| Active only | Only sprints in the `active` state are requested, so a future or closed sprint never appears |
+| No widening | When no squad can be detected the response carries no sprints rather than every sprint, so a user never sees another squad's backlog by accident |
+| Failure | A sprint whose issues cannot be loaded fails the request with a readable reason instead of being reported as an empty sprint |
+
+The last point matters: the sprint issue query returns a large payload and used to be silently
+reported as an empty sprint when it failed, which looked like a sprint with no work in it. Both the
+response header timeout and the client timeout are set well above the measured response time, and a
+failure now surfaces.
 
 Source: `frontend/src/features/jira/`, `backend/internal/jira/`.
 
@@ -411,6 +432,7 @@ Newest first. Every feature change adds a line here.
 
 | Date | Change |
 |---|---|
+| 2026-10-05 | Jira: the backlog is scoped to the signed-in user's own squad. The sprint field was wrong, so squad detection had never worked and every user fell back to every sprint on one hardcoded board, which is why a user outside that squad saw its work. The board is now taken from the sprint that owns the user's own issues, only active sprints are requested, and an undetectable squad yields an empty backlog that says so instead of another squad's. The squad filter was removed, the sprint groups expand and collapse for real, the issue modal footer regained the layout it never had, and Read more opens the issue on BRI Jira |
 | 2026-10-05 | Microservices: the locked export control keeps a stable accessible name. With no provider key the model group is still announced as "Choose AI model" and reads as disabled, instead of the name disappearing and a separate button taking its place, so a screen reader user meets the same control in both states |
 | 2026-10-05 | Microservices: a service can now be exported as a Postman collection through a configured model. The pipeline selects the repository's source, classifies the service, builds a framework-specific prompt, and streams stage progress and the collection over server-sent events; the browser writes the file, and nothing is written on the server. The selector includes `src/vendor`, which the code indexer deliberately skips, and excludes test files because atlas and aurora declare every route a second time inside `delivery_test.go`. Adversarial review found and closed four selector defects: a case-sensitive deny list that let `Node_Modules` and eleven other spellings through, a root `package.json` read through a symlink to outside the repository, non-regular files such as a FIFO that blocked the export forever, and the same symlink gap in the monolith markers. Verified live: atlas exported 29 requests against 30 declared routes and aurora 53 against 54, every path traceable to a `routes.go` literal and none missing a name, method, url, path, or header, while `mms` and `fe-mms` were refused with their reasons and panama kept its `src/vendor` files |
 | 2026-10-05 | Microservices: the Branch column becomes a picker and the Action column becomes a kebab menu over five git operations, on both the helper and the server. Branch switching validates the name and then confirms it against `refs/heads`, so a tag or commit SHA is refused with 404 instead of detaching `HEAD`; the dirty guard counts tracked changes only, because stash does not cover untracked files and git carries them across a checkout. Network operations get a 90 second git deadline and a per-request HTTP write deadline, since the backend's 15 second and the client's 8 second defaults truncated a fetch or pull. Destructive actions now require `LUNAR_WORKSPACE_ALLOWED_ROOTS` to contain the workspace root, closing a gap where a session could aim the workspace at any directory and then modify repositories inside it |

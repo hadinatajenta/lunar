@@ -162,8 +162,6 @@ const activeTab = ref<"assigned" | "backlog">("assigned")
 const currentCategory = ref<SubfilterCategory>("docs")
 const currentDocType = ref<DocTypeFilter>("all")
 const detectedSquad = ref<string>("")
-const availableSquads = ref<string[]>([])
-const selectedSquad = ref<string>("")
 const columnLimits = ref<Record<string, number>>({
   open: 5,
   progress: 5,
@@ -274,21 +272,6 @@ export function useJira() {
     currentDocType.value = docType
   }
 
-  const setSquad = async (squad: string) => {
-    selectedSquad.value = squad
-    isLoading.value = true
-    try {
-      const fetchedBacklog = await fetchBacklog(squad === "all" ? "all" : squad)
-      if (fetchedBacklog && Array.isArray(fetchedBacklog.sprints)) {
-        sprints.value = fetchedBacklog.sprints.map(normalizeSprint)
-      }
-    } catch (err: unknown) {
-      handleFetchError(err)
-    } finally {
-      isLoading.value = false
-    }
-  }
-
   const clearError = () => {
     error.value = null
     errorCode.value = null
@@ -321,7 +304,7 @@ export function useJira() {
   const loadJiraData = async (options: { refresh?: boolean } = {}) => {
     const [fetchedIssues, fetchedBacklog] = await Promise.all([
       fetchMyIssues(options),
-      fetchBacklog(selectedSquad.value || undefined, options)
+      fetchBacklog(detectedSquad.value || undefined, options)
     ])
 
     if (Array.isArray(fetchedIssues)) {
@@ -331,12 +314,6 @@ export function useJira() {
       sprints.value = fetchedBacklog.sprints.map(normalizeSprint)
       if (fetchedBacklog.detected_squad) {
         detectedSquad.value = fetchedBacklog.detected_squad
-        if (!selectedSquad.value) {
-          selectedSquad.value = fetchedBacklog.detected_squad
-        }
-      }
-      if (fetchedBacklog.available_squads) {
-        availableSquads.value = fetchedBacklog.available_squads
       }
     }
     lastLoadedAt.value = Date.now()
@@ -375,8 +352,6 @@ export function useJira() {
     issues.value = []
     sprints.value = []
     detectedSquad.value = ""
-    availableSquads.value = []
-    selectedSquad.value = ""
     selectedIssue.value = null
     error.value = null
     errorCode.value = null
@@ -391,8 +366,6 @@ export function useJira() {
     currentCategory,
     currentDocType,
     detectedSquad,
-    availableSquads,
-    selectedSquad,
     columnLimits,
     selectedIssue,
     isLoading,
@@ -411,7 +384,6 @@ export function useJira() {
     setActiveTab,
     setCategory,
     setDocType,
-    setSquad,
     fetchData,
     clearError,
     initialize,
