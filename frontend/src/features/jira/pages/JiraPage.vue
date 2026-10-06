@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onMounted } from "vue"
+import { onMounted, watch } from "vue"
 import PageLayout from "../../../components/layout/PageLayout.vue"
 import { useSettings } from "../../settings/composables/useSettings"
 import { useJira } from "../composables/useJira"
+import { useIssueBranches } from "../composables/useIssueBranches"
 import KanbanBoard from "../components/KanbanBoard.vue"
 import KanbanSkeleton from "../components/KanbanSkeleton.vue"
 import BacklogList from "../components/BacklogList.vue"
@@ -37,8 +38,17 @@ const {
   initialize
 } = useJira()
 
+const { loadSprintBranches } = useIssueBranches()
+
 onMounted(() => {
   initialize()
+})
+
+watch([detectedSquad, sprints], () => {
+  if (sprints.value.length === 0) {
+    return
+  }
+  void loadSprintBranches(detectedSquad.value)
 })
 </script>
 

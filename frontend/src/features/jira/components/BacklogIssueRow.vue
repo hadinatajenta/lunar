@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { JiraIssue } from "../types"
+import IssueBranchPill from "./IssueBranchPill.vue"
 
 interface Props {
   issue: JiraIssue
@@ -58,6 +59,7 @@ const formatStatus = (rawStatus: string): string => {
       <span :class="['issue-type', `is-${issue.kind}`]">{{ typeIcon(issue.kind) }}</span>
       <span class="issue-id">{{ issue.id }}</span>
       <span class="issue-title">{{ issue.title }}</span>
+      <IssueBranchPill :issue-key="issue.key || issue.id" />
       <span :class="['issue-status', `is-${issue.status}`]">
         {{ formatStatus(issue.status) }}
       </span>
@@ -91,7 +93,7 @@ const formatStatus = (rawStatus: string): string => {
 
 .backlog-issue-inner {
   display: grid;
-  grid-template-columns: 24px 100px 1fr auto 40px;
+  grid-template-columns: 24px 100px minmax(0, 1fr) auto auto 40px;
   gap: 12px;
   align-items: center;
   padding: 10px 16px;
@@ -198,7 +200,7 @@ const formatStatus = (rawStatus: string): string => {
 
 @media (max-width: 620px) {
   .backlog-issue-inner {
-    grid-template-columns: 24px 1fr auto 40px;
+    grid-template-columns: 24px minmax(0, 1fr) auto auto 40px;
   }
 
   .backlog-issue-inner .issue-id {

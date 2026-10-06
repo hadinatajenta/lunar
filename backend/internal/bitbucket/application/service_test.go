@@ -10,13 +10,17 @@ import (
 )
 
 type mockBitbucketRepo struct {
-	pushes   []domain.PushBranch
-	prs      []domain.PullRequest
-	diff     *domain.PRDiff
-	review   *domain.AICodeReview
-	comment  *domain.PRComment
-	lastAct  string
-	createPr *domain.PullRequest
+	pushes        []domain.PushBranch
+	prs           []domain.PullRequest
+	diff          *domain.PRDiff
+	review        *domain.AICodeReview
+	comment       *domain.PRComment
+	lastAct       string
+	createPr      *domain.PullRequest
+	branches      []string
+	defaultBranch string
+	lastPAT       string
+	lastRepo      string
 }
 
 func (m *mockBitbucketRepo) ListPushes(ctx context.Context, pat string, filter string) ([]domain.PushBranch, error) {
@@ -70,7 +74,21 @@ func (m *mockBitbucketRepo) GenerateAIReview(ctx context.Context, prID string, r
 }
 
 func (m *mockBitbucketRepo) SearchBranches(ctx context.Context, pat string, repo string, filterText string) ([]string, error) {
+	m.lastPAT = pat
+	m.lastRepo = repo
 	return []string{}, nil
+}
+
+func (m *mockBitbucketRepo) ListBranches(ctx context.Context, pat string, repo string) ([]string, error) {
+	m.lastPAT = pat
+	m.lastRepo = repo
+	return m.branches, nil
+}
+
+func (m *mockBitbucketRepo) DefaultBranch(ctx context.Context, pat string, repo string) (string, error) {
+	m.lastPAT = pat
+	m.lastRepo = repo
+	return m.defaultBranch, nil
 }
 
 func (m *mockBitbucketRepo) ResetSeedData() {}

@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from "vue"
 import { useRouter } from "vue-router"
 import type { JiraIssue } from "../types"
 import { fetchIssueRemoteLinks, type JiraRemoteLink } from "../api/jira-api"
+import IssueBranchPanel from "./IssueBranchPanel.vue"
 
 interface Props {
   issue: JiraIssue | null
@@ -257,6 +258,8 @@ const openInJira = () => {
               </button>
             </div>
           </div>
+
+          <IssueBranchPanel :issue="issue" />
 
           <div
             v-if="confluenceLinks.length > 0"

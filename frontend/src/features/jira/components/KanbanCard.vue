@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue"
 import type { JiraIssue } from "../types"
+import IssueBranchPill from "./IssueBranchPill.vue"
 
 interface Props {
   item: JiraIssue
@@ -86,6 +87,7 @@ const priorityClass = computed(() => {
       <div class="kanban-card-sub">
         {{ item.id }}{{ item.sub ? ' · ' + item.sub : '' }}
       </div>
+      <IssueBranchPill :issue-key="item.key || item.id" />
       <div class="kanban-card-foot">
         <span class="kanban-card-points">{{ item.points }} pts</span>
         <span class="kanban-card-assignee">{{ assigneeInitials }}</span>

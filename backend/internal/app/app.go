@@ -227,6 +227,8 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	mux.Handle("POST /api/workspace/export", authMiddleware(http.HandlerFunc(exportHandler.Export)))
 	mux.Handle("POST /api/workspace/branches", authMiddleware(http.HandlerFunc(workspaceHandler.CreateBranches)))
 	mux.Handle("GET /api/workspace/repos/{repo}/base-branch-options", authMiddleware(http.HandlerFunc(workspaceHandler.ListBaseBranchOptions)))
+	workspaceTransport.RegisterWorkspaceReadinessRoute(mux, authMiddleware, workspaceService, workspaceGitReader, cfg.WorkspaceAllowedRoots, nil)
+	workspaceTransport.RegisterRepositoryRoutes(mux, authMiddleware, workspaceService, workspaceGitReader, jiraService, issueBranchService)
 
 	handler := sharedHttp.CORSMiddleware(cfg.CORSOrigin)(loggingMiddleware(mux))
 

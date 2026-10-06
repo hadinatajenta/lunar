@@ -1,0 +1,225 @@
+.target {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 200px;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface-raised);
+  margin-bottom: 6px;
+}
+
+.target:last-child {
+  margin-bottom: 0;
+}
+
+.target.is-outcome,
+.target.is-conflict {
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+}
+
+.target.is-off {
+  opacity: 0.45;
+}
+
+.target.is-ok {
+  border-color: color-mix(in srgb, var(--positive) 34%, transparent);
+}
+
+.target.is-failed {
+  border-color: color-mix(in srgb, var(--danger) 34%, transparent);
+}
+
+.target.is-conflict {
+  border-color: color-mix(in srgb, var(--warning) 40%, transparent);
+  background: color-mix(in srgb, var(--warning) 6%, transparent);
+}
+
+.target.is-conflict .mark {
+  color: var(--warning);
+}
+
+.target.is-ok .mark {
+  color: var(--positive);
+}
+
+.target.is-failed .mark {
+  color: var(--danger);
+}
+
+.mark {
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.mark-slot {
+  width: 22px;
+}
+
+.target-include,
+.remember-input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+  margin: 0;
+}
+
+.target-include {
+  justify-self: center;
+}
+
+.target-main {
+  min-width: 0;
+}
+
+.repo {
+  font-weight: 600;
+  font-size: 12.5px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.sub-line {
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.sub-line.is-reason {
+  color: var(--danger);
+}
+
+.sub-line.mono-line {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+.target-side {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: stretch;
+}
+
+.remember-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.remember-line span {
+  min-width: 0;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.outcome-side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.retry {
+  min-height: 30px;
+  padding: 0 13px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.retry:hover {
+  background: var(--surface-hover);
+}
+
+.retry:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.retry:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+.ghost.small {
+  min-height: 30px;
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.ghost.small:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+}
+
+.ghost.small:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.remove {
+  align-self: flex-end;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 5px;
+  border-radius: 5px;
+}
+
+.remove:hover {
+  color: var(--danger);
+  background: var(--surface-hover);
+}
+
+.remove:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.tag {
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid var(--border-strong);
+  color: var(--muted);
+}
+
+@media (max-width: 720px) {
+  .target,
+  .target.is-outcome,
+  .target.is-conflict {
+    grid-template-columns: 22px minmax(0, 1fr);
+  }
+
+  .target-side,
+  .outcome-side {
+    grid-column: 2;
+  }
+}

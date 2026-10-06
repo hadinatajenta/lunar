@@ -68,11 +68,7 @@ func (c *AtlassianBitbucketClient) SearchBranches(ctx context.Context, pat strin
 
 	branchNames := make([]string, 0, len(page.Values))
 	for _, value := range page.Values {
-		name := strings.TrimSpace(value.DisplayID)
-		if name == "" {
-			name = strings.TrimPrefix(strings.TrimSpace(value.ID), "refs/heads/")
-		}
-		if name != "" {
+		if name := branchNameFromRawValue(value); name != "" {
 			branchNames = append(branchNames, name)
 		}
 	}

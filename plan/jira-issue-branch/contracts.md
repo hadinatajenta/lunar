@@ -999,3 +999,60 @@ resolved here.
 70. Never present a partial batch as a complete one. If one key is unusable, say so rather than
     returning data for the rest.
 
+## 28. Phase 2 infrastructure, as built
+
+### The readiness surface
+
+`GET /readiness` on both surfaces, contract section 3.1. Seven states, and the one that needed a
+parameter is `foreign`.
+
+**`?project=` is an addition to section 3.1 and it is kept.** `foreign` means keyed branches exist but
+none of them belongs to the project in view, so without a project in view the state cannot be reached
+at all. A request without the parameter behaves exactly as section 3.1 describes. The parameter is
+optional and it is the only way to ask the question the state answers.
+
+**Readiness warns and never blocks**, including a root that is invalid or refused: those come back as
+states, not errors. The one exception is a workspace whose source is the helper, which the backend
+answers with 422 because it cannot read that tree; the helper surface answers it instead.
+
+### The candidate scan
+
+`RemoteCandidateScanner.ScanIssueKey(ctx, userID, issueKey, repositories)`.
+
+| Property | Value |
+|---|---|
+| Limit | `RemoteCandidateLimit = 5`, unexported and not configurable |
+| Concurrency | 4 in flight |
+| Deadline | one aggregate 20 second context deadline |
+| On deadline | returns `(result, nil)` with `TimedOut = true` and the never-asked repositories in `RepositoriesNotChecked`. **The request never fails** |
+| On per-repository failure | lands in `Failures` and never fails the scan, so a caller degrades to the local tier instead of erroring |
+| Errors returned only for | a nil scanner, an invalid issue key, or a caller context that was cancelled or expired |
+
+**Every checked repository is a key in `Matches`, even with an empty slice. A repository missing from
+`Matches` was not successfully checked.** That is the difference between "verified, no branch there"
+and "not verified", and it is what `verified_remotely` and `remote_repositories_checked` mean.
+`verified_remotely` is true only when at least one repository was checked, the deadline did not pass,
+and no failure occurred.
+
+### One caveat a consumer must handle
+
+`DefaultBranch` returns `ErrNotFound` for a 404, which Bitbucket also answers for a repository that
+exists but has no default branch, such as an empty one. A caller rendering `bitbucket_default: null`
+must treat `ErrNotFound` as null rather than as a failure.
+
+### What is not reachable yet
+
+`remote_repository_count` and `missing_repositories` are 0 and empty over HTTP, so the `partial`
+readiness state cannot be reached until the Bitbucket project repository listing lands behind
+`RepositoryCatalogueService`. The readiness service already satisfies that interface, so completing it
+is passing the service where the app currently passes nil.
+
+## 29. Rules from phase 2 infrastructure
+
+71. Never make the candidate limit configurable. Five is the contract.
+72. Never fail a request because a remote scan timed out. Report the partial result and say it is partial.
+73. Never treat a repository absent from the scan result as a repository with no branch. Absent means not
+    verified.
+74. Never block on readiness. Every state is a warning, including an invalid root.
+75. Never return an error for a repository that has no default branch. That is null, not a failure.
+
