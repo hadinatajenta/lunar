@@ -5,87 +5,11 @@ import (
 	"errors"
 	"reflect"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
 	sharedErrors "lunar/backend/internal/shared/errors"
 )
-
-var errRemoteUnreachable = errors.New("the remote is unreachable")
-
-type stubRemoteBranchScanner struct {
-	mutex        sync.Mutex
-	calls        []string
-	branches     map[string][]string
-	errs         map[string]error
-	searchDelay  time.Duration
-	beforeReturn func()
-	inFlight     int
-	maxInFlight  int
-}
-
-var _ interface {
-	SearchBranches(ctx context.Context, userID string, repo string, filterText string) ([]string, error)
-	ListBranches(ctx context.Context, userID string, repo string) ([]string, error)
-	DefaultBranch(ctx context.Context, userID string, repo string) (string, error)
-} = (*stubRemoteBranchScanner)(nil)
-
-func (s *stubRemoteBranchScanner) SearchBranches(ctx context.Context, userID string, repo string, filterText string) ([]string, error) {
-	s.mutex.Lock()
-	s.calls = append(s.calls, repo)
-	s.inFlight++
-	if s.inFlight > s.maxInFlight {
-		s.maxInFlight = s.inFlight
-	}
-	s.mutex.Unlock()
-
-	defer func() {
-		s.mutex.Lock()
-		s.inFlight--
-		s.mutex.Unlock()
-	}()
-
-	if s.searchDelay > 0 {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-time.After(s.searchDelay):
-		}
-	}
-	if s.beforeReturn != nil {
-		s.beforeReturn()
-	}
-	if err := s.errs[repo]; err != nil {
-		return nil, err
-	}
-
-	return s.branches[repo], nil
-}
-
-func (s *stubRemoteBranchScanner) ListBranches(ctx context.Context, userID string, repo string) ([]string, error) {
-	return nil, nil
-}
-
-func (s *stubRemoteBranchScanner) DefaultBranch(ctx context.Context, userID string, repo string) (string, error) {
-	return "", nil
-}
-
-func (s *stubRemoteBranchScanner) calledRepositories() []string {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	called := make([]string, len(s.calls))
-	copy(called, s.calls)
-	return called
-}
-
-func (s *stubRemoteBranchScanner) peakInFlight() int {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	return s.maxInFlight
-}
 
 func TestScanIssueKeyKeepsOnlyTheBranchesThatCarryTheKey(t *testing.T) {
 	scanner := &stubRemoteBranchScanner{branches: map[string][]string{
@@ -110,6 +34,18 @@ func TestScanIssueKeyKeepsOnlyTheBranchesThatCarryTheKey(t *testing.T) {
 	}
 	if len(result.RepositoriesNotChecked) != 0 || len(result.Failures) != 0 || result.TimedOut {
 		t.Fatalf("unexpected scan outcome %+v", result)
+	}
+}
+
+func TestScanIssueKeyLeavesTheKeyedMatchesUnpopulated(t *testing.T) {
+	scanner := &stubRemoteBranchScanner{branches: map[string][]string{"NME/a": {"feature/CRMMS-6397-existing"}}}
+
+	result, err := NewRemoteCandidateScanner(scanner).ScanIssueKey(context.Background(), "usr-1", "CRMMS-6397", []string{"NME/a"})
+	if err != nil {
+		t.Fatalf("cannot scan the candidate repository: %v", err)
+	}
+	if result.MatchesByRepositoryAndKey != nil {
+		t.Fatalf("expected the single key scan to leave the keyed matches unpopulated, got %+v", result.MatchesByRepositoryAndKey)
 	}
 }
 

@@ -166,17 +166,21 @@ func (s *RepositorySuggestionService) Suggest(ctx context.Context, userID string
 	s.collectConfluenceEvidence(ctx, userID, canonicalKey, state)
 
 	scored := state.rank(s.feedback, userID)
-	if len(scored) == 0 {
-		s.collectModelEvidence(ctx, userID, issue, state)
-		scored = state.rank(s.feedback, userID)
-	}
-
-	verification, err := s.verifyCandidatesRemotely(ctx, userID, canonicalKey, state, scored)
+	verification, err := s.enrichSiblingsRemotely(ctx, userID, state, scored)
 	if err != nil {
 		return nil, err
 	}
+	if verification.checkedRepositories > 0 {
+		state.rebuildSiblingReasons()
+	}
 	if verification.degraded {
-		state.markUnavailable(SignalEpicSiblings, bitbucketPartialReason)
+		state.markSignalDegraded(SignalEpicSiblings, bitbucketPartialReason)
+	}
+
+	scored = state.rank(s.feedback, userID)
+	if len(scored) == 0 {
+		s.collectModelEvidence(ctx, userID, issue, state)
+		scored = state.rank(s.feedback, userID)
 	}
 
 	return &RepositorySuggestions{

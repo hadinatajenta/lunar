@@ -60,6 +60,17 @@ func (s *suggestionState) markUnavailable(signal string, reason string) {
 	s.unavailable[signal] = reason
 }
 
+func (s *suggestionState) markSignalDegraded(signal string, reason string) {
+	if s == nil {
+		return
+	}
+	if _, known := signalWeights[signal]; !known {
+		return
+	}
+
+	s.unavailable[signal] = reason
+}
+
 func (s *suggestionState) setReason(repo string, signal string, text string, strength float64) {
 	name := s.canonicalRepoName(repo)
 	weight, known := signalWeights[signal]

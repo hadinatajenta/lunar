@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	sharedErrors "lunar/backend/internal/shared/errors"
@@ -123,8 +124,21 @@ func TestFeedbackAdditionPromotesARepositoryInTheNextRanking(t *testing.T) {
 	if promoted.Suggestions[0].Repo != "atlas" {
 		t.Fatalf("an addition must outrank a confirmation and promote atlas, got %+v", promoted.Suggestions)
 	}
-	if calls := ranks.calledLists(); len(calls) != 0 {
-		t.Fatalf("the feedback test must not touch Bitbucket, got %v", calls)
+	assertNoRemoteSiblingEvidence(t, promoted)
+	if calls := ranks.calledLists(); len(calls) == 0 {
+		t.Fatalf("the fixture must exercise the remote scan, got %v", calls)
+	}
+}
+
+func assertNoRemoteSiblingEvidence(t *testing.T, suggestions *RepositorySuggestions) {
+	t.Helper()
+
+	for _, suggestion := range suggestions.Suggestions {
+		for _, reason := range suggestion.Reasons {
+			if strings.Contains(reason.Text, "Bitbucket") {
+				t.Fatalf("no remote evidence exists in this fixture, got %q", reason.Text)
+			}
+		}
 	}
 }
 

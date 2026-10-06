@@ -24,11 +24,12 @@ type RemoteScanFailure struct {
 }
 
 type RemoteCandidateScanResult struct {
-	Matches                map[string][]string
-	RepositoriesChecked    int
-	RepositoriesNotChecked []string
-	Failures               []RemoteScanFailure
-	TimedOut               bool
+	Matches                   map[string][]string
+	MatchesByRepositoryAndKey map[string]map[string][]string
+	RepositoriesChecked       int
+	RepositoriesNotChecked    []string
+	Failures                  []RemoteScanFailure
+	TimedOut                  bool
 }
 
 type RemoteCandidateScanner struct {
@@ -37,9 +38,10 @@ type RemoteCandidateScanner struct {
 }
 
 type remoteScanOutcome struct {
-	checked  bool
-	branches []string
-	err      error
+	checked       bool
+	branches      []string
+	branchesByKey map[string][]string
+	err           error
 }
 
 func NewRemoteCandidateScanner(scanner bitbucketApp.RemoteBranchScanner) *RemoteCandidateScanner {
@@ -64,7 +66,14 @@ func (s *RemoteCandidateScanner) ScanIssueKey(ctx context.Context, userID string
 	scanCtx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
-	outcomes := s.scanCandidates(scanCtx, userID, canonicalKey, candidates)
+	outcomes := s.scanCandidates(scanCtx, candidates, func(ctx context.Context, repository string) remoteScanOutcome {
+		branches, err := s.scanner.SearchBranches(ctx, userID, repository, canonicalKey)
+		if err != nil {
+			return remoteScanOutcome{checked: true, err: fmt.Errorf("search branches in %s: %w", repository, err)}
+		}
+
+		return remoteScanOutcome{checked: true, branches: branchesCarryingKey(branches, canonicalKey)}
+	})
 
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("scan remote candidate repositories: %w", err)
@@ -76,24 +85,33 @@ func (s *RemoteCandidateScanner) ScanIssueKey(ctx context.Context, userID string
 		Failures:               make([]RemoteScanFailure, 0),
 		TimedOut:               scanCtx.Err() != nil,
 	}
-
-	for index, outcome := range outcomes {
-		switch {
-		case outcome.err != nil:
-			result.RepositoriesChecked++
-			result.Failures = append(result.Failures, RemoteScanFailure{Repository: candidates[index], Err: outcome.err})
-		case outcome.checked:
-			result.RepositoriesChecked++
-			result.Matches[candidates[index]] = outcome.branches
-		default:
-			result.RepositoriesNotChecked = append(result.RepositoriesNotChecked, candidates[index])
-		}
-	}
+	result.collectOutcomes(candidates, outcomes)
 
 	return result, nil
 }
 
-func (s *RemoteCandidateScanner) scanCandidates(ctx context.Context, userID string, issueKey string, candidates []string) []remoteScanOutcome {
+func (r *RemoteCandidateScanResult) collectOutcomes(candidates []string, outcomes []remoteScanOutcome) {
+	for index, outcome := range outcomes {
+		switch {
+		case outcome.err != nil:
+			r.RepositoriesChecked++
+			r.Failures = append(r.Failures, RemoteScanFailure{Repository: candidates[index], Err: outcome.err})
+		case outcome.checked:
+			r.RepositoriesChecked++
+			r.Matches[candidates[index]] = outcome.branches
+			if outcome.branchesByKey != nil {
+				if r.MatchesByRepositoryAndKey == nil {
+					r.MatchesByRepositoryAndKey = make(map[string]map[string][]string, len(candidates))
+				}
+				r.MatchesByRepositoryAndKey[candidates[index]] = outcome.branchesByKey
+			}
+		default:
+			r.RepositoriesNotChecked = append(r.RepositoriesNotChecked, candidates[index])
+		}
+	}
+}
+
+func (s *RemoteCandidateScanner) scanCandidates(ctx context.Context, candidates []string, scan func(ctx context.Context, repository string) remoteScanOutcome) []remoteScanOutcome {
 	outcomes := make([]remoteScanOutcome, len(candidates))
 	if len(candidates) == 0 {
 		return outcomes
@@ -115,28 +133,17 @@ func (s *RemoteCandidateScanner) scanCandidates(ctx context.Context, userID stri
 		waitGroup.Add(1)
 		go func() {
 			defer waitGroup.Done()
-			s.scanWorker(ctx, userID, issueKey, candidates, jobs, outcomes)
+			for index := range jobs {
+				if ctx.Err() != nil {
+					return
+				}
+				outcomes[index] = scan(ctx, candidates[index])
+			}
 		}()
 	}
 	waitGroup.Wait()
 
 	return outcomes
-}
-
-func (s *RemoteCandidateScanner) scanWorker(ctx context.Context, userID string, issueKey string, candidates []string, jobs <-chan int, outcomes []remoteScanOutcome) {
-	for index := range jobs {
-		if ctx.Err() != nil {
-			return
-		}
-
-		branches, err := s.scanner.SearchBranches(ctx, userID, candidates[index], issueKey)
-		if err != nil {
-			outcomes[index] = remoteScanOutcome{checked: true, err: fmt.Errorf("search branches in %s: %w", candidates[index], err)}
-			continue
-		}
-
-		outcomes[index] = remoteScanOutcome{checked: true, branches: branchesCarryingKey(branches, issueKey)}
-	}
 }
 
 func candidateRepositories(repositories []string) ([]string, []string) {

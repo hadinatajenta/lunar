@@ -17,24 +17,36 @@ const (
 )
 
 type siblingEvidence struct {
-	epicKey        string
-	sprintFallback bool
-	siblingKeys    map[string]struct{}
-	keysByRepo     map[string]map[string]struct{}
-	workedKeys     map[string]struct{}
+	epicKey          string
+	sprintFallback   bool
+	siblingKeys      map[string]struct{}
+	keysByRepo       map[string]map[string]struct{}
+	localKeysByRepo  map[string]map[string]struct{}
+	remoteKeysByRepo map[string]map[string]struct{}
+	workedKeys       map[string]struct{}
 }
 
 func newSiblingEvidence(epicKey string, sprintFallback bool) *siblingEvidence {
 	return &siblingEvidence{
-		epicKey:        epicKey,
-		sprintFallback: sprintFallback,
-		siblingKeys:    make(map[string]struct{}),
-		keysByRepo:     make(map[string]map[string]struct{}),
-		workedKeys:     make(map[string]struct{}),
+		epicKey:          epicKey,
+		sprintFallback:   sprintFallback,
+		siblingKeys:      make(map[string]struct{}),
+		keysByRepo:       make(map[string]map[string]struct{}),
+		localKeysByRepo:  make(map[string]map[string]struct{}),
+		remoteKeysByRepo: make(map[string]map[string]struct{}),
+		workedKeys:       make(map[string]struct{}),
 	}
 }
 
-func (e *siblingEvidence) add(repo string, issueKey string) {
+func (e *siblingEvidence) addLocal(repo string, issueKey string) {
+	e.add(repo, issueKey, e.localKeysByRepo)
+}
+
+func (e *siblingEvidence) addRemote(repo string, issueKey string) {
+	e.add(repo, issueKey, e.remoteKeysByRepo)
+}
+
+func (e *siblingEvidence) add(repo string, issueKey string, origin map[string]map[string]struct{}) {
 	name := strings.TrimSpace(repo)
 	key := strings.ToUpper(strings.TrimSpace(issueKey))
 	if name == "" || key == "" {
@@ -48,6 +60,25 @@ func (e *siblingEvidence) add(repo string, issueKey string) {
 	}
 	repositoryKeys[key] = struct{}{}
 	e.workedKeys[key] = struct{}{}
+
+	originKeys := origin[name]
+	if originKeys == nil {
+		originKeys = make(map[string]struct{})
+		origin[name] = originKeys
+	}
+	originKeys[key] = struct{}{}
+}
+
+func (e *siblingEvidence) remoteOnlyCount(repo string) int {
+	count := 0
+	for key := range e.remoteKeysByRepo[repo] {
+		if _, foundLocally := e.localKeysByRepo[repo][key]; foundLocally {
+			continue
+		}
+		count++
+	}
+
+	return count
 }
 
 func (e *siblingEvidence) reasonText(repo string, count int) string {
@@ -63,7 +94,31 @@ func (e *siblingEvidence) reasonText(repo string, count int) string {
 		verb = "was"
 	}
 
-	return fmt.Sprintf("%d other %s in %s %s worked in %s", count, subject, location, verb, repo)
+	text := fmt.Sprintf("%d other %s in %s %s worked in %s", count, subject, location, verb, repo)
+
+	remoteOnly := e.remoteOnlyCount(repo)
+	switch {
+	case remoteOnly <= 0:
+		return text
+	case remoteOnly >= count:
+		return text + ", found only on Bitbucket"
+	default:
+		return fmt.Sprintf("%s, %d of them found only on Bitbucket", text, remoteOnly)
+	}
+}
+
+func (e *siblingEvidence) remoteLookupKeys() []string {
+	keys := make([]string, 0, len(e.siblingKeys))
+	for key := range e.siblingKeys {
+		canonicalKey, err := jiraDomain.ValidateIssueKey(key)
+		if err != nil {
+			continue
+		}
+		keys = append(keys, canonicalKey)
+	}
+
+	sort.Strings(keys)
+	return keys
 }
 
 func (s *RepositorySuggestionService) collectSiblingEvidence(ctx context.Context, userID string, issue *jiraDomain.JiraIssue, rootPath string, state *suggestionState) {
@@ -93,7 +148,7 @@ func (s *RepositorySuggestionService) collectSiblingEvidence(ctx context.Context
 	for _, siblingKey := range siblings {
 		evidence.siblingKeys[siblingKey] = struct{}{}
 		for _, match := range matches.Matches[siblingKey] {
-			evidence.add(match.Repository, siblingKey)
+			evidence.addLocal(match.Repository, siblingKey)
 		}
 	}
 
