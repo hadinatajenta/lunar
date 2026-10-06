@@ -181,7 +181,11 @@ Every suggestion MUST carry at least one reason. A suggestion with no reason is 
 
 ```
 POST /branches
-body { "repo": "mms-api", "branch": "feature/CRMMS-77911-Enhancement-Manage-User", "base_branch": "master" }
+body { "repo": "mms-api", "branch": "feature/CRMMS-77911-Enhancement-Manage-User", "base_branch": "master", "remember_base": true }
+
+base_branch is REQUIRED. There is no default and there is no fallback. A request without it is
+refused with 400, so that no branch can ever be created from a base the user did not see.
+remember_base is optional and defaults to false.
 
 201 {
   "repo": "mms-api",
@@ -190,8 +194,6 @@ body { "repo": "mms-api", "branch": "feature/CRMMS-77911-Enhancement-Manage-User
   "head_commit": "6a1f0c9d2b7e4f8a1c3d5e7f9a0b2c4d6e8f0a1b"
 }
 
-base_branch is optional. When omitted it is resolved by the rule in 3.7, which never falls back to
-whatever happens to be checked out.
 The response is 201, not 200, because a branch was created.
 
 **Before creating, the backend checks the named repository on Bitbucket for a branch carrying this
@@ -225,52 +227,55 @@ already exists and its name is being echoed back.
 The generated name is ALWAYS editable in the UI. It is never applied without the user seeing it.
 ```
 
-### 3.7 Base branch for a repository
+### 3.7 Base branch options for a repository
+
+**The base branch is chosen by the user. It is never resolved automatically.**
+
+This was originally designed as an automatic resolution with a priority list. Measurement killed that
+design, and the reasoning is recorded here so it is not reintroduced.
+
+| What was measured | Result |
+|---|---|
+| Local `origin/HEAD` versus what the remote declares | Both said `main` for `aurora`, and the owner of that repository states its production branch is `master`. The authoritative sources agree with each other and are still wrong |
+| Bitbucket `/default-branch` | Answers for every repository including the ones never cloned, but is a repository setting that can be stale, as `aurora` shows: `main` is empty there while `master` has 822 commits |
+| "Which branch do this repository's feature branches descend from" | **Disagrees with Bitbucket's default in 10 of 23 repositories**, and for `aurora` it answers `development` while the team's production branch is `master` |
+
+The last row is the decisive one. The data contradicts itself: aurora's feature branches really are
+cut from `development`, and the team still considers `master` production. Which branch a new feature
+should come from is a **team convention**, not a fact stored in the repository, so no algorithm can
+derive it. An automatic choice would be wrong for a large share of repositories and silently so.
 
 ```
-GET /repos/{repo}/base-branch
+GET /repos/{repo}/base-branch-options
 
 200 {
   "repo": "aurora",
-  "base_branch": "main",
-  "resolved_from": "remote_default",
-  "is_trusted": true,
-  "alternatives": ["release/production", "development"],
-  "is_cloned": true
+  "is_cloned": true,
+  "remembered": null,
+  "bitbucket_default": "main",
+  "options": [
+    { "name": "master", "last_commit_relative": "2 weeks ago", "source": "trusted" },
+    { "name": "development", "last_commit_relative": "4 days ago", "source": "trusted" },
+    { "name": "main", "last_commit_relative": null, "source": "bitbucket_default" },
+    { "name": "pre/development", "last_commit_relative": "7 weeks ago", "source": "trusted" }
+  ],
+  "other_branch_count": 90
 }
 
-resolved_from is exactly one of:
-  "user_choice"      a remembered choice for this repository
-  "local_default"    the local remote HEAD, git symbolic-ref refs/remotes/origin/HEAD
-  "remote_default"   Bitbucket's default-branch endpoint
-  "convention"       the trusted list, in order, when neither default could be read
-  "current_branch"   the last resort, used only when nothing else resolved. is_trusted is then
-                     reported so the screen can warn
-
-is_trusted is true when base_branch is in the trusted list.
-alternatives is every other branch matching the trusted list, capped at 5, for the picker.
+source is exactly one of "remembered", "bitbucket_default", "trusted", "other".
+remembered is the base the user previously chose for this repository, or null.
+other_branch_count is how many further branches exist behind a "show all" control.
 ```
 
-**Resolution order, and why.**
+**Ordering is a hint, not a decision.** Options are ordered: the remembered choice first, then the
+Bitbucket default, then the trusted names present in the repository by most recent commit, and never a
+`feature/` or `bugfix/` branch, because a new feature is not cut from another feature.
 
-| Priority | Source | Coverage measured on the real workspace |
-|---|---|---|
-| 1 | A remembered user choice for the repository | n/a |
-| 2 | Local `origin/HEAD` | **36 of 36 repositories** |
-| 3 | Bitbucket `/default-branch` | Every repository, including the ones never cloned |
-| 4 | The trusted list, in order | Only when neither default could be read |
-| 5 | The current branch | Last resort, and flagged |
+**Staleness is shown, not hidden.** Each option carries its last commit, so `main` being empty is
+visible at the moment of choosing rather than discovered later.
 
-**The checked-out branch must never be the default.** Measured on the real workspace, the checked-out
-branch differs from the remote default in most repositories: `atlas` sits on
-`feature/CRMMS-77911-Enhancement-Manage-User` while its default is `master`; `mms` sits on
-`new_development3` while its default is `main`; `micro-cm-qris` sits on `pre/development` while its
-default is `release/production`. Branching a new feature from another feature branch, or from a stale
-one, is the defect this ordering exists to prevent.
-
-**The repositories do not agree on a name, which is why the default is read rather than assumed.**
-Across the 36 repositories: 23 default to `master`, 10 to `release/production`, 4 to `main`, and 2
-report `init`, which is outside the trusted list and is therefore flagged rather than silently used.
+The base is **remembered per repository** once chosen, so the choice is made once and confirmed
+thereafter.
 
 ## 4. Frontend types
 
@@ -311,13 +316,19 @@ export interface IssueBranchMatch {
   behind: number | null
 }
 
-export interface RepositoryBaseBranch {
+export interface BaseBranchOption {
+  name: string
+  last_commit_relative: string | null
+  source: "remembered" | "bitbucket_default" | "trusted" | "other"
+}
+
+export interface RepositoryBaseBranchOptions {
   repo: string
-  base_branch: string
-  resolved_from: "user_choice" | "local_default" | "remote_default" | "convention" | "current_branch"
-  is_trusted: boolean
-  alternatives: string[]
   is_cloned: boolean
+  remembered: string | null
+  bitbucket_default: string | null
+  options: BaseBranchOption[]
+  other_branch_count: number
 }
 
 export interface IssueBranches {
@@ -398,14 +409,20 @@ A low confidence suggestion **must not** use the same visual treatment as a high
 
 ### Create branch
 
-The confirmation always states: the repository, the branch name, the base branch, and how many
-repositories were searched. The name field is pre-filled and editable.
+**The flow is: branch name, then repository, then base branch, then create.** The name is generated
+from the issue and is independent of the repository, so it comes first. The repository determines which
+base branches exist, so it comes before the base. Nothing is created until all three are confirmed.
 
-| Situation | Rendered |
+The confirmation states the repository, the branch name, the base branch, and how many repositories
+were searched. The name field is pre-filled and editable.
+
+| Element | Detail |
 |---|---|
-| base resolved from a default | "branching from {base_branch}", with a picker of the alternatives |
-| base is not in the trusted list | "branching from {base_branch}, which is not a usual base. Confirm this is right." |
-| base came from the current branch | "Lunar could not read this repository's default branch, so it would branch from {base_branch}, which is currently checked out. Confirm this is right." |
+| Branch name | Pre-filled from the issue, editable, validated on submit |
+| Repository | Pre-filled from the suggestion when confidence is high, otherwise empty and required |
+| Base branch | **Never pre-filled automatically.** The picker lists the options from 3.7 with each one's last commit, and the user chooses |
+| Remember | An unchecked checkbox: "remember this base for {repo}" |
+| Create | Disabled until repository and base branch are both chosen |
 
 ## 6. Component ownership
 
@@ -443,6 +460,12 @@ Each of these has been decided above, and a subagent changing one is a defect.
     request, which is always verified.
 16. Never report a workspace as foreign merely because it has no keyed branches yet. Foreign requires
     that keyed branches exist and none of them belong to the project in view.
-17. Never default the base branch to whatever is checked out. Read the remote default, and treat the
-    current branch as a flagged last resort only.
-18. Never create a branch without showing the base branch it will come from.
+17. **Never resolve the base branch automatically.** No default, no fallback, no priority list. The
+    user chooses it. Measurement showed the local default, the Bitbucket default, and the branch the
+    feature branches descend from all disagree, and for aurora every automatic answer was wrong.
+18. Never send a create request without an explicit base_branch, and never create a branch before the
+    base has been shown and chosen.
+19. Never offer a `feature/` or `bugfix/` branch as a base. A new feature is not cut from another
+    feature.
+20. Never hide staleness when offering a base. Every option shows its last commit, so an empty branch
+    is visible before it is chosen rather than after.

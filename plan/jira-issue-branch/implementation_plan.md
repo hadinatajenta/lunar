@@ -185,7 +185,32 @@ alongside the other signals rather than replacing them.
 It is implemented as `git checkout -b <name> <base>` through the existing hardened runner: fixed
 binary, argument array, no shell, no credential prompt.
 
-### Choosing the base branch
+### Choosing the base branch: the user chooses, always
+
+This was designed as an automatic resolution and measurement killed that design.
+
+| Source | What it says for `aurora` |
+|---|---|
+| Local `origin/HEAD` | `main` |
+| Bitbucket `/default-branch`, and `git remote show origin` | `main` |
+| Which branch the feature branches descend from | `development` |
+| **What the team actually uses** | **`master`** |
+
+Every automatic source agrees with each other and is wrong. `main` is empty in that repository while
+`master` holds 822 commits, and the ancestry signal disagrees with Bitbucket's own default in **10 of
+23 repositories**.
+
+The reason is that this is not a fact stored anywhere. Which branch a new feature should come from is a
+team convention, and aurora's own data contradicts itself: its feature branches really are cut from
+`development`, and the team still calls `master` production.
+
+So the base is chosen by the user, offered with its staleness visible, and remembered per repository.
+The flow is branch name, then repository, then base, then create.
+
+### The earlier automatic design, kept only as history
+
+The following was measured while evaluating the automatic design. It remains useful as evidence for
+why the automatic design was rejected, and for ordering the picker.
 
 The repositories do not agree on a name, and the checked-out branch is not a safe default. Both were
 measured.
