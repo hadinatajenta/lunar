@@ -31,6 +31,7 @@ const existing = computed(() => props.plan.existing[props.repo] ?? null)
 const base = computed(() => props.plan.bases[props.repo] ?? "")
 const reasons = computed(() => target.value?.reasons ?? [])
 const isManual = computed(() => target.value?.isManual === true)
+const isRecommended = computed(() => target.value?.isRecommended === true)
 const isIncluded = computed(() => !isTargetExcluded(props.plan, props.repo))
 const isRemembered = computed(() => props.plan.rememberBases[props.repo] === true)
 const isCloned = computed(() => {
@@ -203,6 +204,13 @@ const retry = (): void => {
       <div class="target-main">
         <div class="repo">
           {{ repo }}
+          <span
+            v-if="isRecommended"
+            class="tag is-recommended"
+            :data-testid="`branch-target-recommended-${repo}`"
+          >
+            Recommended
+          </span>
           <span v-if="!isCloned" class="tag">not cloned</span>
         </div>
         <div v-for="reason in reasons" :key="reason" class="sub-line">{{ reason }}</div>

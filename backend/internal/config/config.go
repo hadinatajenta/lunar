@@ -2,9 +2,12 @@ package config
 
 import (
 	"bufio"
+	"encoding/json"
 	"os"
 	"strings"
 	"time"
+
+	sopdomain "lunar/backend/internal/sop/domain"
 )
 
 type Config struct {
@@ -29,6 +32,8 @@ type Config struct {
 	SeedUserPassword      string
 	SeedUserName          string
 	WorkspaceAllowedRoots []string
+	SopBambooMap          map[string]string
+	SopDatabaseMap        map[string]sopdomain.DatabaseTarget
 }
 
 func parseCommaSeparated(value string) []string {
@@ -49,6 +54,32 @@ func parseCommaSeparated(value string) []string {
 		return nil
 	}
 	return entries
+}
+
+func parseJSONStringMap(rawValue string) map[string]string {
+	trimmed := strings.TrimSpace(rawValue)
+	if trimmed == "" {
+		return map[string]string{}
+	}
+
+	parsed := map[string]string{}
+	if err := json.Unmarshal([]byte(trimmed), &parsed); err != nil {
+		return map[string]string{}
+	}
+	return parsed
+}
+
+func parseJSONDatabaseMap(rawValue string) map[string]sopdomain.DatabaseTarget {
+	trimmed := strings.TrimSpace(rawValue)
+	if trimmed == "" {
+		return map[string]sopdomain.DatabaseTarget{}
+	}
+
+	parsed := map[string]sopdomain.DatabaseTarget{}
+	if err := json.Unmarshal([]byte(trimmed), &parsed); err != nil {
+		return map[string]sopdomain.DatabaseTarget{}
+	}
+	return parsed
 }
 
 func loadDotEnv() {
@@ -129,5 +160,7 @@ func LoadConfig() *Config {
 		SeedUserPassword:      getEnvOrDefault("SEED_USER_PASSWORD", "12345678"),
 		SeedUserName:          getEnvOrDefault("SEED_USER_NAME", "Lunar Developer"),
 		WorkspaceAllowedRoots: parseCommaSeparated(os.Getenv("LUNAR_WORKSPACE_ALLOWED_ROOTS")),
+		SopBambooMap:          parseJSONStringMap(os.Getenv("LUNAR_SOP_BAMBOO_MAP")),
+		SopDatabaseMap:        parseJSONDatabaseMap(os.Getenv("LUNAR_SOP_DATABASE_MAP")),
 	}
 }

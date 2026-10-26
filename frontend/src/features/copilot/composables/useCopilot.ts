@@ -52,6 +52,24 @@ const persistMessages = (sessionId: string): void => {
   storeJson(`copilot_msgs_${sessionId}`, messages.value)
 }
 
+const adoptBackendSessionId = (localSessionId: string, serverSessionId: string | undefined): string => {
+  const trimmedServerSessionId = typeof serverSessionId === "string" ? serverSessionId.trim() : ""
+  if (trimmedServerSessionId === "" || trimmedServerSessionId === localSessionId) {
+    return localSessionId
+  }
+
+  const storedSession = sessions.value.find((session) => session.id === localSessionId)
+  if (storedSession !== undefined) {
+    storedSession.id = trimmedServerSessionId
+  }
+  if (activeSessionId.value === localSessionId) {
+    activeSessionId.value = trimmedServerSessionId
+  }
+  persistMessages(trimmedServerSessionId)
+  clearStoredKey(`copilot_msgs_${localSessionId}`)
+  return trimmedServerSessionId
+}
+
 const ensureActiveSession = (text: string): string => {
   if (activeSessionId.value !== null) {
     return activeSessionId.value
@@ -130,6 +148,7 @@ export const useCopilot = () => {
       reasoning_effort: reasoningEffort.value,
       active_tools: activeTools
     })
+    const effectiveSessionId = adoptBackendSessionId(sessionId, resp.session_id)
 
     const assistantMsg: ChatMessage = {
       id: resp.message.id || "a-" + Date.now(),
@@ -147,7 +166,7 @@ export const useCopilot = () => {
     }
 
     messages.value.push(assistantMsg)
-    persistMessages(sessionId)
+    persistMessages(effectiveSessionId)
   }
 
   const registerChatError = (sessionId: string, thrownError: unknown) => {

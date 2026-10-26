@@ -133,7 +133,15 @@ func (h *BitbucketHandler) GenerateAIReview(w http.ResponseWriter, r *http.Reque
 			sharedHttp.WriteError(w, http.StatusUnauthorized, err.Error())
 			return
 		}
-		sharedHttp.WriteError(w, http.StatusInternalServerError, err.Error())
+		if errors.Is(err, sharedErrors.ErrForbidden) {
+			sharedHttp.WriteError(w, http.StatusForbidden, err.Error())
+			return
+		}
+		if errors.Is(err, sharedErrors.ErrNotFound) {
+			sharedHttp.WriteError(w, http.StatusNotFound, err.Error())
+			return
+		}
+		sharedHttp.WriteError(w, http.StatusBadGateway, err.Error())
 		return
 	}
 

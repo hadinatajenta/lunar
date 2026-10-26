@@ -18,6 +18,7 @@ type PullRequest struct {
 	Number          int    `json:"number"`
 	Repo            string `json:"repo"`
 	Title           string `json:"title"`
+	Description     string `json:"description"`
 	SourceBranch    string `json:"source_branch"`
 	TargetBranch    string `json:"target_branch"`
 	Status          string `json:"status"`
@@ -56,11 +57,49 @@ type PRDiff struct {
 	Files        []DiffFile `json:"files"`
 }
 
+type ReviewSeverity string
+
+const (
+	ReviewSeverityBlocker    ReviewSeverity = "blocker"
+	ReviewSeveritySuggestion ReviewSeverity = "suggestion"
+	ReviewSeverityNitpick    ReviewSeverity = "nitpick"
+)
+
+type ReviewConfidence string
+
+const (
+	ReviewConfidenceConfirmed  ReviewConfidence = "confirmed"
+	ReviewConfidenceAssumption ReviewConfidence = "assumption"
+)
+
+const (
+	ReviewRecommendationApprove        = "approve"
+	ReviewRecommendationRequestChanges = "request_changes"
+)
+
+type ReviewFinding struct {
+	Severity     ReviewSeverity   `json:"severity"`
+	Category     string           `json:"category"`
+	File         string           `json:"file"`
+	Line         int              `json:"line"`
+	Title        string           `json:"title"`
+	Explanation  string           `json:"explanation"`
+	SuggestedFix string           `json:"suggested_fix"`
+	Confidence   ReviewConfidence `json:"confidence"`
+	Evidence     string           `json:"evidence"`
+}
+
 type AICodeReview struct {
-	PRID             string   `json:"pr_id"`
-	Summary          string   `json:"summary"`
-	Findings         []string `json:"findings"`
-	GeneratedComment string   `json:"generated_comment"`
+	PRID             string          `json:"pr_id"`
+	Model            string          `json:"model"`
+	PromptVersion    string          `json:"prompt_version"`
+	Summary          string          `json:"summary"`
+	Findings         []ReviewFinding `json:"findings"`
+	Assumptions      []string        `json:"assumptions"`
+	Strengths        []string        `json:"strengths"`
+	Recommendation   string          `json:"recommendation"`
+	GeneratedComment string          `json:"generated_comment"`
+	Truncated        bool            `json:"truncated"`
 }
 
 type PRComment struct {

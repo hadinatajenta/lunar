@@ -21,6 +21,7 @@ const props = defineProps<{
 const { matchesFor, scopeFor, errorFor, isLoadingFor, loadIssueBranchMatches } = useIssueBranchMatches()
 const {
   suggestionsFor,
+  confidenceFor,
   unavailableFor,
   errorFor: suggestionErrorFor,
   isLoadingFor: isSuggestionLoadingFor,
@@ -39,12 +40,13 @@ const isLoadingSuggestions = computed(() => isSuggestionLoadingFor(issueKey.valu
 const nameError = computed(() => nameErrorFor(issueKey.value))
 const isLoadingName = computed(() => isNameLoadingFor(issueKey.value))
 const unavailableReasons = computed(() => unavailableFor(issueKey.value))
+const confidence = computed(() => confidenceFor(issueKey.value))
 const plan = computed(() => planFor(issueKey.value))
 const isCreating = computed(() => isCreatingFor(issueKey.value))
 
 const seedPlan = (): void => {
   const currentPlan = planFor(issueKey.value)
-  seedSuggestedTargets(currentPlan, suggestionsFor(issueKey.value))
+  seedSuggestedTargets(currentPlan, suggestionsFor(issueKey.value), confidenceFor(issueKey.value))
   const suggestion = nameFor(issueKey.value)
   if (suggestion !== null) {
     applyBranchName(currentPlan, suggestion)
@@ -79,7 +81,13 @@ const retryName = (): void => {
 }
 
 watch(
-  [issueKey, () => matchesFor(issueKey.value), () => suggestionsFor(issueKey.value), () => nameFor(issueKey.value)],
+  [
+    issueKey,
+    () => matchesFor(issueKey.value),
+    () => suggestionsFor(issueKey.value),
+    () => confidenceFor(issueKey.value),
+    () => nameFor(issueKey.value)
+  ],
   seedPlan
 )
 
@@ -104,6 +112,7 @@ watch(issueKey, load, { immediate: true })
       :matches="matches"
       :is-loading-suggestions="isLoadingSuggestions"
       :suggestion-error="suggestionError"
+      :confidence="confidence"
       :unavailable-reasons="unavailableReasons"
       @retry-suggestions="retrySuggestions"
     />

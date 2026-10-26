@@ -204,16 +204,80 @@ Source: `frontend/src/features/bitbucket/`, `backend/internal/bitbucket/`,
 | Search | Free text search across documents |
 | Document detail | Full body, metadata, status, and labels |
 | Comments | Per-document comment thread |
-| AI panel | Per-document AI assistance |
-| Document actions | Row actions such as opening a document |
+| Query review extraction | "Extract query review" finds the sibling `<KEY>-MIG` page under the review page's parent, reads its `No, Repository, Branch, Link Compare` table, and extracts the queries each repository's branch introduces or modifies from that branch comparison, added lines only. `fe-mms` and `mms` are skipped. It returns one result per repository, each with its branch pair, analyzed and skipped files, queries, and a truncation flag. When no MIG page exists, the panel asks for a compare URL |
+| Query review table | The result renders as the Confluence `Capture explain (mysql)` table: `No, Fitur, Query Statement, Index, Capture Explain / Execution Plan`, with the last column always empty. Every statement starts with `EXPLAIN` (forced in the server, not only asked of the model). The Index column shows the possible key MySQL would use and, when an extra index is worth adding, a `CREATE INDEX` statement. When the branch introduced no query, the table carries a single row: `Tidak ada penambahan atau perubahan query pada pengembangan kali ini.` Copy writes that table as rich HTML so it pastes into Confluence as a real table. Instant apply replaces the page's existing `Capture explain (mysql)` table with the latest result and bumps the page version |
+| UT docs generation | "Generate UT Docs With AI" first reads the document's sibling `<KEY>-MIG` page through `GET /api/confluence/documents/{id}/mig-targets`, which returns the repositories to run, their branch, and the skipped repositories (`fe-mms`, `mms`). Each target is run through the helper `POST /ut-runs`, which auto-stashes a dirty worktree, checks the branch out, scans the changed test files only, blocks every test file that can reset, refresh, flush, or drop a database or open a real connection, and runs only the mock-based Go packages with the changed test function names. The run reports `stashed`, `restored`, and one entry per test function in `tests[]` with its status and duration. The panel streams the phases and output per repository, renders each run summary (status, counts, duration, stashed or restored, blocked files with reasons), and then calls `POST /api/confluence/documents/{id}/ut-docs` once with every repository. A blocked package is named with its reason and never described as passing or failing. PHP test files are never scanned or run, and Node suites are reported as not executed |
+| UT scenario table | The generated document renders the `Normal Test Scenario` table: `No, Function, Scenario, Expected Result, Input Data, Result, Screen Capture`. With more than one repository a full-width `Layanan / Microservice: <repository>` row groups the rows and `No` restarts per group. `Result` is a `Passed`, `Failed`, or `Skipped` pill taken from the runner evidence, never from the model. A changed function that has no test gets a row with `Result: Not Run` and an empty Screen Capture, plus a mock-based Go test rendered as a syntax-highlighted code block below the table; no `_test.go` file is written. The run screenshot is fetched from the helper and shown once per repository above the table, and the strip is hidden when no row was executed. Copy writes the table as rich HTML and appends the code blocks. Instant apply uploads each repository's screenshot PNG as base64, writes the rows, and appends each mock test as a Confluence code macro, then toasts the new page version |
+| SOP generation | "Generate SOP Deploy & Operasional" appears on a document whose title carries an issue key. It resolves `<KEY>-Development`, reads the sibling `<KEY>-MIG` repositories (every repository, including `fe-mms` and `mms`), and runs the helper `POST /sop/scan` per repository for the changed SQL and DDL. It builds `<KEY>-SOP Deploy` with `BAB I. DEPLOY DATABASE MMS`, `BAB II. DEPLOY APLIKASI`, `BAB III. ROLLBACK APLIKASI`, and `BAB IV ROLLBACK DATABASE`, plus the `<KEY>-SOP Operasional` plan with `Maintenance`, `Monitoring`, and `Troubleshooting`. Statements come from the repository files verbatim, the model never writes SQL, and no screenshot is generated; the Bamboo plan and database host or name come from `LUNAR_SOP_BAMBOO_MAP` and `LUNAR_SOP_DATABASE_MAP`, and a missing value becomes a placeholder and a warning |
+| SOP apply | The deploy block is applied with per-chapter markers: only `BAB I` and `BAB IV` are auto-managed, so a re-apply refreshes the database chapters while `BAB II` and `BAB III` keep the manual screenshots and notes. A missing page is created under `<KEY>-Development`; a page without markers is prepended and keeps its existing content; an unchanged region is skipped without bumping the version. The Operasional children are created only when they are missing |
+| AI panel | Per-document AI assistance. The query review and UT docs results render here, with loading, error, empty, and success states, a shared model picker, and copy actions |
+| Document actions | Row actions such as opening a document. Instant apply writes the query review table, for a UT document uploads each repository screenshot and the scenario rows, and for a document with an issue key generates and applies the SOP Deploy and SOP Operasional pages |
 | Error banners | Dedicated retry banners for authentication and connectivity failures |
 
 Confluence page bodies are converted from Confluence storage format to HTML **and escaped** on the
 backend, which is why the detail view can render them safely. Do not remove that escaping.
 
-`GET /api/confluence/documents`, `/api/confluence/documents/{id}`.
+`GET /api/confluence/documents`, `/api/confluence/documents/{id}`,
+`GET /api/confluence/documents/{id}/mig-targets`,
+`POST /api/confluence/documents/{id}/query-review`,
+`POST /api/confluence/documents/{id}/query-review/apply`,
+`POST /api/confluence/documents/{id}/ut-docs`,
+`POST /api/confluence/documents/{id}/ut-docs/apply`,
+`POST /api/confluence/documents/{id}/sop/generate`,
+`POST /api/confluence/documents/{id}/sop/apply`.
 
-Source: `frontend/src/features/confluence/`, `backend/internal/confluence/`.
+The query review runs on the server. It resolves the sibling MIG page through the Confluence page
+tree (`ancestors` then `child/page`), parses the raw storage table by header name, and skips the
+repositories in one package-level exclusion slice, today `fe-mms` and `mms`. Every remaining
+repository is fetched and analysed concurrently, three at a time. Each answer carries
+`document_id`, `model`, `prompt_version`, `mig_page_id`, `mig_page_title`, `skipped_repositories[]`,
+and `repositories[]`, where each repository has `repository`, `project_key`, `source_branch`,
+`target_branch`, `compare_url`, `status` (`success`, `no_queries`, `error`), `analyzed_files[]`,
+`skipped_files[]`, `queries[]`, `summary`, `truncated`, and `error`. Every query carries its
+`repository` and a `[repository]` prefix on `feature`. A repository that fails does not fail the
+others. The prompt is `queryreview-v1` in
+`backend/internal/queryreview/infrastructure/prompt.go`. When no MIG page is found and no explicit
+source is sent, the answer is `422` with code `NO_COMPARE_LINK`.
+
+`POST /api/confluence/documents/{id}/query-review/apply` rebuilds the `Capture explain (mysql)`
+table from the latest repositories and returns `{ page_id, version, url }`. It replaces the existing
+marker paragraph and its table, inserts the table after the marker when the table is missing, or
+appends both when the page has no marker. Every cell is HTML-escaped, the repository and query
+counts and each field length are bounded, and the page is updated with `version.number + 1`. A
+conflict is a `502` with a safe message.
+
+`GET /api/confluence/documents/{id}/mig-targets` reuses the query review MIG resolver and returns
+the `mig_page_title`, the `targets[]` (`repository`, `branch`) with `fe-mms` and `mms` skipped, and
+the `skipped_repositories[]` with their reason. The base ref is the repository's remote default
+branch, resolved by the helper when the target has none.
+
+The UT docs feature runs the tests on the local helper through `POST /ut-runs`, a server-sent event
+stream of `phase`, `output`, `done`, and `error`, and serves the rendered terminal screenshot at
+`GET /ut-runs/{id}/screenshot.png`. The request is `{ root, repo, branch, base_ref }`. The helper
+refuses to run unless `LUNAR_WORKSPACE_ALLOWED_ROOTS` contains the workspace root, checks out the
+branch only when the current one differs, stashes a dirty worktree before the checkout and pops the
+stash after the run, and runs only the changed test functions of the safe packages. The `done`
+payload carries `stashed`, `restored`, and one entry per test function in `tests[]`
+(`name`, `package`, `file`, `status`, `duration_ms`, `output`). The server then generates the
+document through `POST /api/confluence/documents/{id}/ut-docs` with the UT docs prompt and body
+`{ model, repositories: [{ repository, branch, base_ref, test_files, blocked_files, run, tests }] }`,
+returning `rows[]` for the `Normal Test Scenario` table and `table` as Confluence storage.
+`POST /api/confluence/documents/{id}/ut-docs/apply` uploads each repository's screenshot PNG as
+base64 and the rows to the existing `<KEY>-UT` page and returns `{ page_id, version, url }`.
+
+The SOP feature reads the same `<KEY>-MIG` page but keeps every repository, including `fe-mms` and
+`mms`. The helper `POST /sop/scan` checks the branch out with the same stash and restore behavior and
+returns `database_files[]`, `tables[]`, and `warnings[]` for the changed `.sql` and migration files.
+`POST /api/confluence/documents/{id}/sop/generate` accepts `{ model, repositories }` and returns the
+`<KEY>-SOP Deploy` managed block and the `<KEY>-SOP Operasional` plan.
+`POST /api/confluence/documents/{id}/sop/apply` writes them under `<KEY>-Development`: it creates the
+page when missing, prepends the block and keeps existing content when there are no markers, and
+otherwise replaces only the `BAB I` and `BAB IV` regions, so `BAB II` and `BAB III` keep the manual
+screenshots. An unchanged region is skipped, and the page is updated with `version.number + 1` with a
+single `409` retry. The Operasional children are created only when they are missing.
+
+Source: `frontend/src/features/confluence/`, `backend/internal/confluence/`,
+`backend/internal/queryreview/`, `backend/internal/utdocs/`, `backend/internal/sop/`.
 
 ---
 
@@ -286,6 +350,7 @@ contains.
 | Diagram security | Mermaid runs with `securityLevel: strict` and its output is additionally sanitized with DOMPurify before injection. `script`, `foreignObject`, `iframe`, and event attributes are removed |
 | Thinking mode | Always on. There is no control to switch it off, and `thinking_mode` is sent as true on every question |
 | Providers | Six are selectable: OpenAI, Anthropic Claude, Google Gemini, DeepSeek, Xiaomi MiMo, and OpenCode Go. OpenCode Go is a subscription rather than a pay-per-request key, and it serves only open models, so it offers no Claude model whatever |
+| Provider session identity | Every outbound model request identifies itself with `lunar/1.0`. An OpenCode Go request also carries `x-opencode-session`: chat uses the persisted conversation id, a one-shot document, review, or naming call uses a per-request id, and a Postman export uses one id for that export |
 | Model and effort picker | A dropup that opens on the model trigger. Its first level offers only Model and Effort. The Model level adds a search field and a back control, filters the configured models live as a name is typed, and returns to the first level once a model is chosen. The Effort level lists Low, Med, and High with the same behaviour. `Escape` closes the menu from either level |
 | Reasoning effort | Low, Med, or High, chosen from the picker's Effort level and persisted across reloads |
 | Reasoning trace | Collapsible thinking output per answer |
@@ -305,7 +370,7 @@ agent running on the local machine.
 | Incremental rebuild | Only changed files are re-chunked, keyed by content hash |
 | Agent loop | Multi-round: the model calls tools, reads results, and continues until it can answer |
 | Code tools | `search_code`, `get_file_content`, `find_symbol_references`, `grep_raw_fallback`, `list_services`, `get_service_routes`, `get_service_dependencies`, `get_service_contract`, `get_route_details`, `get_domain_knowledge`, `get_git_diff` |
-
+| Jira tools | `list_my_jira_issues`, `get_jira_issue_detail`, `get_active_sprint_issues`. They run in the helper and call the Lunar backend over HTTP with the user's session token, so the Jira PAT never leaves the vault. Each validates the issue key before the request, bounds the response body and the summarised text, and returns a compact summary with `type: jira` source references |
 | Domain knowledge | A curated glossary and Markdown notes, indexed locally and searchable by the agent |
 | Index status panel | Ready, building, or missing, with a build action and progress |
 | Graceful degradation | With no helper or no index, the message is still answered, without code context, and the UI says why |
@@ -317,7 +382,7 @@ Agent behaviour that matters when changing it:
   agent is expected to decompose questions and to fall back to `grep_raw_fallback`.
 - Tool-call markup emitted by some models as text (DSML) is stripped before it can reach the answer
   or the message history.
-- Only the `servicemap` domain has implemented tools. Selecting the Jira, Bitbucket, or Confluence
+- The `servicemap` and `jira` domains have implemented tools. Selecting the Bitbucket or Confluence
   domains changes which tool schemas the model is offered, but those tools are not implemented yet.
 
 ### 7.3 Tool domains
@@ -327,7 +392,8 @@ is sent to the helper and gates the tool schemas, so more tools means a longer p
 tokens.
 
 Source: `frontend/src/features/copilot/`, `frontend/src/features/code-context/`,
-`backend/internal/copilot/`, `backend/internal/agent/`, `backend/internal/codeindex/`.
+`backend/internal/copilot/`, `backend/internal/agent/`, `backend/internal/codeindex/`,
+`backend/internal/jira/tools/`.
 
 ### 7.4 Attachments
 
@@ -430,7 +496,7 @@ Listed so that nothing here is mistaken for working. Each has a plan or a backlo
 
 | Item | Where |
 |---|---|
-| Jira, Bitbucket, and Confluence agent tools | Stage 4 of `plan/code-copilot/` |
+| Bitbucket and Confluence agent tools | Stage 4 of `plan/code-copilot/`. The Jira tools are implemented; Bitbucket and Confluence are not |
 | Attachment picker in the composer | `plan/chat-ux/` W4. The upload endpoint, the storage, and the agent wiring exist and are verified by API; the composer control, the chips, and the progress state do not |
 | Shared code index for cross-team questions | Open decision in `plan/code-copilot/` |
 | Semantic code search using embeddings | Stage 5 of `plan/code-copilot/` |
@@ -448,6 +514,7 @@ Listed so that nothing here is mistaken for working. Each has a plan or a backlo
 
 | Document | Covers |
 |---|---|
+| `README.md` | Beginner setup and usage guide |
 | `guide.md` | This file. Every feature and subfeature |
 | `AGENTS.md` | Operating manual: engineering rules and quality bar |
 | `SKILLS.md` | Index of the skills, rules, and agents available in this repository |
@@ -465,6 +532,22 @@ Newest first. Every feature change adds a line here.
 
 | Date | Change |
 |---|---|
+| 2026-10-26 | Copilot: fixed OpenCode Go chat returning HTTP 400 `Request is missing x-opencode-session` whenever the local helper was offline and the answer fell back to the backend. The backend chat client now sends `x-opencode-session` with the conversation id, every other backend model call (review, query review, UT docs, SOP, Jira naming) sends a per-request id, and the Postman export client does the same, so no OpenCode Go path can omit the header. The chat screen now adopts the session id returned by `POST /api/copilot/chat`, so one conversation keeps one id across turns instead of the backend creating a new session per message |
+| 2026-10-08 | Copilot: the Jira BRI domain now offers real tools. `list_my_jira_issues`, `get_jira_issue_detail`, and `get_active_sprint_issues` run in the helper and call the Lunar backend over HTTP with the user's session token, so the Jira PAT never leaves the vault and the helper needs no Jira client. Each validates the issue key before the request, bounds the response body and the summarised text, and returns a compact summary with `type: jira` source references. Enabling Jira BRI in the tool-domain modal now answers from the user's own Jira instead of reporting no access |
+| 2026-10-08 | Confluence: SOP Deploy and SOP Operasional can now be generated from a wiki page opened from a Jira ticket. "Generate SOP Deploy & Operasional" resolves `<KEY>-Development`, reads every repository from the sibling MIG page (including `fe-mms` and `mms`), scans the branch through the helper `POST /sop/scan` for changed SQL and DDL, and builds `<KEY>-SOP Deploy` (BAB I Deploy Database, BAB II Deploy Aplikasi, BAB III Rollback Aplikasi, BAB IV Rollback Database) plus the `<KEY>-SOP Operasional` plan with Maintenance, Monitoring, and Troubleshooting. Statements come from the repository files verbatim and the model never writes SQL; no screenshot is generated. Apply uses per-chapter markers so only BAB I and BAB IV are auto-managed, while BAB II and BAB III keep the manual screenshots; a missing page is created, a page without markers is prepended and keeps its content, an unchanged region is skipped, and the version is bumped with a single 409 retry. Bamboo plan and database host or name come from `LUNAR_SOP_BAMBOO_MAP` and `LUNAR_SOP_DATABASE_MAP`, and a missing value becomes a placeholder and a warning |
+|---|---|
+| 2026-10-08 | Confluence: UT docs now cover changes that have no test. The helper reports the changed Go functions that have no test function, and `utdocs-v1` returns one mock-based Go test per function; the `Normal Test Scenario` table adds those rows with `Result: Not Run` and an empty Screen Capture, and the document renders each mock test as a syntax-highlighted Go code block, without writing any `_test.go` file. Apply writes each mock test as a Confluence code macro after the table, and a re-apply replaces the previous ones. The screenshot strip is hidden when no row was executed; rows that did run keep their run screenshot. The screenshot header now shows the pass ratio, for example `result failed (9/10 passed)` |
+|---|---|
+| 2026-10-08 | Confluence: UT docs are now MIG-driven and write back to Confluence. "Generate UT Docs With AI" first reads `GET /api/confluence/documents/{id}/mig-targets` (reusing the query review MIG resolver), shows the repositories to run and the skipped `fe-mms` and `mms` with their reason, runs each target through the helper `POST /ut-runs` with `{ root, repo, branch, base_ref }` (auto-stash, checkout, strict per-function selection of the changed test files, mock-only packages), and then calls `POST /api/confluence/documents/{id}/ut-docs` once with every repository. The run summary shows status, counts, duration, stashed or restored, and the blocked files with reasons, and the `done` payload now carries `stashed`, `restored`, and `tests[]` per function. The result renders the `Normal Test Scenario` table (`No, Function, Scenario, Expected Result, Input Data, Result, Screen Capture`) grouped per repository with a `Layanan / Microservice: <repository>` row and a `Passed`/`Failed`/`Skipped` pill from the runner evidence. The run screenshot is fetched from the helper and shown once per repository. `Copy table` writes the table as rich HTML, and the new `POST /api/confluence/documents/{id}/ut-docs/apply` uploads each repository's screenshot PNG as base64 plus the rows to the `<KEY>-UT` page and toasts the new version, with an in-panel error and retry on failure |
+| 2026-10-07 | Confluence: when a branch compare introduced no query, the `Capture explain (mysql)` table now carries a single row reading `Tidak ada penambahan atau perubahan query pada pengembangan kali ini.` on screen, in the copy, and after Instant apply, instead of an empty table. The document AI action button now follows the theme through `--positive`, so it no longer reads as disabled in light mode, and the status pills and notices use the theme tokens too. The document body tables now use content-driven columns, a header background, collapsed cell paragraphs, and horizontal scroll, so a Confluence table renders properly instead of squeezing into fixed columns |
+|---|---|
+| 2026-10-07 | Confluence: a query review statement always starts with `EXPLAIN` (forced on the server, so a model that forgets it cannot reach the document), and every query now carries the possible key MySQL would use plus a `create_index` statement when an extra index is worth adding; the Index column shows both. The per-query Copy button is removed (the whole-table copy and the raw JSON copy remain), and the document detail page widens from a 900px centred column to 1440px so the result table and the UT panel use the available space |
+|---|---|
+| 2026-10-07 | Confluence: the query review result renders as the `Capture explain (mysql)` table (`No, Fitur, Query Statement, Index, Capture Explain / Execution Plan`, the last column always empty). Copy writes that table as rich HTML so pasting into Confluence produces a real table, and Instant apply writes the latest table back to the page: it replaces the existing marker paragraph and its table, inserts the table after the marker when it is missing, or appends both, HTML-escapes every cell, bounds the repository and query counts and each field length, and updates the page with `version.number + 1`. A repository with no extracted query is skipped rather than failing the apply. New endpoint `POST /api/confluence/documents/{id}/query-review/apply` and a Confluence write client on `PUT /rest/api/content/{id}` |
+|---|---|
+| 2026-10-07 | Confluence: query review fixed two discovery defects found against a real page. The Bitbucket compare call had `from` and `to` swapped, so a valid branch compare answered 404; it now sends `from=sourceBranch` and `to=targetBranch`, matching the reference that was verified live, and the 404 names both branches. The MIG table parser now requires the link cell to be a real compare or pull request URL, so a repository `/browse` link is skipped and reported instead of being mistaken for a compare, falls back to the whole row when the compare link sits outside the mapped cell, and matches the exclusion list against both the cell text and the URL slug |
+| 2026-10-07 | Confluence: query review discovery now reads the sibling `<KEY>-MIG` page instead of the review page body. The server walks the Confluence page tree (immediate parent from `ancestors`, then `child/page`), finds the page whose title ends with `-MIG`, and parses its `No, Repository, Branch, Link Compare` table from the raw storage, reading the columns by header name. Every remaining repository is extracted in one click, three concurrently, with `fe-mms` and `mms` skipped from a single package-level exclusion slice. The result is per repository, each with its own status (`success`, `no_queries`, `error`), and every query carries its repository and a `[repository]` feature prefix. A repository that fails no longer fails the others, the `AMBIGUOUS_COMPARE_LINK` code is retired because several repositories is the normal case, and the manual compare URL remains only for a missing MIG page |
+| 2026-10-07 | Confluence: the "Extract query review" and "Generate UT Docs With AI" actions are real. Query review reads only the document's branch comparison from Bitbucket and extracts the queries the added lines introduce or modify, so the prompt never sees the whole repository, removed lines, or unchanged context; it reports the analyzed and skipped files and the branch pair, and asks for a compare URL when the document has none or several. UT docs scans the branch first, blocks every test file that can reset, refresh, flush, or drop a database or open a real connection, runs only the mock-based Go packages through a new helper endpoint that streams its phases and output, renders the captured run as a terminal screenshot, and generates the document from that evidence; a blocked package is named with its reason, PHP test files are never scanned or run, and Node suites are reported as not executed. The helper refuses to run unless `LUNAR_WORKSPACE_ALLOWED_ROOTS` contains the workspace root, checks out the branch only when it differs, and keeps the newest twenty screenshots on disk with owner-only permissions. New modules `backend/internal/queryreview/` and `backend/internal/utdocs/`, two endpoints under the Confluence document, a new Bitbucket compare-diff call, and one added dependency, `golang.org/x/image`, for the screenshot renderer. Applying the results back to Confluence is not implemented yet |
 | 2026-10-06 | Jira: a branch name can now be derived from an issue that has no acceptance criteria. Such an issue is not a failure, it is a normal issue with a summary, and it was falling back to a mechanical name with no category when the model could name it properly. The response also reports where the phrase behind the name came from, so the screen can say whether it read the acceptance criteria, the description, or the summary rather than always claiming acceptance criteria. A genuine model failure still produces the mechanical name with no category and says the model was not asked |
 | 2026-10-06 | Jira: an issue now shows the repositories it will be built in, and can create a branch in several of them at once from a base the user chooses. Five weighted signals rank the candidates, the strongest being the other issues in the same epic, and that signal reads the repositories the local workspace cannot see. A branch name is derived from the acceptance criteria, and the phrase it came from is shown as evidence. A live test against the real instance and a real model found what no stubbed test could: asked for the category, which appears nowhere in the issue text, the model returned a word the team never uses. The category is now chosen from the vocabulary the team's own branches already use, and the worked example matches the branch that exists in the workspace byte for byte |
 | 2026-10-06 | Bitbucket: the pull request review modal is rebuilt as a split dialog, with the changed files on the left and findings and the comment on the right, tabs for both, per-file collapse in the diff, a shared Copilot model picker bound to the review's own model, the changed-file and line counts read from the diff instead of the always-zero list fields, a focus trap with focus returned to the opener, a real label on the comment field, a Markdown preview of the comment before posting, and a confirmation before Decline |

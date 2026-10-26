@@ -306,6 +306,7 @@ func (c *AtlassianBitbucketClient) ListPullRequests(ctx context.Context, pat str
 			Number:          int(pr.ID),
 			Repo:            repoName,
 			Title:           pr.Title,
+			Description:     pr.Description,
 			SourceBranch:    pr.FromRef.DisplayID,
 			TargetBranch:    pr.ToRef.DisplayID,
 			Status:          strings.ToLower(pr.State),
@@ -320,6 +321,67 @@ func (c *AtlassianBitbucketClient) ListPullRequests(ctx context.Context, pat str
 	}
 
 	return result, nil
+}
+
+func (c *AtlassianBitbucketClient) GetPullRequest(ctx context.Context, pat string, repo string, prID string) (*domain.PullRequest, error) {
+	if strings.TrimSpace(pat) == "" {
+		return nil, fmt.Errorf("%w: Bitbucket PAT is not configured", sharedErrors.ErrUnauthorized)
+	}
+
+	projectKey, repoSlug := parseRepoProject(repo)
+	cleanNum := strings.TrimPrefix(strings.TrimSpace(prID), "#")
+
+	endpoint := fmt.Sprintf("%s/rest/api/1.0/projects/%s/repos/%s/pull-requests/%s",
+		c.baseURL, url.PathEscape(projectKey), url.PathEscape(repoSlug), url.PathEscape(cleanNum))
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+pat)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "Lunar-Workspace/1.0")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to contact Bitbucket Server (%s): please verify your BRI VPN connection: %w", c.baseURL, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, fmt.Errorf("%w: invalid or expired Bitbucket PAT", sharedErrors.ErrUnauthorized)
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, fmt.Errorf("%w: access forbidden: your PAT does not have permission for this repository", sharedErrors.ErrForbidden)
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("%w: pull request %s was not found in %s", sharedErrors.ErrNotFound, cleanNum, repo)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("bitbucket returned status %d when fetching the pull request", resp.StatusCode)
+	}
+
+	var raw rawBitbucketPR
+	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
+		return nil, fmt.Errorf("failed to decode Bitbucket response: %w", err)
+	}
+
+	authorName := raw.Author.User.DisplayName
+	if authorName == "" {
+		authorName = raw.Author.User.Name
+	}
+
+	return &domain.PullRequest{
+		ID:           fmt.Sprintf("#%d", raw.ID),
+		Number:       int(raw.ID),
+		Repo:         repo,
+		Title:        raw.Title,
+		Description:  raw.Description,
+		SourceBranch: raw.FromRef.DisplayID,
+		TargetBranch: raw.ToRef.DisplayID,
+		Status:       strings.ToLower(raw.State),
+		Author:       authorName,
+	}, nil
 }
 
 func (c *AtlassianBitbucketClient) GetPullRequestDiff(ctx context.Context, pat string, repo string, prID string) (*domain.PRDiff, error) {
@@ -539,19 +601,6 @@ func (c *AtlassianBitbucketClient) ApplyReviewAction(ctx context.Context, pat st
 	}
 
 	return nil
-}
-
-func (c *AtlassianBitbucketClient) GenerateAIReview(ctx context.Context, prID string, repo string) (*domain.AICodeReview, error) {
-	return &domain.AICodeReview{
-		PRID:    prID,
-		Summary: "Automated analysis completed. Verified changed files and scope against standard lint and test coverage guidelines.",
-		Findings: []string{
-			"Code structure aligns with repository architectural boundaries.",
-			"No hardcoded credentials, plain-text tokens, or unauthorized endpoints detected.",
-			"Recommended adding dedicated regression test coverage before merge.",
-		},
-		GeneratedComment: fmt.Sprintf("Lunar Copilot review for %s (%s):\n\nAutomated analysis completed. Verified changed files and scope against standard lint and test coverage guidelines.\n\n• Code structure aligns with repository architectural boundaries.\n• No hardcoded credentials, plain-text tokens, or unauthorized endpoints detected.\n• Recommended adding dedicated regression test coverage before merge.", prID, repo),
-	}, nil
 }
 
 func (c *AtlassianBitbucketClient) ResetSeedData() {}

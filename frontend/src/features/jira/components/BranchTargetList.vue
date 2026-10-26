@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue"
-import type { IssueBranchMatch } from "../branch-types"
+import type { IssueBranchMatch, SuggestionConfidence } from "../branch-types"
 import { useBranchCreation } from "../composables/useBranchCreation"
 import { type BranchPlanState } from "../logic/branch-plan"
 import { elsewhereMatches } from "../logic/branch-plan-progress"
@@ -14,6 +14,7 @@ const props = defineProps<{
   matches: IssueBranchMatch[]
   isLoadingSuggestions: boolean
   suggestionError: string
+  confidence: SuggestionConfidence | null
   unavailableReasons: string[]
 }>()
 
@@ -30,6 +31,18 @@ const suggestedRepos = computed(() =>
 const isSuggestionEmpty = computed(
   () => suggestedRepos.value.length === 0 && props.plan.targets.length === 0
 )
+const confidenceNote = computed(() => {
+  if (suggestedRepos.value.length === 0) {
+    return ""
+  }
+  if (props.confidence === "low") {
+    return "Lunar is not confident. The evidence is weak."
+  }
+  if (props.confidence === "medium") {
+    return "Lunar is not confident enough to recommend one. These are candidates you choose from."
+  }
+  return ""
+})
 const elsewhereRepos = computed(() => {
   const repos: string[] = []
   for (const match of elsewhereMatches(props.plan, props.matches)) {
@@ -66,6 +79,15 @@ const add = (repo: string, isCloned: boolean): void => {
       Lunar could not suggest a repository from the acceptance criteria. Choose one yourself.
     </p>
 
+    <p
+      v-if="confidenceNote.length > 0"
+      class="confidence-note"
+      :class="{ 'is-low': confidence === 'low' }"
+      data-testid="branch-confidence-note"
+    >
+      {{ confidenceNote }}
+    </p>
+
     <BranchTargetRow
       v-for="target in plan.targets"
       :key="target.repo"
@@ -93,6 +115,7 @@ const add = (repo: string, isCloned: boolean): void => {
     <RepositoryPicker :taken-repos="takenRepos" @add="add" />
 
     <div v-if="unavailableReasons.length > 0" class="unavailable" data-testid="branch-signals-unavailable">
+      <p class="unavailable-title">Not everything could be checked</p>
       <p v-for="reason in unavailableReasons" :key="reason" class="unavailable-line">{{ reason }}</p>
     </div>
   </section>

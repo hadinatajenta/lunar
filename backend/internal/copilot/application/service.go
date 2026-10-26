@@ -151,6 +151,7 @@ func (s *CopilotService) Chat(ctx context.Context, userID string, req domain.Cha
 		systemPrompt,
 		req.ThinkingMode,
 		req.ReasoningEffort,
+		infrastructure.ChatOptions{SessionID: session.ID},
 	)
 	if err != nil {
 		return nil, err
@@ -194,13 +195,12 @@ func (s *CopilotService) Chat(ctx context.Context, userID string, req domain.Cha
 func (s *CopilotService) ReviewPullRequest(
 	ctx context.Context,
 	userID string,
-	repo string,
-	prID string,
-	diffText string,
+	pr *bitbucketDomain.PullRequest,
+	diff *bitbucketDomain.PRDiff,
 	modelName string,
 ) (*bitbucketDomain.AICodeReview, error) {
-	if strings.TrimSpace(diffText) == "" {
-		return nil, fmt.Errorf("%w: cannot review empty git diff", sharedErrors.ErrBadRequest)
+	if pr == nil || diff == nil || len(diff.Files) == 0 {
+		return nil, fmt.Errorf("%w: cannot review a pull request without diff files", sharedErrors.ErrBadRequest)
 	}
 
 	if strings.TrimSpace(modelName) == "" {
@@ -213,7 +213,7 @@ func (s *CopilotService) ReviewPullRequest(
 		return nil, err
 	}
 
-	return s.llmClient.CodeReview(ctx, provider, apiKey, modelName, repo, prID, diffText)
+	return s.llmClient.CodeReview(ctx, provider, apiKey, modelName, pr, diff)
 }
 
 func (s *CopilotService) GetSessions(ctx context.Context, userID string) ([]domain.ChatSession, error) {

@@ -1,6 +1,7 @@
 package infrastructure
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -256,13 +257,25 @@ func (c *ConfluenceClient) GetDocumentsByIDs(ctx context.Context, pat string, do
 }
 
 func (c *ConfluenceClient) doRequest(ctx context.Context, pat string, requestURL string) (*http.Response, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
+	return c.doRequestWithBody(ctx, pat, http.MethodGet, requestURL, nil)
+}
+
+func (c *ConfluenceClient) doRequestWithBody(ctx context.Context, pat string, method string, requestURL string, body []byte) (*http.Response, error) {
+	var requestBody io.Reader
+	if len(body) > 0 {
+		requestBody = bytes.NewReader(body)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, requestURL, requestBody)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+pat)
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "Lunar-Workspace/1.0")
+	if len(body) > 0 {
+		req.Header.Set("Content-Type", "application/json")
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {

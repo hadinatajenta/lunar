@@ -113,6 +113,8 @@ func newHelperHandler(dependencies helperDependencies) (http.Handler, func()) {
 	mux.Handle("POST "+agentAskPath, requireToken(dependencies.token, http.HandlerFunc(server.handleAgentAsk)))
 	registerIssueBranchRoutes(mux, dependencies)
 	registerWorkspaceReadinessRoute(mux, dependencies)
+	registerUTDocsRoutes(mux, dependencies)
+	registerSOPRoutes(mux, dependencies)
 
 	handler := loggingMiddleware(dependencies.logger)(corsMiddleware(dependencies.allowedOrigins)(mux))
 	return handler, server.stop

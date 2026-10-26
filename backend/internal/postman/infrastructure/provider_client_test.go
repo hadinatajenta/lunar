@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"lunar/backend/internal/postman/domain"
 )
 
@@ -142,5 +144,54 @@ func TestProviderClientRefusesAnEmptyCompletion(t *testing.T) {
 	_, err := client.Generate(context.Background(), domain.GenerateRequest{Provider: "deepseek", APIKey: "key", BaseURL: server.URL, Model: "deepseek-chat"})
 	if !errors.Is(err, domain.ErrCollectionInvalid) {
 		t.Fatalf("expected ErrCollectionInvalid, received %v", err)
+	}
+}
+
+func TestProviderClientSendsAnOpenCodeGoSessionHeader(t *testing.T) {
+	capturedHeaders := make(chan http.Header, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedHeaders <- r.Header.Clone()
+		writeCompletion(t, w, "collection-content")
+	}))
+	defer server.Close()
+
+	client := NewProviderClient()
+	if _, err := client.Generate(context.Background(), domain.GenerateRequest{
+		Provider: openCodeGoProvider,
+		APIKey:   "key",
+		BaseURL:  server.URL,
+		Model:    "deepseek-v4.1-flash",
+	}); err != nil {
+		t.Fatalf("generating the collection failed: %v", err)
+	}
+
+	header := <-capturedHeaders
+	sessionID := header.Get(openCodeGoSessionHeader)
+	if _, err := uuid.Parse(sessionID); err != nil {
+		t.Fatalf("%s = %q, want a UUID: %v", openCodeGoSessionHeader, sessionID, err)
+	}
+}
+
+func TestProviderClientOmitsTheOpenCodeGoSessionHeaderForOtherProviders(t *testing.T) {
+	capturedHeaders := make(chan http.Header, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedHeaders <- r.Header.Clone()
+		writeCompletion(t, w, "collection-content")
+	}))
+	defer server.Close()
+
+	client := NewProviderClient()
+	if _, err := client.Generate(context.Background(), domain.GenerateRequest{
+		Provider: "deepseek",
+		APIKey:   "key",
+		BaseURL:  server.URL,
+		Model:    "deepseek-chat",
+	}); err != nil {
+		t.Fatalf("generating the collection failed: %v", err)
+	}
+
+	header := <-capturedHeaders
+	if got := header.Get(openCodeGoSessionHeader); got != "" {
+		t.Fatalf("%s = %q, want empty for a non opencode-go provider", openCodeGoSessionHeader, got)
 	}
 }

@@ -12,6 +12,7 @@ import (
 	agentapplication "lunar/backend/internal/agent/application"
 	agentinfrastructure "lunar/backend/internal/agent/infrastructure"
 	agenttools "lunar/backend/internal/codeindex/application/tools"
+	jiratools "lunar/backend/internal/jira/tools"
 	workspacedomain "lunar/backend/internal/workspace/domain"
 	workspaceinfrastructure "lunar/backend/internal/workspace/infrastructure"
 )
@@ -122,6 +123,8 @@ func fetchProviderCredentials(ctx context.Context, backendURL string, sessionTok
 
 func (s *helperServer) buildAgent(
 	workspaceRoot string,
+	backendURL string,
+	sessionToken string,
 	credentials providerCredentials,
 	sessionID string,
 ) (*agentapplication.Agent, *agentinfrastructure.ChatClient) {
@@ -137,6 +140,7 @@ func (s *helperServer) buildAgent(
 
 	registry := agentapplication.NewMapToolRegistry()
 	registry.RegisterAll(agenttools.NewTools(s.indexStore, reader)...)
+	registry.RegisterAll(jiratools.NewTools(jiratools.NewBackendClient(backendURL, sessionToken))...)
 
 	return agentapplication.NewAgent(client, registry), client
 }

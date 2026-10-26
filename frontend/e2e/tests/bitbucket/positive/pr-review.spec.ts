@@ -1,4 +1,5 @@
 import { test, expect } from "../../../fixtures/authenticated.fixture"
+import { mockAIReview } from "../../../data/bitbucket.data"
 import { captureEvidence } from "../../../helpers/evidence"
 import { routeStandardPushes, routeStandardPRs, routeSecrets, routeSystemConfig } from "../../../helpers/route-mock"
 
@@ -20,12 +21,15 @@ test.describe("Bitbucket BRI - PR Review Positive Flows", () => {
       await bitbucketPage.reviewButton(184).click()
       await expect(bitbucketPage.reviewModal).toBeVisible()
 
-      await expect(bitbucketPage.prReviewModelSelect).toBeVisible()
-      await expect(bitbucketPage.prReviewModelSelect).toContainText("DeepSeek-V4 Pro (Thinking)")
-      await expect(bitbucketPage.prReviewModelSelect).toContainText("DeepSeek Flash")
+      await expect(bitbucketPage.prReviewModelTrigger).toBeVisible()
+      await expect(bitbucketPage.prReviewModelTrigger).toContainText("DeepSeek-V4 Pro (Thinking)")
 
-      await bitbucketPage.prReviewModelSelect.selectOption("DeepSeek Flash")
-      await expect(bitbucketPage.prReviewModelSelect).toHaveValue("DeepSeek Flash")
+      await bitbucketPage.openReviewModelPicker()
+      await expect(bitbucketPage.prReviewModelOption("DeepSeek-V4 Pro (Thinking)")).toBeVisible()
+      await expect(bitbucketPage.prReviewModelOption("DeepSeek Flash")).toBeVisible()
+
+      await bitbucketPage.prReviewModelOption("DeepSeek Flash").click()
+      await expect(bitbucketPage.prReviewModelTrigger).toContainText("DeepSeek Flash")
     }
   )
 
@@ -42,9 +46,9 @@ test.describe("Bitbucket BRI - PR Review Positive Flows", () => {
       await bitbucketPage.reviewButton(184).click()
       await expect(bitbucketPage.reviewModal).toBeVisible()
 
-      await expect(bitbucketPage.prReviewNoAiWarning).toBeVisible()
-      await expect(bitbucketPage.prReviewNoAiWarning).toContainText("No AI provider configured yet")
-      await expect(bitbucketPage.generateAiReviewButton).toBeDisabled()
+      await expect(bitbucketPage.noAiKeysBanner).toBeVisible()
+      await expect(bitbucketPage.noAiKeysBanner).toContainText("No AI provider is configured yet")
+      await expect(bitbucketPage.triggerAiReviewButton).toBeDisabled()
     }
   )
 
@@ -54,26 +58,55 @@ test.describe("Bitbucket BRI - PR Review Positive Flows", () => {
       tag: ["@bitbucket", "@positive", "@review", "@p0"]
     },
     async ({ page, bitbucketPage }) => {
+      const [blockerFinding, assumptionFinding, nitpickFinding] = mockAIReview.findings
+
       await routeSecrets(page, { hasAiKeys: true, configuredAiProviders: ["deepseek"] })
 
       await bitbucketPage.navigateTo()
       await bitbucketPage.reviewButton(184).click()
+      await expect(bitbucketPage.reviewModalOverlay).toBeVisible()
       await expect(bitbucketPage.reviewModal).toBeVisible()
+      await expect(bitbucketPage.closeReviewButton).toBeVisible()
+      await expect(bitbucketPage.reviewModalId).toContainText("#184")
       await expect(bitbucketPage.reviewModalTitle).toContainText("feat(auth): LUN-421")
+      await expect(bitbucketPage.reviewModalRepo).toContainText("BRI/mms-frontend")
+      await expect(bitbucketPage.reviewModalBranch).toContainText("feat/auth-refresh")
+      await expect(bitbucketPage.reviewModalBranch).toContainText("main")
+      await expect(bitbucketPage.reviewModalAuthor).toContainText("Lunar Developer")
+      await expect(bitbucketPage.reviewModalFiles).toContainText("124")
 
-      await bitbucketPage.toggleDiffButton.click()
-      await expect(bitbucketPage.diffContainer).toBeVisible()
-      await expect(bitbucketPage.diffContainer).toContainText("src/auth/session.ts")
+      await expect(bitbucketPage.toggleDiffButton).toBeHidden()
+      await expect(bitbucketPage.diffViewer).toBeVisible()
+      await expect(bitbucketPage.diffFileList).toBeVisible()
+      await expect(bitbucketPage.diffFile(0)).toContainText("src/auth/session.ts")
+      await expect(bitbucketPage.diffFileToggle(0)).toBeVisible()
       await captureEvidence(page, "bitbucket", "06_pr_review_modal_empty.png")
 
-      await bitbucketPage.generateAiReviewButton.click()
-      await expect(bitbucketPage.aiReviewFindings).toBeVisible()
-      await expect(bitbucketPage.aiReviewFindings).toContainText("Automated analysis completed")
-      await expect(bitbucketPage.aiReviewFindings).toContainText("session token lifecycle complies with security standards")
+      await expect(bitbucketPage.reviewFindingsTab).toBeVisible()
+      await expect(bitbucketPage.aiEmptyState).toBeVisible()
 
-      await expect(bitbucketPage.reviewCommentTextarea).toHaveValue(
-        "Lunar Copilot review: Automated analysis completed. Verified changed files and scope against standard lint and test coverage guidelines."
-      )
+      await bitbucketPage.triggerAiReviewButton.click()
+      await expect(bitbucketPage.aiFindings).toBeVisible()
+      await expect(bitbucketPage.aiLoading).toBeHidden()
+      await expect(bitbucketPage.aiEmptyState).toBeHidden()
+      await expect(bitbucketPage.aiSummary).toContainText(mockAIReview.summary)
+      await expect(bitbucketPage.aiRecommendation).toContainText("Request changes")
+
+      await expect(bitbucketPage.aiGroupBlocker).toBeVisible()
+      await expect(bitbucketPage.aiGroupBlocker).toContainText(blockerFinding.title)
+      await expect(bitbucketPage.aiGroupBlocker).toContainText(blockerFinding.file)
+      await expect(bitbucketPage.aiGroupSuggestion).toBeVisible()
+      await expect(bitbucketPage.aiGroupSuggestion).toContainText(assumptionFinding.title)
+      await expect(bitbucketPage.aiGroupNitpick).toBeVisible()
+      await expect(bitbucketPage.aiGroupNitpick).toContainText(nitpickFinding.title)
+      await expect(bitbucketPage.aiFinding(0)).toContainText(blockerFinding.title)
+
+      await expect(bitbucketPage.aiAssumptions).toContainText(mockAIReview.assumptions[0])
+      await expect(bitbucketPage.aiStrengths).toContainText(mockAIReview.strengths[0])
+      await expect(bitbucketPage.aiTruncatedNotice).toBeHidden()
+
+      await bitbucketPage.reviewCommentTab.click()
+      await expect(bitbucketPage.reviewCommentInput).toHaveValue(mockAIReview.generated_comment)
       await captureEvidence(page, "bitbucket", "07_pr_review_ai_generated.png")
     }
   )
@@ -90,7 +123,7 @@ test.describe("Bitbucket BRI - PR Review Positive Flows", () => {
       await bitbucketPage.reviewButton(188).click()
       await expect(bitbucketPage.reviewModal).toBeVisible()
 
-      await bitbucketPage.approvePrButton.click()
+      await bitbucketPage.approveButton().click()
       await expect(bitbucketPage.globalToast).toBeVisible()
       await expect(bitbucketPage.globalToast).toContainText("Review marked as approve")
       await captureEvidence(page, "bitbucket", "08_pr_review_status_action.png")
@@ -109,11 +142,67 @@ test.describe("Bitbucket BRI - PR Review Positive Flows", () => {
       await bitbucketPage.reviewButton(191).click()
       await expect(bitbucketPage.reviewModal).toBeVisible()
 
-      await bitbucketPage.reviewCommentTextarea.fill("Verified SQLite FTS5 tokenization looks optimal.")
-      await bitbucketPage.postCommentButton.click()
+      await bitbucketPage.reviewCommentTab.click()
+      await bitbucketPage.reviewCommentInput.fill("Verified SQLite FTS5 tokenization looks optimal.")
+      await bitbucketPage.sendCommentButton.click()
       await expect(bitbucketPage.globalToast).toBeVisible()
       await expect(bitbucketPage.globalToast).toContainText("Review posted to the pull request as a comment")
       await captureEvidence(page, "bitbucket", "09_pr_review_comment_posted.png")
+    }
+  )
+
+  test(
+    "BB-REV-008 engineer can preview the generated review comment and post it",
+    {
+      tag: ["@bitbucket", "@positive", "@review"]
+    },
+    async ({ page, bitbucketPage }) => {
+      await routeSecrets(page, { hasAiKeys: true, configuredAiProviders: ["deepseek"] })
+
+      await bitbucketPage.navigateTo()
+      await bitbucketPage.reviewButton(184).click()
+      await expect(bitbucketPage.reviewModal).toBeVisible()
+
+      await bitbucketPage.triggerAiReviewButton.click()
+      await expect(bitbucketPage.aiFindings).toBeVisible()
+
+      await bitbucketPage.reviewCommentTab.click()
+      await expect(bitbucketPage.commentPreview).toBeVisible()
+      await expect(bitbucketPage.commentPreview).toContainText("Code review: feat(auth): LUN-421")
+      await expect(bitbucketPage.commentPreview).toContainText("Verdict:")
+      await expect(bitbucketPage.commentPreview).toContainText("Request changes")
+
+      await bitbucketPage.toggleCommentPreviewButton.click()
+      await expect(bitbucketPage.commentPreview).toBeHidden()
+      await expect(bitbucketPage.reviewCommentInput).toHaveValue(mockAIReview.generated_comment)
+
+      await bitbucketPage.sendCommentButton.click()
+      await expect(bitbucketPage.globalToast).toBeVisible()
+      await expect(bitbucketPage.globalToast).toContainText("Review posted to the pull request as a comment")
+      await captureEvidence(page, "bitbucket", "15_pr_review_generated_comment_posted.png")
+    }
+  )
+
+  test(
+    "BB-REV-009 engineer confirms the decline dialog before the review status is posted",
+    {
+      tag: ["@bitbucket", "@positive", "@review"]
+    },
+    async ({ page, bitbucketPage }) => {
+      await routeSecrets(page, { hasAiKeys: true })
+
+      await bitbucketPage.navigateTo()
+      await bitbucketPage.reviewButton(188).click()
+      await expect(bitbucketPage.reviewModal).toBeVisible()
+
+      await bitbucketPage.declineButton().click()
+      await expect(bitbucketPage.confirmAcceptButton).toBeVisible()
+      await expect(bitbucketPage.globalToast).toBeHidden()
+
+      await bitbucketPage.confirmAcceptButton.click()
+      await expect(bitbucketPage.globalToast).toBeVisible()
+      await expect(bitbucketPage.globalToast).toContainText("Review marked as decline")
+      await captureEvidence(page, "bitbucket", "16_pr_review_decline_confirmed.png")
     }
   )
 })

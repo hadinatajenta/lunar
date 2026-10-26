@@ -1,6 +1,18 @@
 import { test, expect } from "../../../fixtures/authenticated.fixture"
-import { routeSecrets, routeStandardConfluence } from "../../../helpers/route-mock"
-import { mockConfluenceDocuments } from "../../../data/confluence.data"
+import {
+  routeHelperWorkspace,
+  routeMigTargets,
+  routeQueryReview,
+  routeSecrets,
+  routeStandardConfluence,
+  routeUtRunHelper
+} from "../../../helpers/route-mock"
+import {
+  mockConfluenceDocuments,
+  mockMigTargetsSingle,
+  mockQueryReviewNoCompareLink,
+  mockQueryReviewResult
+} from "../../../data/confluence.data"
 import { captureEvidence } from "../../../helpers/evidence"
 
 test.describe("Confluence BRI - Negative Flows and Error Handling", () => {
@@ -83,6 +95,66 @@ test.describe("Confluence BRI - Negative Flows and Error Handling", () => {
       await expect(confluencePage.detailBackButton).toBeVisible()
       await confluencePage.detailBackButton.click()
       await expect(page).toHaveURL("/confluence")
+    }
+  )
+
+  test(
+    "CONF-QUERY-ERR-001 query review without a compare link asks for the URL and succeeds after it is provided",
+    {
+      tag: ["@confluence", "@negative", "@actions", "@ai"]
+    },
+    async ({ page, confluencePage }) => {
+      await routeSecrets(page, { hasConfluencePat: true })
+      await routeStandardConfluence(page)
+      const queryReview = routeQueryReview(page, {
+        responses: [
+          { status: 422, body: mockQueryReviewNoCompareLink },
+          { status: 200, body: mockQueryReviewResult }
+        ]
+      })
+      await confluencePage.navigateTo()
+      await confluencePage.clickCardByTitle("QR-201")
+      await confluencePage.generateAiButton.click()
+
+      await expect(confluencePage.queryError).toContainText("compare URL")
+      await expect(confluencePage.queryManualUrlInput).toBeVisible()
+
+      const compareUrl =
+        "https://bitbucket.bri.co.id/projects/NME/repos/micro-payment/compare/diff?sourceBranch=feat/CRMMS-123&targetBranch=development"
+      await confluencePage.queryManualUrlInput.fill(compareUrl)
+      await confluencePage.queryRetryButton.click()
+
+      await expect(confluencePage.queryResult).toBeVisible()
+      expect(JSON.parse(queryReview.requests[1])).toMatchObject({
+        source: { compare_url: compareUrl }
+      })
+      await expect(confluencePage.querySummary).toContainText("One SELECT was introduced on this branch.")
+    }
+  )
+
+  test(
+    "CONF-UT-ERR-001 an unreachable helper names the helper and links to the setup guide without a retry loop",
+    {
+      tag: ["@confluence", "@negative", "@actions", "@ai"]
+    },
+    async ({ page, confluencePage }) => {
+      await routeSecrets(page, { hasConfluencePat: true })
+      await routeStandardConfluence(page)
+      await routeHelperWorkspace(page)
+      await routeMigTargets(page, { responses: [{ status: 200, body: mockMigTargetsSingle }] })
+      await routeUtRunHelper(page, { tokenStatus: 503 })
+
+      await confluencePage.navigateTo()
+      await confluencePage.clickCardByTitle("UT-101")
+      await confluencePage.generateAiButton.click()
+
+      await expect(confluencePage.utError).toBeVisible()
+      await expect(confluencePage.utError).toContainText("Lunar helper")
+      await expect(confluencePage.utError).toContainText("http://127.0.0.1:5199")
+      await expect(confluencePage.utRetryButton).toHaveCount(0)
+      await expect(
+        confluencePage.utError.getByRole("link", { name: /helper setup guide/i })
+      ).toBeVisible()
     }
   )
 

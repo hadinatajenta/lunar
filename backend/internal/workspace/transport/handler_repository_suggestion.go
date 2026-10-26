@@ -37,19 +37,21 @@ func NewRepositorySuggestionHandler(service *workspaceApp.RepositorySuggestionSe
 	return &RepositorySuggestionHandler{service: service}
 }
 
-func RegisterRepositoryRoutes(mux *http.ServeMux, authMiddleware func(http.Handler) http.Handler, workspaceRoots workspaceApp.WorkspaceRootSource, local workspaceApp.LocalRepositorySource, issues workspaceApp.IssueContextSource, branches workspaceApp.BranchMatchSource, ranker workspaceApp.RepositoryRanker) {
-	catalogue := workspaceApp.NewRepositoryCatalogueService(workspaceRoots, local, nil)
+func RegisterRepositoryRoutes(mux *http.ServeMux, authMiddleware func(http.Handler) http.Handler, workspaceRoots workspaceApp.WorkspaceRootSource, local workspaceApp.LocalRepositorySource, issues workspaceApp.IssueContextSource, branches workspaceApp.BranchMatchSource, ranker workspaceApp.RepositoryRanker, remote workspaceApp.RemoteRepositoryProvider) *workspaceApp.RepositoryCatalogueService {
+	catalogue := workspaceApp.NewRepositoryCatalogueService(workspaceRoots, local, repositoryRemoteSource(remote))
 	service := workspaceApp.NewRepositorySuggestionService(workspaceApp.RepositorySuggestionDependencies{
 		Catalogue:      catalogue,
 		WorkspaceRoots: workspaceRoots,
 		Issues:         issues,
 		Branches:       branches,
-	}, workspaceApp.WithRepositoryRanker(ranker))
+	}, workspaceApp.WithRepositoryRanker(ranker), workspaceApp.WithRemoteCandidateScanner(repositoryRemoteScanner(remote)))
 	handler := NewRepositorySuggestionHandler(service)
 
 	mux.Handle("GET /api/jira/issues/{key}/repository-suggestions", authMiddleware(http.HandlerFunc(handler.GetRepositorySuggestions)))
 	mux.Handle("GET /api/jira/repositories", authMiddleware(http.HandlerFunc(handler.ListRepositories)))
 	mux.Handle("POST /api/jira/issues/{key}/repository-feedback", authMiddleware(http.HandlerFunc(handler.RecordRepositoryFeedback)))
+
+	return catalogue
 }
 
 func (h *RepositorySuggestionHandler) GetRepositorySuggestions(w http.ResponseWriter, r *http.Request) {

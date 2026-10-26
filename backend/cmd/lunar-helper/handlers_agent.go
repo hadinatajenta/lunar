@@ -141,7 +141,7 @@ func (s *helperServer) handleAgentAsk(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	agent, chatClient := s.buildAgent(request.Root, credentials, request.SessionID)
+	agent, chatClient := s.buildAgent(request.Root, backendURL, sessionToken, credentials, request.SessionID)
 	if imageError := validateImageAttachments(model, credentials.Model, len(imageDataURLs), chatClient); imageError != nil {
 		sharedHttp.WriteError(w, http.StatusBadRequest, imageError.Error())
 		return

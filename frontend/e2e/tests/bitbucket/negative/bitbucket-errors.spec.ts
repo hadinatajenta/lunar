@@ -111,7 +111,7 @@ test.describe("Bitbucket BRI - Errors & Authorization", () => {
       await bitbucketPage.reviewButton(184).click()
       await expect(bitbucketPage.reviewModal).toBeVisible()
 
-      await bitbucketPage.generateAiReviewButton.click()
+      await bitbucketPage.triggerAiReviewButton.click()
       await expect(bitbucketPage.globalToast).toBeVisible()
       await expect(bitbucketPage.globalToast).toContainText("invalid or expired deepseek API key")
     }
@@ -137,9 +137,44 @@ test.describe("Bitbucket BRI - Errors & Authorization", () => {
       await bitbucketPage.reviewButton(184).click()
       await expect(bitbucketPage.reviewModal).toBeVisible()
 
-      await bitbucketPage.generateAiReviewButton.click()
+      await bitbucketPage.triggerAiReviewButton.click()
       await expect(bitbucketPage.globalToast).toBeVisible()
       await expect(bitbucketPage.globalToast).toContainText("connection timeout")
+    }
+  )
+
+  test(
+    "BB-REV-010 engineer sees the in-modal review error and retrying issues a second request",
+    {
+      tag: ["@bitbucket", "@negative", "@review"]
+    },
+    async ({ page, bitbucketPage }) => {
+      await routeStandardPushes(page)
+      await routeSecrets(page, { hasAiKeys: true })
+      await routeStandardPRs(page)
+
+      let reviewRequestCount = 0
+      await page.route(/\/api\/bitbucket\/prs\/%23184\/ai-review/, async (route) => {
+        reviewRequestCount += 1
+        await route.fulfill({
+          status: 502,
+          json: { error: "failed to contact AI provider (deepseek): connection timeout" }
+        })
+      })
+
+      await bitbucketPage.navigateTo()
+      await bitbucketPage.reviewButton(184).click()
+      await expect(bitbucketPage.reviewModal).toBeVisible()
+
+      await bitbucketPage.triggerAiReviewButton.click()
+      await expect(bitbucketPage.aiError).toBeVisible()
+      await expect(bitbucketPage.retryAiReviewButton).toBeVisible()
+      await expect(bitbucketPage.globalToast).toContainText("connection timeout")
+      await expect.poll(() => reviewRequestCount).toBe(1)
+
+      await bitbucketPage.retryAiReviewButton.click()
+      await expect.poll(() => reviewRequestCount).toBe(2)
+      await expect(bitbucketPage.aiError).toBeVisible()
     }
   )
 })

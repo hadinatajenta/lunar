@@ -105,7 +105,7 @@ func routeFixture(t *testing.T, roots stubRouteRoots, auth func(http.Handler) ht
 	local := stubRouteLocal{repositories: []domain.RepositorySummary{{Name: "mms-api", IsGit: true}}}
 
 	mux := http.NewServeMux()
-	RegisterRepositoryRoutes(mux, auth, roots, local, issues, branches, nil)
+	RegisterRepositoryRoutes(mux, auth, roots, local, issues, branches, nil, nil)
 	return mux, issues
 }
 
@@ -165,7 +165,7 @@ func TestRepositorySuggestionsRouteReportsJiraAsUnreachable(t *testing.T) {
 	branches := stubRouteBranches{}
 	local := stubRouteLocal{repositories: []domain.RepositorySummary{{Name: "mms-api"}}}
 	mux = http.NewServeMux()
-	RegisterRepositoryRoutes(mux, authenticatedRoute, stubRouteRoots{rootPath: "/workspace"}, local, issues, branches, nil)
+	RegisterRepositoryRoutes(mux, authenticatedRoute, stubRouteRoots{rootPath: "/workspace"}, local, issues, branches, nil, nil)
 
 	response := httptest.NewRecorder()
 	mux.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/api/jira/issues/CRMMS-77911/repository-suggestions", nil))

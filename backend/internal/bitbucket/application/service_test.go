@@ -12,8 +12,8 @@ import (
 type mockBitbucketRepo struct {
 	pushes        []domain.PushBranch
 	prs           []domain.PullRequest
+	pullRequest   *domain.PullRequest
 	diff          *domain.PRDiff
-	review        *domain.AICodeReview
 	comment       *domain.PRComment
 	lastAct       string
 	createPr      *domain.PullRequest
@@ -23,12 +23,51 @@ type mockBitbucketRepo struct {
 	lastRepo      string
 }
 
+type mockCopilotReviewer struct {
+	receivedPR    *domain.PullRequest
+	receivedDiff  *domain.PRDiff
+	receivedModel string
+	review        *domain.AICodeReview
+	err           error
+}
+
+func (m *mockCopilotReviewer) ReviewPullRequest(
+	ctx context.Context,
+	userID string,
+	pr *domain.PullRequest,
+	diff *domain.PRDiff,
+	modelName string,
+) (*domain.AICodeReview, error) {
+	m.receivedPR = pr
+	m.receivedDiff = diff
+	m.receivedModel = modelName
+	if m.err != nil {
+		return nil, m.err
+	}
+	return m.review, nil
+}
+
 func (m *mockBitbucketRepo) ListPushes(ctx context.Context, pat string, filter string) ([]domain.PushBranch, error) {
 	return m.pushes, nil
 }
 
 func (m *mockBitbucketRepo) ListPullRequests(ctx context.Context, pat string, filter string) ([]domain.PullRequest, error) {
 	return m.prs, nil
+}
+
+func (m *mockBitbucketRepo) GetPullRequest(ctx context.Context, pat string, repo string, prID string) (*domain.PullRequest, error) {
+	if m.pullRequest != nil {
+		return m.pullRequest, nil
+	}
+	return &domain.PullRequest{
+		ID:           prID,
+		Repo:         repo,
+		Title:        "Rotate refresh tokens",
+		Description:  "Rotates the refresh token on every use.",
+		Author:       "Lunar Developer",
+		SourceBranch: "feat/rotate",
+		TargetBranch: "main",
+	}, nil
 }
 
 func (m *mockBitbucketRepo) GetPullRequestDiff(ctx context.Context, pat string, repo string, prID string) (*domain.PRDiff, error) {
@@ -64,15 +103,6 @@ func (m *mockBitbucketRepo) ApplyReviewAction(ctx context.Context, pat string, r
 	return nil
 }
 
-func (m *mockBitbucketRepo) GenerateAIReview(ctx context.Context, prID string, repo string) (*domain.AICodeReview, error) {
-	return &domain.AICodeReview{
-		PRID:             prID,
-		Summary:          "Good job",
-		Findings:         []string{"Finding 1"},
-		GeneratedComment: "Copilot comment",
-	}, nil
-}
-
 func (m *mockBitbucketRepo) SearchBranches(ctx context.Context, pat string, repo string, filterText string) ([]string, error) {
 	m.lastPAT = pat
 	m.lastRepo = repo
@@ -101,7 +131,24 @@ func TestBitbucketService(t *testing.T) {
 		prs: []domain.PullRequest{
 			{ID: "#1", Title: "PR 1", Status: "open"},
 		},
-		diff: &domain.PRDiff{PRID: "#1", Repo: "lunar/api-gateway"},
+		diff: &domain.PRDiff{
+			PRID: "#1",
+			Repo: "lunar/api-gateway",
+			Files: []domain.DiffFile{
+				{
+					NewPath:   "internal/auth/session.go",
+					Status:    "modified",
+					Additions: 4,
+					Deletions: 1,
+					Hunks: []domain.DiffHunk{
+						{
+							Header: "@@ -10,3 +10,6 @@",
+							Lines:  []string{" func rotate() {", "-  old()", "+  next()", " }"},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	service := NewBitbucketService(mockRepo, nil, nil)
@@ -197,13 +244,49 @@ func TestBitbucketService(t *testing.T) {
 		}
 	})
 
-	t.Run("GenerateAIReview", func(t *testing.T) {
-		review, err := service.GenerateAIReview(ctx, "usr-1", "lunar/api-gateway", "#1", "DeepSeek-V4 Pro (Thinking)")
+	t.Run("GenerateAIReviewWithoutReviewerFails", func(t *testing.T) {
+		_, err := service.GenerateAIReview(ctx, "usr-1", "lunar/api-gateway", "#1", "DeepSeek-V4 Pro (Thinking)")
+		if !errors.Is(err, sharedErrors.ErrBadGateway) {
+			t.Errorf("expected ErrBadGateway when no reviewer is configured, got %v", err)
+		}
+	})
+
+	t.Run("GenerateAIReviewCarriesPullRequestContext", func(t *testing.T) {
+		reviewer := &mockCopilotReviewer{
+			review: &domain.AICodeReview{
+				PRID:             "#1",
+				Summary:          "One blocker was found in the rotation path.",
+				Recommendation:   domain.ReviewRecommendationRequestChanges,
+				GeneratedComment: "## Code review",
+			},
+		}
+		reviewService := NewBitbucketService(mockRepo, nil, reviewer)
+
+		review, err := reviewService.GenerateAIReview(ctx, "usr-1", "lunar/api-gateway", "#1", "DeepSeek Flash")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if review.Summary != "Good job" {
+		if review.Summary != "One blocker was found in the rotation path." {
 			t.Errorf("unexpected summary: %s", review.Summary)
+		}
+		if reviewer.receivedModel != "DeepSeek Flash" {
+			t.Errorf("expected the chosen model to reach the reviewer, got %s", reviewer.receivedModel)
+		}
+		if reviewer.receivedPR == nil || reviewer.receivedPR.Description != "Rotates the refresh token on every use." {
+			t.Errorf("expected the pull request description to reach the reviewer, got %+v", reviewer.receivedPR)
+		}
+		if reviewer.receivedDiff == nil || len(reviewer.receivedDiff.Files) != 1 {
+			t.Errorf("expected the parsed diff to reach the reviewer, got %+v", reviewer.receivedDiff)
+		}
+	})
+
+	t.Run("GenerateAIReviewWithoutDiffFilesFails", func(t *testing.T) {
+		emptyRepo := &mockBitbucketRepo{diff: &domain.PRDiff{PRID: "#1", Repo: "lunar/api-gateway"}}
+		emptyService := NewBitbucketService(emptyRepo, nil, &mockCopilotReviewer{})
+
+		_, err := emptyService.GenerateAIReview(ctx, "usr-1", "lunar/api-gateway", "#1", "")
+		if !errors.Is(err, sharedErrors.ErrBadRequest) {
+			t.Errorf("expected ErrBadRequest for a pull request without files, got %v", err)
 		}
 	})
 }

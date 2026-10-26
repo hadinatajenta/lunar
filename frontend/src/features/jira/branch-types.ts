@@ -59,9 +59,12 @@ export interface SuggestionReason {
   text: string
 }
 
+export type SuggestionConfidence = "high" | "medium" | "low"
+
+export type EvidenceSource = "acceptance_criteria" | "summary" | "description"
+
 export interface RepositorySuggestion {
   repo: string
-  role?: "frontend" | "gateway" | "backend" | "unknown"
   score: number
   is_cloned: boolean
   bitbucket_project: string
@@ -75,7 +78,7 @@ export interface RepositoryCatalogue {
 
 export interface RepositorySuggestions {
   key: string
-  confidence: "high" | "medium" | "low"
+  confidence: SuggestionConfidence
   suggestions: RepositorySuggestion[]
   catalogue?: RepositoryCatalogue
   signals_unavailable: { signal: string; reason: string }[]
@@ -101,6 +104,7 @@ export interface BranchNameSuggestion {
   core?: string
   source: "model" | "fallback" | "existing"
   evidence?: string
+  evidence_source?: EvidenceSource
 }
 
 export interface CreateBranchTarget {

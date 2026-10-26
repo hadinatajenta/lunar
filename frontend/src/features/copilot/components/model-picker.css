@@ -47,6 +47,9 @@
   bottom: calc(100% + 6px);
   right: 0;
   width: 240px;
+  max-height: min(320px, 45vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 4px;
   border: 1px solid var(--border);
   border-radius: 8px;

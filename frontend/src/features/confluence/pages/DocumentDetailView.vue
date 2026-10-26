@@ -1,16 +1,26 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, watch } from "vue"
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import PageLayout from "../../../components/layout/PageLayout.vue"
 import { useSettings } from "../../settings/composables/useSettings"
+import { useCopilot } from "../../copilot/composables/useCopilot"
+import { useToast } from "../../../composables/useToast"
+import { getDefaultModel, isModelConfigured } from "../../copilot/utils/models"
 import { useConfluence } from "../composables/useConfluence"
+import { useQueryReview } from "../composables/query-review-store"
+import { useUtDocs } from "../composables/ut-docs-store"
+import { useSopDocs } from "../composables/sop-docs-store"
 import ConfluenceErrorBanners from "../components/ConfluenceErrorBanners.vue"
 import DocumentTypeBadge from "../components/DocumentTypeBadge.vue"
 import DocumentStatusPill from "../components/DocumentStatusPill.vue"
 import DocumentActionsRow from "../components/DocumentActionsRow.vue"
 import DocumentMetaGrid from "../components/DocumentMetaGrid.vue"
 import DocumentAiPanel from "../components/DocumentAiPanel.vue"
+import QueryReviewPanel from "../components/QueryReviewPanel.vue"
+import UtDocsPanel from "../components/UtDocsPanel.vue"
+import SopDocsPanel from "../components/SopDocsPanel.vue"
 import DocumentCommentsSection from "../components/DocumentCommentsSection.vue"
+import { readIssueKey } from "../utils/issue-key"
 
 const route = useRoute()
 const router = useRouter()
@@ -26,6 +36,138 @@ const {
   closeDocument,
   clearError
 } = useConfluence()
+
+const { hasConfiguredAI, configuredProviders, configuredModels, refreshConfiguredProviders } =
+  useCopilot()
+const { showToast } = useToast()
+const queryReview = useQueryReview()
+const utDocs = useUtDocs()
+const sopDocs = useSopDocs()
+
+const selectedModel = ref(getDefaultModel([]))
+
+const canGenerateSop = computed(
+  () => selectedDocument.value !== null && readIssueKey(selectedDocument.value.title) !== null
+)
+
+const isSopGenerating = computed(() => sopDocs.isLoading.value)
+
+watch(
+  configuredModels,
+  (models) => {
+    if (models.length === 0) {
+      return
+    }
+    if (!isModelConfigured(selectedModel.value, configuredProviders.value)) {
+      selectedModel.value = getDefaultModel(configuredProviders.value)
+    }
+  },
+  { immediate: true }
+)
+
+const isGenerating = computed(() => {
+  if (selectedDocument.value?.type === "query") {
+    return queryReview.isLoading.value
+  }
+  if (selectedDocument.value?.type === "ut") {
+    return utDocs.isGenerating.value
+  }
+  return false
+})
+
+const hasResult = computed(() => {
+  if (selectedDocument.value?.type === "query") {
+    return queryReview.hasResult.value
+  }
+  if (selectedDocument.value?.type === "ut") {
+    return utDocs.hasResult.value
+  }
+  return false
+})
+
+const isApplying = computed(() => {
+  if (selectedDocument.value?.type === "query") {
+    return queryReview.isApplying.value
+  }
+  if (selectedDocument.value?.type === "ut") {
+    return utDocs.isApplying.value
+  }
+  return false
+})
+
+const handleGenerate = () => {
+  const document = selectedDocument.value
+  if (document === null) {
+    return
+  }
+  if (document.type === "query") {
+    queryReview.start(document.id, selectedModel.value)
+    return
+  }
+  if (document.type === "ut") {
+    utDocs.start(document.id, selectedModel.value)
+  }
+}
+
+const handleApply = () => {
+  const document = selectedDocument.value
+  if (document === null) {
+    return
+  }
+  if (document.type === "query") {
+    queryReview.apply()
+    return
+  }
+  if (document.type === "ut") {
+    utDocs.apply()
+  }
+}
+
+const handleSopGenerate = () => {
+  const document = selectedDocument.value
+  if (document === null) {
+    return
+  }
+  sopDocs.start(document.id, selectedModel.value)
+}
+
+watch(
+  () => queryReview.applyResult.value,
+  (applied) => {
+    if (applied === null) {
+      return
+    }
+    showToast(`Query review applied to Confluence. New version ${applied.version}.`)
+  }
+)
+
+watch(
+  () => utDocs.applyResult.value,
+  (applied) => {
+    if (applied === null) {
+      return
+    }
+    showToast(`UT documentation applied to Confluence. New version ${applied.version}.`)
+  }
+)
+
+watch(
+  () => sopDocs.applyResult.value,
+  (applied) => {
+    if (applied === null) {
+      return
+    }
+    showToast(
+      `SOP pages applied to Confluence. Deploy page ${applied.deploy_page.action}, version ${applied.deploy_page.version}.`
+    )
+  }
+)
+
+const resetAiPanels = (documentId: string | null) => {
+  queryReview.resetForDocument(documentId)
+  utDocs.resetForDocument(documentId)
+  sopDocs.resetForDocument(documentId)
+}
 
 const documentId = computed(() => String(route.params.id))
 const isPatMissing = computed(() => secrets.value?.has_confluence_pat === false)
@@ -50,6 +192,8 @@ onMounted(() => {
   const settingsPromise = secrets.value ? Promise.resolve() : fetchSettings()
   initialize()
   openDocument(documentId.value)
+  resetAiPanels(documentId.value)
+  refreshConfiguredProviders()
   settingsPromise.then(() => {
     if (secrets.value?.has_confluence_pat === false) {
       clearError()
@@ -62,12 +206,14 @@ watch(
   (nextDocumentId) => {
     if (typeof nextDocumentId === "string" && nextDocumentId.length > 0) {
       openDocument(nextDocumentId)
+      resetAiPanels(nextDocumentId)
     }
   }
 )
 
 onBeforeUnmount(() => {
   closeDocument()
+  resetAiPanels(null)
 })
 </script>
 
@@ -111,7 +257,18 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="detail-actions-sticky-container">
-          <DocumentActionsRow :document="selectedDocument" />
+          <DocumentActionsRow
+            :document="selectedDocument"
+            :is-generating="isGenerating"
+            :is-applying="isApplying"
+            :has-result="hasResult"
+            :can-generate="hasConfiguredAI"
+            :can-generate-sop="canGenerateSop"
+            :is-sop-generating="isSopGenerating"
+            @generate="handleGenerate"
+            @apply="handleApply"
+            @sop-generate="handleSopGenerate"
+          />
         </div>
 
         <DocumentMetaGrid :document="selectedDocument" />
@@ -128,7 +285,22 @@ onBeforeUnmount(() => {
           ></div>
         </div>
 
-        <DocumentAiPanel />
+        <QueryReviewPanel
+          v-if="selectedDocument.type === 'query'"
+          :document="selectedDocument"
+          v-model:model="selectedModel"
+        />
+        <UtDocsPanel
+          v-else-if="selectedDocument.type === 'ut'"
+          :document="selectedDocument"
+          v-model:model="selectedModel"
+        />
+        <DocumentAiPanel v-else />
+        <SopDocsPanel
+          v-if="canGenerateSop"
+          :document="selectedDocument"
+          v-model:model="selectedModel"
+        />
         <DocumentCommentsSection />
       </div>
 
@@ -146,7 +318,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .content {
-  max-width: 900px;
+  max-width: 1440px;
   width: 100%;
   min-width: 0;
   margin: 0 auto;
@@ -283,6 +455,7 @@ onBeforeUnmount(() => {
   line-height: 1.75;
   word-break: break-word;
   overflow-wrap: anywhere;
+  overflow-x: auto;
 }
 
 .detail-body :deep(h1),
@@ -340,7 +513,7 @@ onBeforeUnmount(() => {
 .detail-body :deep(table) {
   width: 100% !important;
   max-width: 100% !important;
-  table-layout: fixed;
+  table-layout: auto;
   border-collapse: collapse;
   margin: 18px 0;
   font-size: 12px;
@@ -354,6 +527,12 @@ onBeforeUnmount(() => {
   display: none !important;
 }
 
+.detail-body :deep(th) {
+  background: var(--surface-raised);
+  font-weight: 600;
+  white-space: normal;
+}
+
 .detail-body :deep(th),
 .detail-body :deep(td) {
   padding: 10px 14px;
@@ -364,6 +543,16 @@ onBeforeUnmount(() => {
   vertical-align: top;
   color: var(--text);
   font-variant-numeric: tabular-nums;
+}
+
+.detail-body :deep(td p),
+.detail-body :deep(th p) {
+  margin: 0;
+}
+
+.detail-body :deep(td p + p),
+.detail-body :deep(th p + p) {
+  margin-top: 8px;
 }
 
 .detail-body :deep(tr:nth-child(even)) {

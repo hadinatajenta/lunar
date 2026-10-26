@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"lunar/backend/internal/postman/domain"
 	sharedHttp "lunar/backend/internal/shared/http"
 )
@@ -24,6 +26,8 @@ const (
 	maxProviderResponseSize = 8 << 20
 	maxProviderMessageSize  = 300
 	providerTemperature     = 0.2
+	openCodeGoProvider      = "opencode-go"
+	openCodeGoSessionHeader = "x-opencode-session"
 )
 
 type ProviderClient struct {
@@ -92,6 +96,9 @@ func (c *ProviderClient) Generate(ctx context.Context, request domain.GenerateRe
 	httpRequest.Header.Set("Accept", "application/json")
 	httpRequest.Header.Set("Authorization", "Bearer "+request.APIKey)
 	httpRequest.Header.Set("User-Agent", sharedHttp.ClientUserAgent)
+	if strings.EqualFold(strings.TrimSpace(request.Provider), openCodeGoProvider) {
+		httpRequest.Header.Set(openCodeGoSessionHeader, uuid.NewString())
+	}
 
 	response, err := c.httpClient.Do(httpRequest)
 	if err != nil {

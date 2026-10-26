@@ -16,6 +16,7 @@ export interface PullRequest {
   number: number
   repo: string
   title: string
+  description: string
   source_branch: string
   target_branch: string
   status: string
@@ -54,11 +55,35 @@ export interface PRDiff {
   files: DiffFile[]
 }
 
+export type ReviewSeverity = "blocker" | "suggestion" | "nitpick"
+
+export type ReviewConfidence = "confirmed" | "assumption"
+
+export type ReviewRecommendation = "approve" | "request_changes"
+
+export interface ReviewFinding {
+  severity: ReviewSeverity
+  category: string
+  file: string
+  line: number
+  title: string
+  explanation: string
+  suggested_fix: string
+  confidence: ReviewConfidence
+  evidence: string
+}
+
 export interface AICodeReview {
   pr_id: string
+  model: string
+  prompt_version: string
   summary: string
-  findings: string[]
+  findings: ReviewFinding[]
+  assumptions: string[]
+  strengths: string[]
+  recommendation: ReviewRecommendation
   generated_comment: string
+  truncated: boolean
 }
 
 export interface PRComment {

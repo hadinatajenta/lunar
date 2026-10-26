@@ -22,6 +22,11 @@ type ConfluenceDocument struct {
 	URL         string `json:"url"`
 }
 
+type ConfluencePageRef struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
+}
+
 type ConfluenceDocumentsResponse struct {
 	Documents      []ConfluenceDocument `json:"documents"`
 	Total          int                  `json:"total"`

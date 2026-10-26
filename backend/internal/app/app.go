@@ -32,9 +32,18 @@ import (
 	postmanApp "lunar/backend/internal/postman/application"
 	postmanInfra "lunar/backend/internal/postman/infrastructure"
 	postmanTransport "lunar/backend/internal/postman/transport"
+	queryReviewApp "lunar/backend/internal/queryreview/application"
+	queryReviewInfrastructure "lunar/backend/internal/queryreview/infrastructure"
+	queryReviewTransport "lunar/backend/internal/queryreview/transport"
 	sharedAuth "lunar/backend/internal/shared/auth"
 	sharedDatabase "lunar/backend/internal/shared/database"
 	sharedHttp "lunar/backend/internal/shared/http"
+	sopApp "lunar/backend/internal/sop/application"
+	sopInfra "lunar/backend/internal/sop/infrastructure"
+	sopTransport "lunar/backend/internal/sop/transport"
+	utdocsApp "lunar/backend/internal/utdocs/application"
+	utdocsInfra "lunar/backend/internal/utdocs/infrastructure"
+	utdocsTransport "lunar/backend/internal/utdocs/transport"
 	workspaceApp "lunar/backend/internal/workspace/application"
 	workspaceInfra "lunar/backend/internal/workspace/infrastructure"
 	workspaceTransport "lunar/backend/internal/workspace/transport"
@@ -109,6 +118,31 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	confluenceClient := confluenceInfra.NewConfluenceClient(cfg.ConfluenceBaseURL)
 	confluenceService := confluenceApp.NewConfluenceService(confluenceClient, authService, jiraService)
 	confluenceHandler := confluenceTransport.NewConfluenceHandler(confluenceService)
+
+	queryReviewService := queryReviewApp.NewQueryReviewService(
+		confluenceService,
+		authService,
+		queryReviewInfrastructure.NewCompareDiffSource(bitbucketClient),
+		queryReviewInfrastructure.NewDiffExtractor(),
+		queryReviewInfrastructure.NewReviewClient(llmClient, copilotService),
+	)
+	queryReviewHandler := queryReviewTransport.NewQueryReviewHandler(queryReviewService)
+
+	utdocsService := utdocsApp.NewDocumentService(
+		confluenceService,
+		utdocsInfra.NewLLMClient(llmClient, copilotService),
+	)
+	utdocsApplyService := utdocsApp.NewApplyService(confluenceService, confluenceService)
+	utdocsHandler := utdocsTransport.NewHandler(utdocsService, utdocsApplyService)
+
+	sopService := sopApp.NewService(
+		confluenceService,
+		queryReviewService,
+		sopInfra.NewHashStore(db),
+		cfg.SopBambooMap,
+		cfg.SopDatabaseMap,
+	)
+	sopHandler := sopTransport.NewHandler(sopService)
 
 	dashboardService := dashboardApp.NewDashboardService(jiraService, bitbucketService, copilotService, authService)
 	dashboardHandler := dashboardTransport.NewDashboardHandler(dashboardService)
@@ -211,6 +245,13 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 
 	mux.Handle("GET /api/confluence/documents", authMiddleware(http.HandlerFunc(confluenceHandler.ListDocuments)))
 	mux.Handle("GET /api/confluence/documents/{id}", authMiddleware(http.HandlerFunc(confluenceHandler.GetDocument)))
+	mux.Handle("POST /api/confluence/documents/{id}/query-review", authMiddleware(http.HandlerFunc(queryReviewHandler.Generate)))
+	mux.Handle("POST /api/confluence/documents/{id}/query-review/apply", authMiddleware(http.HandlerFunc(queryReviewHandler.Apply)))
+	mux.Handle("GET /api/confluence/documents/{id}/mig-targets", authMiddleware(http.HandlerFunc(queryReviewHandler.MigTargets)))
+	mux.Handle("POST /api/confluence/documents/{id}/ut-docs", authMiddleware(http.HandlerFunc(utdocsHandler.Generate)))
+	mux.Handle("POST /api/confluence/documents/{id}/ut-docs/apply", authMiddleware(http.HandlerFunc(utdocsHandler.Apply)))
+	mux.Handle("POST /api/confluence/documents/{id}/sop/generate", authMiddleware(http.HandlerFunc(sopHandler.Generate)))
+	mux.Handle("POST /api/confluence/documents/{id}/sop/apply", authMiddleware(http.HandlerFunc(sopHandler.Apply)))
 
 	mux.Handle("GET /api/dashboard/summary", authMiddleware(http.HandlerFunc(dashboardHandler.GetSummary)))
 
@@ -228,8 +269,8 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 	mux.Handle("POST /api/workspace/export", authMiddleware(http.HandlerFunc(exportHandler.Export)))
 	mux.Handle("POST /api/workspace/branches", authMiddleware(http.HandlerFunc(workspaceHandler.CreateBranches)))
 	mux.Handle("GET /api/workspace/repos/{repo}/base-branch-options", authMiddleware(http.HandlerFunc(workspaceHandler.ListBaseBranchOptions)))
-	workspaceTransport.RegisterWorkspaceReadinessRoute(mux, authMiddleware, workspaceService, workspaceGitReader, cfg.WorkspaceAllowedRoots, nil)
-	workspaceTransport.RegisterRepositoryRoutes(mux, authMiddleware, workspaceService, workspaceGitReader, jiraService, issueBranchService, workspaceApp.NewRepositoryModelRanker(jiraInfra.NewModelJSONClient(llmClient, copilotService)))
+	catalogue := workspaceTransport.RegisterRepositoryRoutes(mux, authMiddleware, workspaceService, workspaceGitReader, jiraService, issueBranchService, workspaceApp.NewRepositoryModelRanker(jiraInfra.NewModelJSONClient(llmClient, copilotService)), bitbucketService)
+	workspaceTransport.RegisterWorkspaceReadinessRoute(mux, authMiddleware, workspaceService, workspaceGitReader, cfg.WorkspaceAllowedRoots, catalogue)
 
 	handler := sharedHttp.CORSMiddleware(cfg.CORSOrigin)(loggingMiddleware(mux))
 

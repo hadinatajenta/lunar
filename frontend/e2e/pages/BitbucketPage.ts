@@ -59,16 +59,48 @@ export class BitbucketPage {
     return this.page.getByTestId("btn-submit-pr")
   }
 
+  get reviewModalOverlay() {
+    return this.page.getByTestId("review-modal-overlay")
+  }
+
   get reviewModal() {
     return this.page.getByTestId("review-modal")
+  }
+
+  get closeReviewButton() {
+    return this.page.getByTestId("btn-close-review")
+  }
+
+  get reviewModalId() {
+    return this.page.getByTestId("review-modal-id")
   }
 
   get reviewModalTitle() {
     return this.page.getByTestId("review-modal-title")
   }
 
-  get aiEmptyState() {
-    return this.page.getByTestId("ai-empty")
+  get reviewModalRepo() {
+    return this.page.getByTestId("review-modal-repo")
+  }
+
+  get reviewModalBranch() {
+    return this.page.getByTestId("review-modal-branch")
+  }
+
+  get reviewModalAuthor() {
+    return this.page.getByTestId("review-modal-author")
+  }
+
+  get reviewModalFiles() {
+    return this.page.getByTestId("review-modal-files")
+  }
+
+  get reviewFindingsTab() {
+    return this.page.getByTestId("tab-review-findings")
+  }
+
+  get reviewCommentTab() {
+    return this.page.getByTestId("tab-review-comment")
   }
 
   get toggleDiffButton() {
@@ -79,64 +111,137 @@ export class BitbucketPage {
     return this.page.getByTestId("diff-viewer")
   }
 
-  get triggerAiReviewButton() {
-    return this.page.getByTestId("btn-trigger-ai-review")
+  get diffFileList() {
+    return this.page.getByTestId("diff-file-list")
   }
 
-  get aiFindings() {
-    return this.page.getByTestId("ai-findings")
+  diffFile(index: number) {
+    return this.page.getByTestId(`diff-file-${index}`)
   }
 
-  get aiSummary() {
-    return this.page.getByTestId("ai-summary")
+  diffFileToggle(index: number) {
+    return this.page.getByTestId(`diff-file-toggle-${index}`)
   }
 
-  get reviewCommentInput() {
-    return this.page.getByTestId("input-review-comment")
-  }
-
-  get prReviewModelSelect() {
-    return this.page.getByTestId("pr-review-model-select")
+  get aiPanel() {
+    return this.page.getByTestId("ai-panel")
   }
 
   get noAiKeysBanner() {
     return this.page.getByTestId("banner-no-ai-keys")
   }
 
+  get aiEmptyState() {
+    return this.page.getByTestId("ai-empty")
+  }
+
+  get aiLoading() {
+    return this.page.getByTestId("ai-loading")
+  }
+
+  get aiError() {
+    return this.page.getByTestId("ai-error")
+  }
+
+  get retryAiReviewButton() {
+    return this.page.getByTestId("btn-retry-ai-review")
+  }
+
+  get aiSummary() {
+    return this.page.getByTestId("ai-summary")
+  }
+
+  get aiRecommendation() {
+    return this.page.getByTestId("ai-recommendation")
+  }
+
+  get aiFindings() {
+    return this.page.getByTestId("ai-findings")
+  }
+
+  get aiGroupBlocker() {
+    return this.page.getByTestId("ai-group-blocker")
+  }
+
+  get aiGroupSuggestion() {
+    return this.page.getByTestId("ai-group-suggestion")
+  }
+
+  get aiGroupNitpick() {
+    return this.page.getByTestId("ai-group-nitpick")
+  }
+
+  aiFinding(index: number) {
+    return this.page.getByTestId(`ai-finding-${index}`)
+  }
+
+  get aiAssumptions() {
+    return this.page.getByTestId("ai-assumptions")
+  }
+
+  get aiStrengths() {
+    return this.page.getByTestId("ai-strengths")
+  }
+
+  get aiTruncatedNotice() {
+    return this.page.getByTestId("ai-truncated-notice")
+  }
+
+  get triggerAiReviewButton() {
+    return this.page.getByTestId("btn-trigger-ai-review")
+  }
+
+  get reviewCommentInput() {
+    return this.page.getByTestId("input-review-comment")
+  }
+
+  get toggleCommentPreviewButton() {
+    return this.page.getByTestId("btn-toggle-comment-preview")
+  }
+
+  get commentPreview() {
+    return this.page.getByTestId("comment-preview")
+  }
+
   get sendCommentButton() {
     return this.page.getByTestId("btn-send-comment")
   }
 
-  get postCommentButton() {
-    return this.sendCommentButton
+  get prReviewModelTrigger() {
+    return this.page.getByTestId("pr-review-model-trigger")
+  }
+
+  get prReviewModelRootOption() {
+    return this.page.getByTestId("review-modal").getByTestId("model-root-option-model")
+  }
+
+  get prReviewModelMenu() {
+    return this.page.getByTestId("review-modal").locator(".model-menu")
+  }
+
+  prReviewModelOption(modelName: string) {
+    return this.prReviewModelMenu.getByRole("button", { name: modelName, exact: true })
+  }
+
+  async openReviewModelPicker() {
+    await this.prReviewModelTrigger.click()
+    await this.prReviewModelRootOption.click()
   }
 
   approveButton() {
     return this.page.getByTestId("btn-action-approve")
   }
 
-  get approvePrButton() {
-    return this.approveButton()
+  needsWorkButton() {
+    return this.page.getByTestId("btn-action-needs-work")
   }
 
-  get generateAiReviewButton() {
-    return this.triggerAiReviewButton
+  declineButton() {
+    return this.page.getByTestId("btn-action-decline")
   }
 
-  get prReviewNoAiWarning() {
-    return this.noAiKeysBanner
-  }
-
-  get diffContainer() {
-    return this.diffViewer
-  }
-
-  get aiReviewFindings() {
-    return this.aiFindings
-  }
-
-  get reviewCommentTextarea() {
-    return this.reviewCommentInput
+  get confirmAcceptButton() {
+    return this.page.getByTestId("confirm-accept")
   }
 
   get globalToast() {

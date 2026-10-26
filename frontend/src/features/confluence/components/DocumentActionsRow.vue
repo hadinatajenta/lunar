@@ -1,17 +1,27 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue"
+import { computed } from "vue"
 import type { ConfluenceDocument } from "../types"
 import { useToast } from "../../../composables/useToast"
 
 interface Props {
   document: ConfluenceDocument
+  isGenerating: boolean
+  isApplying: boolean
+  hasResult: boolean
+  canGenerate: boolean
+  canGenerateSop: boolean
+  isSopGenerating: boolean
 }
 
 const props = defineProps<Props>()
 
-const { showToast } = useToast()
+const emit = defineEmits<{
+  (event: "generate"): void
+  (event: "apply"): void
+  (event: "sop-generate"): void
+}>()
 
-const hasGeneratedAi = ref(false)
+const { showToast } = useToast()
 
 const generateLabel = computed(() => {
   if (props.document.type === "ut") {
@@ -23,14 +33,19 @@ const generateLabel = computed(() => {
   return "Generate with AI"
 })
 
-const isSopDocument = computed(() => props.document.type === "sop")
-
-watch(
-  () => props.document.id,
-  () => {
-    hasGeneratedAi.value = false
+const busyLabel = computed(() => {
+  if (props.document.type === "ut") {
+    return "Generating UT docs…"
   }
-)
+  if (props.document.type === "query") {
+    return "Extracting query review…"
+  }
+  return "Generating…"
+})
+
+const isGenerateDisabled = computed(() => !props.canGenerate || props.isGenerating)
+
+const isSopDocument = computed(() => props.document.type === "sop")
 
 const handleOpenConfluence = () => {
   if (!props.document.url) {
@@ -41,12 +56,26 @@ const handleOpenConfluence = () => {
 }
 
 const handleGenerate = () => {
-  hasGeneratedAi.value = true
-  showToast(`${generateLabel.value} completed. Actions are now available.`)
+  if (isGenerateDisabled.value) {
+    return
+  }
+  emit("generate")
 }
 
+const isApplyDisabled = computed(() => !props.hasResult || props.isApplying)
+
 const handleApply = () => {
-  showToast("Instant apply is ready for backend wiring.")
+  if (isApplyDisabled.value) {
+    return
+  }
+  emit("apply")
+}
+
+const handleSopGenerate = () => {
+  if (props.isSopGenerating) {
+    return
+  }
+  emit("sop-generate")
 }
 
 const handleCopy = async () => {
@@ -95,9 +124,12 @@ const handleMore = () => {
       class="btn btn-ai"
       type="button"
       data-testid="detail-generate"
+      :disabled="isGenerateDisabled"
+      :aria-busy="props.isGenerating"
       @click="handleGenerate"
     >
-      <svg viewBox="0 0 24 24" aria-hidden="true">
+      <span v-if="props.isGenerating" class="btn-spinner" aria-hidden="true"></span>
+      <svg v-else viewBox="0 0 24 24" aria-hidden="true">
         <path d="M12 3v3"></path>
         <path d="M12 18v3"></path>
         <path d="m5.6 5.6 2.1 2.1"></path>
@@ -108,7 +140,26 @@ const handleMore = () => {
         <path d="m16.3 7.7 2.1-2.1"></path>
         <circle cx="12" cy="12" r="3.5"></circle>
       </svg>
-      {{ generateLabel }}
+      {{ props.isGenerating ? busyLabel : generateLabel }}
+    </button>
+
+    <button
+      v-if="props.canGenerateSop"
+      class="btn btn-ghost"
+      type="button"
+      data-testid="detail-generate-sop"
+      :disabled="props.isSopGenerating"
+      :aria-busy="props.isSopGenerating"
+      @click="handleSopGenerate"
+    >
+      <span v-if="props.isSopGenerating" class="btn-spinner" aria-hidden="true"></span>
+      <svg v-else viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"></path>
+        <path d="M14 3v5h5"></path>
+        <path d="M9 13h6"></path>
+        <path d="M9 17h6"></path>
+      </svg>
+      {{ props.isSopGenerating ? "Generating SOP…" : "Generate SOP Deploy & Operasional" }}
     </button>
 
     <button
@@ -116,10 +167,12 @@ const handleMore = () => {
       class="btn btn-ghost"
       type="button"
       data-testid="detail-apply"
-      :disabled="!hasGeneratedAi"
+      :disabled="isApplyDisabled"
+      :aria-busy="props.isApplying"
       @click="handleApply"
     >
-      <svg viewBox="0 0 24 24" aria-hidden="true">
+      <span v-if="props.isApplying" class="btn-spinner" aria-hidden="true"></span>
+      <svg v-else viewBox="0 0 24 24" aria-hidden="true">
         <path d="M20 6 9 17l-5-5"></path>
       </svg>
       Instant apply
@@ -130,7 +183,7 @@ const handleMore = () => {
       class="btn btn-ghost"
       type="button"
       data-testid="detail-copy"
-      :disabled="!hasGeneratedAi"
+      :disabled="!props.hasResult"
       @click="handleCopy"
     >
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -195,10 +248,15 @@ const handleMore = () => {
   white-space: nowrap;
   cursor: pointer;
   transition:
-    background-color 160ms ease,
-    border-color 160ms ease,
-    color 160ms ease,
-    opacity 160ms ease;
+    background-color 160ms cubic-bezier(0.2, 0.7, 0.3, 1),
+    border-color 160ms cubic-bezier(0.2, 0.7, 0.3, 1),
+    color 160ms cubic-bezier(0.2, 0.7, 0.3, 1),
+    opacity 160ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .btn svg {
@@ -209,6 +267,22 @@ const handleMore = () => {
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.btn-spinner {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: btn-spin 700ms linear infinite;
+}
+
+@keyframes btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .btn-primary {
@@ -248,13 +322,13 @@ const handleMore = () => {
 }
 
 .btn-ai {
-  border-color: rgba(159, 182, 166, 0.32);
-  background: rgba(159, 182, 166, 0.09);
-  color: #c1d4c5;
+  border-color: color-mix(in srgb, var(--positive) 45%, transparent);
+  background: color-mix(in srgb, var(--positive) 12%, transparent);
+  color: var(--positive);
 }
 
-.btn-ai:hover {
-  background: rgba(159, 182, 166, 0.16);
+.btn-ai:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--positive) 20%, transparent);
 }
 
 .icon-btn {
@@ -266,18 +340,22 @@ const handleMore = () => {
   border-radius: 8px;
   background: var(--surface);
   color: var(--muted);
-  color: var(--muted);
   cursor: pointer;
   transition:
-    background-color 150ms ease,
-    color 150ms ease,
-    border-color 150ms ease;
+    background-color 150ms cubic-bezier(0.2, 0.7, 0.3, 1),
+    color 150ms cubic-bezier(0.2, 0.7, 0.3, 1),
+    border-color 150ms cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 
 .icon-btn:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-hover);
   border-color: var(--border-strong);
   color: var(--text);
+}
+
+.icon-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .icon-btn svg {

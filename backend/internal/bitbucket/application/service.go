@@ -11,7 +11,7 @@ import (
 )
 
 type CopilotReviewer interface {
-	ReviewPullRequest(ctx context.Context, userID string, repo string, prID string, diffText string, modelName string) (*domain.AICodeReview, error)
+	ReviewPullRequest(ctx context.Context, userID string, pr *domain.PullRequest, diff *domain.PRDiff, modelName string) (*domain.AICodeReview, error)
 }
 
 type BitbucketService struct {
@@ -109,30 +109,26 @@ func (s *BitbucketService) GenerateAIReview(ctx context.Context, userID string, 
 	if strings.TrimSpace(prID) == "" {
 		return nil, fmt.Errorf("%w: pull request id is required", sharedErrors.ErrBadRequest)
 	}
-
-	if s.copilotReviewer != nil {
-		pat, _ := s.resolveUserPAT(ctx, userID)
-		diff, err := s.repo.GetPullRequestDiff(ctx, pat, repo, prID)
-		if err == nil && diff != nil {
-			var sb strings.Builder
-			for _, file := range diff.Files {
-				sb.WriteString(fmt.Sprintf("File: %s (+%d -%d)\n", file.NewPath, file.Additions, file.Deletions))
-				for _, hunk := range file.Hunks {
-					sb.WriteString(hunk.Header + "\n")
-					for _, line := range hunk.Lines {
-						sb.WriteString(line + "\n")
-					}
-				}
-			}
-			diffText := sb.String()
-			if strings.TrimSpace(diffText) == "" {
-				diffText = fmt.Sprintf("PR %s in %s with %d files", prID, repo, diff.TotalAdded)
-			}
-			return s.copilotReviewer.ReviewPullRequest(ctx, userID, repo, prID, diffText, model)
-		}
+	if s.copilotReviewer == nil {
+		return nil, fmt.Errorf("%w: no AI reviewer is configured", sharedErrors.ErrBadGateway)
 	}
 
-	return s.repo.GenerateAIReview(ctx, prID, repo)
+	pat, _ := s.resolveUserPAT(ctx, userID)
+
+	diff, err := s.repo.GetPullRequestDiff(ctx, pat, repo, prID)
+	if err != nil {
+		return nil, err
+	}
+	if diff == nil || len(diff.Files) == 0 {
+		return nil, fmt.Errorf("%w: pull request %s has no diff files to review", sharedErrors.ErrBadRequest, prID)
+	}
+
+	pullRequest, err := s.repo.GetPullRequest(ctx, pat, repo, prID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.copilotReviewer.ReviewPullRequest(ctx, userID, pullRequest, diff, model)
 }
 
 func (s *BitbucketService) ResetSeedData() {

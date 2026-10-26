@@ -2,7 +2,8 @@ import type {
   BranchNameSuggestion,
   CreateBranchesResponse,
   IssueBranchMatch,
-  RepositorySuggestion
+  RepositorySuggestion,
+  SuggestionConfidence
 } from "../branch-types"
 import { describeBranchFailure, existingBranchFromSkipReason } from "./branch-failure.ts"
 
@@ -15,6 +16,7 @@ export interface BranchTarget {
   isCloned: boolean
   reasons: string[]
   isManual: boolean
+  isRecommended: boolean
 }
 
 export interface ExistingBranch {
@@ -33,6 +35,7 @@ export interface BranchPlanState {
   issueKey: string
   branchName: string
   branchNameEvidence: string
+  branchNameEvidenceSource: string
   branchNameSource: string
   isBranchNameEdited: boolean
   targets: BranchTarget[]
@@ -48,6 +51,7 @@ export const createBranchPlan = (issueKey: string): BranchPlanState => ({
   issueKey,
   branchName: "",
   branchNameEvidence: "",
+  branchNameEvidenceSource: "",
   branchNameSource: "",
   isBranchNameEdited: false,
   targets: [],
@@ -81,19 +85,25 @@ export const setTargetExcluded = (
 
 export const seedSuggestedTargets = (
   plan: BranchPlanState,
-  suggestions: RepositorySuggestion[]
+  suggestions: RepositorySuggestion[],
+  confidence: SuggestionConfidence | null
 ): void => {
-  for (const suggestion of suggestions) {
+  suggestions.forEach((suggestion, index) => {
     if (findTarget(plan, suggestion.repo) !== null) {
-      continue
+      return
     }
+    const isRecommended = confidence === "high" && index === 0
     plan.targets.push({
       repo: suggestion.repo,
       isCloned: suggestion.is_cloned,
       reasons: suggestion.reasons.map((reason) => reason.text),
-      isManual: false
+      isManual: false,
+      isRecommended
     })
-  }
+    if (!isRecommended) {
+      plan.excluded[suggestion.repo] = true
+    }
+  })
 }
 
 export const addManualTarget = (
@@ -104,7 +114,7 @@ export const addManualTarget = (
   if (findTarget(plan, repo) !== null) {
     return
   }
-  plan.targets.push({ repo, isCloned, reasons: [], isManual: true })
+  plan.targets.push({ repo, isCloned, reasons: [], isManual: true, isRecommended: false })
 }
 
 export const applyBranchName = (
@@ -117,6 +127,28 @@ export const applyBranchName = (
   plan.branchName = suggestion.branch
   plan.branchNameSource = suggestion.source
   plan.branchNameEvidence = suggestion.evidence ?? ""
+  plan.branchNameEvidenceSource = suggestion.evidence_source ?? ""
+}
+
+const EVIDENCE_LABELS: Record<string, string> = {
+  acceptance_criteria: "the acceptance criteria",
+  summary: "the summary",
+  description: "the description"
+}
+
+export const branchNameEvidencePrefix = (plan: BranchPlanState): string => {
+  const label = EVIDENCE_LABELS[plan.branchNameEvidenceSource] ?? "the issue"
+  if (plan.branchNameSource === "model") {
+    return `Read from ${label}:`
+  }
+  if (plan.branchNameSource === "fallback") {
+    return `The model was not asked, so this came from ${label}:`
+  }
+  return ""
+}
+
+export const branchNameEvidenceSuffix = (plan: BranchPlanState): string => {
+  return plan.branchNameSource === "fallback" ? "Ask the model to improve it." : ""
 }
 
 export const editBranchName = (plan: BranchPlanState, branch: string): void => {

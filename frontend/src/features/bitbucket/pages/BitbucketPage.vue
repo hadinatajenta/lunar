@@ -26,6 +26,7 @@ const {
   isSubmittingPR,
   isPostingComment,
   error,
+  aiReviewError,
   loadPushes,
   loadPullRequests,
   loadDiff,
@@ -33,6 +34,7 @@ const {
   submitPullRequest,
   sendPRComment,
   executeReviewAction,
+  clearAIReview,
 } = useBitbucket()
 
 const selectedPushForPr = ref<PushBranch | null>(null)
@@ -74,7 +76,7 @@ const handleSubmitPr = async (payload: CreatePRPayload) => {
 
 const handleOpenReview = async (pr: PullRequest) => {
   selectedPrForReview.value = pr
-  activeAIReview.value = null
+  clearAIReview()
   await loadDiff(pr.id, pr.repo)
 }
 
@@ -82,13 +84,11 @@ const handleCloseReview = () => {
   selectedPrForReview.value = null
 }
 
-const handleTriggerAI = async (payload: { pr: PullRequest; model?: string } | PullRequest) => {
-  const pr = "pr" in payload ? payload.pr : payload
-  const model = "model" in payload ? payload.model : undefined
+const handleTriggerAI = async (payload: { pr: PullRequest; model: string }) => {
   try {
-    const result = await requestAIReview(pr.id, pr.repo, model)
+    const result = await requestAIReview(payload.pr.id, payload.pr.repo, payload.model)
     if (result) {
-      showToast("AI review generated. Edit and send it as a comment.")
+      showToast("AI review generated. Read the findings, then post the comment.")
     }
   } catch (err) {
     showToast(err instanceof Error ? err.message : "Failed to generate AI review")
@@ -167,8 +167,10 @@ const handleReviewAction = async (payload: { pr: PullRequest; action: string }) 
         :loading-diff="isLoadingDiff"
         :loading-a-i="isGeneratingAI"
         :posting-comment="isPostingComment"
+        :review-error="aiReviewError"
         @close="handleCloseReview"
         @trigger-ai="handleTriggerAI"
+        @retry-ai="handleTriggerAI"
         @send-comment="handleSendComment"
         @review-action="handleReviewAction"
       />

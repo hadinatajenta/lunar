@@ -33,6 +33,7 @@ export function useBitbucket() {
   const isPostingComment = ref(false)
 
   const error = ref<string | null>(null)
+  const aiReviewError = ref<string | null>(null)
 
   const loadPushes = async (filter = pushFilter.value) => {
     pushFilter.value = filter
@@ -77,17 +78,23 @@ export function useBitbucket() {
   ): Promise<AICodeReview | null> => {
     isGeneratingAI.value = true
     error.value = null
+    aiReviewError.value = null
     try {
       const review = await generateAIReview(prId, repo, model)
       activeAIReview.value = review
       return review
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to generate AI review"
-      error.value = message
+      aiReviewError.value = message
       throw err
     } finally {
       isGeneratingAI.value = false
     }
+  }
+
+  const clearAIReview = () => {
+    activeAIReview.value = null
+    aiReviewError.value = null
   }
 
   const submitPullRequest = async (payload: CreatePRPayload): Promise<PullRequest> => {
@@ -152,6 +159,7 @@ export function useBitbucket() {
     isSubmittingPR,
     isPostingComment,
     error,
+    aiReviewError,
     loadPushes,
     loadPullRequests,
     loadDiff,
@@ -159,5 +167,6 @@ export function useBitbucket() {
     submitPullRequest,
     sendPRComment,
     executeReviewAction,
+    clearAIReview,
   }
 }

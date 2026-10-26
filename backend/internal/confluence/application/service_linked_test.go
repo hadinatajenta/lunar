@@ -68,6 +68,26 @@ func (r *spyRepository) GetDocumentsByIDs(ctx context.Context, pat string, docum
 	return r.inner.GetDocumentsByIDs(ctx, pat, documentIDs)
 }
 
+func (r *spyRepository) GetPageAncestors(ctx context.Context, pat string, pageID string) ([]domain.ConfluencePageRef, error) {
+	return r.inner.GetPageAncestors(ctx, pat, pageID)
+}
+
+func (r *spyRepository) GetChildPages(ctx context.Context, pat string, pageID string) ([]domain.ConfluencePageRef, error) {
+	return r.inner.GetChildPages(ctx, pat, pageID)
+}
+
+func (r *spyRepository) GetPageStorage(ctx context.Context, pat string, pageID string) (string, error) {
+	return r.inner.GetPageStorage(ctx, pat, pageID)
+}
+
+func (r *spyRepository) UpdatePageStorage(ctx context.Context, pat string, pageID string, storage string) (int, string, error) {
+	return r.inner.UpdatePageStorage(ctx, pat, pageID, storage)
+}
+
+func (r *spyRepository) UploadAttachment(ctx context.Context, pat string, pageID string, filename string, content []byte, mediaType string) (string, error) {
+	return r.inner.UploadAttachment(ctx, pat, pageID, filename, content, mediaType)
+}
+
 type stubVaultRepo struct {
 	secrets map[string]*authDomain.UserSecrets
 }

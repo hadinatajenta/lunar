@@ -193,6 +193,16 @@ export const extractDiagramTitle = (source: string, language: string): string =>
   return subject.length > 0 ? `${label}: ${subject}` : label
 }
 
+const removeMermaidErrorNode = (renderId: string): void => {
+  if (typeof document === "undefined") return
+  for (const id of [renderId, `d${renderId}`]) {
+    const element = document.getElementById(id)
+    if (element !== null && element.parentElement !== null) {
+      element.parentElement.removeChild(element)
+    }
+  }
+}
+
 export const renderDiagram = async (source: string, isDark: boolean): Promise<string> => {
   const module = await loadMermaid()
   const mermaid = module.default
@@ -200,6 +210,7 @@ export const renderDiagram = async (source: string, isDark: boolean): Promise<st
   mermaid.initialize({
     startOnLoad: false,
     securityLevel: "strict",
+    suppressErrorRendering: true,
     theme: isDark ? "dark" : "neutral",
     fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif",
     flowchart: { htmlLabels: false },
@@ -208,6 +219,11 @@ export const renderDiagram = async (source: string, isDark: boolean): Promise<st
 
   renderSequence += 1
   const renderId = `lunar-diagram-${renderSequence}`
-  const { svg } = await mermaid.render(renderId, source)
-  return sanitizeDiagramSvg(svg)
+  try {
+    const { svg } = await mermaid.render(renderId, source)
+    return sanitizeDiagramSvg(svg)
+  } catch (thrownError) {
+    removeMermaidErrorNode(renderId)
+    throw thrownError
+  }
 }

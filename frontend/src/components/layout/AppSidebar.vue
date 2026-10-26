@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import { useAuth } from "../../features/auth/composables/useAuth"
 import SidebarNavIcon from "./SidebarNavIcon.vue"
 import { useMainSidebar } from "./useMainSidebar"
+import { useFocusTrap } from "../../composables/useFocusTrap"
 
 const route = useRoute()
 const router = useRouter()
@@ -55,7 +56,6 @@ const navItems = [
 ]
 
 const narrowViewportQuery = window.matchMedia("(max-width: 768px)")
-const focusableSelector = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])'
 
 const isNarrowViewport = ref(narrowViewportQuery.matches)
 const sidebarElement = ref<HTMLElement | null>(null)
@@ -86,37 +86,7 @@ const userInitials = computed(() => {
   return user.value.full_name.slice(0, 2).toUpperCase()
 })
 
-const collectFocusableElements = (): HTMLElement[] => {
-  const root = sidebarElement.value
-  if (root === null) return []
-  return Array.from(root.querySelectorAll<HTMLElement>(focusableSelector)).filter(
-    (element) => element.getClientRects().length > 0
-  )
-}
-
-const trapDrawerFocus = (event: KeyboardEvent): void => {
-  const focusableElements = collectFocusableElements()
-  if (focusableElements.length === 0) return
-  const firstElement = focusableElements[0]
-  const lastElement = focusableElements[focusableElements.length - 1]
-  const activeElement = document.activeElement
-  const isOutsideDrawer = sidebarElement.value !== null && !sidebarElement.value.contains(activeElement)
-  if (event.shiftKey && (activeElement === firstElement || isOutsideDrawer)) {
-    event.preventDefault()
-    lastElement.focus()
-    return
-  }
-  if (!event.shiftKey && (activeElement === lastElement || isOutsideDrawer)) {
-    event.preventDefault()
-    firstElement.focus()
-  }
-}
-
 const handleDrawerKeydown = (event: KeyboardEvent): void => {
-  if (event.key === "Tab") {
-    trapDrawerFocus(event)
-    return
-  }
   if (event.key !== "Escape") return
   event.preventDefault()
   closeMobileMenu()
@@ -157,16 +127,15 @@ watch(isModalDrawer, (isOpen) => {
   document.body.style.overflow = previousBodyOverflow
 })
 
-watch(isMobileMenuOpen, async (isOpen) => {
-  if (!isOpen) {
-    window.removeEventListener("keydown", handleDrawerKeydown, true)
+watch(isMobileMenuOpen, (isOpen) => {
+  if (isOpen) {
+    window.addEventListener("keydown", handleDrawerKeydown, true)
     return
   }
-  window.addEventListener("keydown", handleDrawerKeydown, true)
-  await nextTick()
-  const firstElement = collectFocusableElements()[0]
-  if (firstElement !== undefined) firstElement.focus()
+  window.removeEventListener("keydown", handleDrawerKeydown, true)
 })
+
+useFocusTrap(sidebarElement, isModalDrawer)
 
 onMounted(() => {
   if (isNarrowViewport.value) resetMobileMenu()

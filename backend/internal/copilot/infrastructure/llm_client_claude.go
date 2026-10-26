@@ -12,6 +12,21 @@ import (
 	sharedErrors "lunar/backend/internal/shared/errors"
 )
 
+const (
+	claudeDefaultMaxTokens = 4096
+	claudeMaxOutputTokens  = 8192
+)
+
+func claudeOutputTokenCap(requested int) int {
+	if requested <= 0 {
+		return claudeDefaultMaxTokens
+	}
+	if requested > claudeMaxOutputTokens {
+		return claudeMaxOutputTokens
+	}
+	return requested
+}
+
 func (c *LLMClient) callClaudeAPI(
 	ctx context.Context,
 	apiKey string,
@@ -19,12 +34,13 @@ func (c *LLMClient) callClaudeAPI(
 	prompt string,
 	systemPrompt string,
 	thinking bool,
+	maxOutputTokens int,
 ) (string, string, error) {
 	endpoint := "https://api.anthropic.com/v1/messages"
 
 	payload := map[string]any{
 		"model":      model,
-		"max_tokens": 4096,
+		"max_tokens": claudeOutputTokenCap(maxOutputTokens),
 		"messages": []map[string]string{
 			{"role": "user", "content": prompt},
 		},

@@ -44,10 +44,11 @@ deciding it requires.
 - [ ] **B.6 `AiProvidersSettings.vue` is 493 lines.**
   Above the 300-line limit, pre-existing. The natural split is one component per provider.
 
-- [ ] **B.7 `DocumentActionsRow.vue` contains toast-only stubs.**
-  Actions such as "Extract query review" and "Instant apply" show a message saying the feature is
-  ready for backend wiring, and do nothing. Either wire them or remove them so the UI does not
-  promise a capability that does not exist.
+- [ ] **B.7 `DocumentActionsRow.vue` still has toast-only stubs.**
+  "Extract query review", "Generate UT Docs With AI", and "Instant apply" for query review and UT
+  documents are wired to real endpoints. Edit, Share, and More remain stubs that show a message and
+  do nothing. Either wire them or remove them so the UI does not promise a capability that does not
+  exist.
 
 - [ ] **B.8 `enabled` field in the Copilot `defaultDomains` is dead data.**
   It is never read anywhere. It should either be consumed by `loadEnabledDomains()` or removed, so
@@ -105,3 +106,38 @@ deciding it requires.
 - [ ] **B.17 The export file selector is bounded by the file and byte caps on the RESULT, but not by a context or an entry cap, so a pathological tree is traversed in full. Measured at 29.5ms for 20,000 entries, so low severity; a context-aware Select would bound it honestly.**
 - [ ] **B.18 With no provider key the export control area shows a disabled button rather than the Choose AI model radiogroup, so the accessible name differs from the unlocked state. Visible-but-disabled and the Settings link both hold.**
 - [ ] **B.19 The Microservices page walks all 34 workspace repositories on load, slowly enough that e2e specs time out under parallel load. The page specs now mock the board, so product behaviour is unaffected.**
+- [ ] **B.20 Reasoning effort is not sent on the OpenAI-compatible transport.**
+  `ChatCompletion` receives `domain.ReasoningEffort` and uses it only to synthesise a fallback
+  reasoning string. DeepSeek reads `thinking.reasoning_effort`, and the review path passes
+  `ReasoningEffortMedium`, so the setting currently changes nothing for DeepSeek, OpenAI, Gemini, and
+  MiMo. The Copilot Effort control and the review's effort therefore do not reach the model.
+- [ ] **B.21 No output cap is sent to Gemini, MiMo, or OpenCode Go.**
+  Their limits are not documented in this repository, so no `max_tokens` is set rather than guessing
+  one. DeepSeek, OpenAI, and Claude now carry an explicit cap. Confirm the documented limit per
+  provider, then set it.
+- [ ] **B.22 Review prompt `pr-review-v2` has no evaluation set.**
+  It is a behaviour change with no fixture set measuring it against `pr-review-v1`. The unit tests
+  cover the deterministic parts (diff numbering, language and test detection, the budget, the
+  citation check, the comment assembly, the client options), not model quality. A small set of real
+  diffs with expected severities is what a future prompt change needs.
+- [ ] **B.23 A review cannot see tests, the linked issue, or the repository beyond the diff.**
+  The prompt states plainly that the diff is the only evidence and makes the model record anything
+  else as an assumption. Raising the ceiling means giving the review real context: the changed test
+  files, the linked Jira issue, and the surrounding file bodies from the code index. Backlog entry
+  B.4 (real Jira, Bitbucket, and Confluence agent tools) is the same underlying gap.
+- [ ] **B.24 `CP-SESSION-001` never confirms the delete dialog, so it cannot pass.**
+  Verified by running the suite on 2026-10-06: the spec clicks the history delete control and then
+  waits for `.empty-history-notice`, but deleting a conversation has asked for confirmation in a
+  `ConfirmDialog` since 2026-10-03, and the dialog defaults to Cancel on purpose. The spec needs to
+  confirm through `confirm-accept` before asserting the empty state. Unrelated to the Bitbucket work,
+  and left unfixed because it belongs to the Copilot suite.
+- [ ] **B.26 Three Confluence AI components exceed the 300-line rule.**
+  `QueryReviewPanel.vue` is 556 lines, `QueryReviewRepositoryCard.vue` is 367, and `UtDocsPanel.vue`
+  is 770, and they repeat the same panel chrome (`.ai-output`, `.ai-badge`, `.ai-notice*`,
+  `.ai-button*`, `.ai-spinner`, the spinner keyframes). They need a shared panel component and
+  stylesheet. Recorded instead of refactored in the feature change because the split touches both
+  panels and their Playwright specs at once.
+- [x] **B.25 Confluence write-back for the UT document and its screenshot.** Closed on 2026-10-08.
+  `POST /api/confluence/documents/{id}/ut-docs/apply` uploads each repository's run screenshot as an
+  attachment on the `<KEY>-UT` page, replaces the `Normal Test Scenario` table, and updates the page
+  with `version.number + 1`. The query review apply path stays as it was.
