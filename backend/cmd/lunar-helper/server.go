@@ -50,46 +50,52 @@ const (
 var defaultHelperOrigins = []string{"http://localhost:5174", "http://127.0.0.1:5174"}
 
 type helperServer struct {
-	reader           domain.GitReader
-	operator         domain.GitOperator
-	indexStore       codeindexdomain.IndexStore
-	indexer          *codeindexapplication.Indexer
-	allowedRoots     []string
-	token            string
-	version          string
-	logger           *slog.Logger
-	buildTracker     indexBuildTracker
-	buildContext     context.Context
-	buildCancel      context.CancelFunc
-	baseBranchMemory *workspaceapplication.RememberedBaseMemory
+	reader                domain.GitReader
+	operator              domain.GitOperator
+	indexStore            codeindexdomain.IndexStore
+	indexer               *codeindexapplication.Indexer
+	knowledgeLoader       codeindexapplication.KnowledgeLoader
+	knowledgeGlossaryPath string
+	allowedRoots          []string
+	token                 string
+	version               string
+	logger                *slog.Logger
+	buildTracker          indexBuildTracker
+	buildContext          context.Context
+	buildCancel           context.CancelFunc
+	baseBranchMemory      *workspaceapplication.RememberedBaseMemory
 }
 
 type helperDependencies struct {
-	reader         domain.GitReader
-	operator       domain.GitOperator
-	indexStore     codeindexdomain.IndexStore
-	indexer        *codeindexapplication.Indexer
-	allowedRoots   []string
-	token          string
-	allowedOrigins []string
-	version        string
-	logger         *slog.Logger
+	reader                domain.GitReader
+	operator              domain.GitOperator
+	indexStore            codeindexdomain.IndexStore
+	indexer               *codeindexapplication.Indexer
+	knowledgeLoader       codeindexapplication.KnowledgeLoader
+	knowledgeGlossaryPath string
+	allowedRoots          []string
+	token                 string
+	allowedOrigins        []string
+	version               string
+	logger                *slog.Logger
 }
 
 func newHelperHandler(dependencies helperDependencies) (http.Handler, func()) {
 	buildContext, buildCancel := context.WithCancel(context.Background())
 	server := &helperServer{
-		reader:           dependencies.reader,
-		operator:         dependencies.operator,
-		indexStore:       dependencies.indexStore,
-		indexer:          dependencies.indexer,
-		allowedRoots:     dependencies.allowedRoots,
-		token:            dependencies.token,
-		version:          dependencies.version,
-		logger:           dependencies.logger,
-		buildContext:     buildContext,
-		buildCancel:      buildCancel,
-		baseBranchMemory: workspaceapplication.NewRememberedBaseMemory(),
+		reader:                dependencies.reader,
+		operator:              dependencies.operator,
+		indexStore:            dependencies.indexStore,
+		indexer:               dependencies.indexer,
+		knowledgeLoader:       dependencies.knowledgeLoader,
+		knowledgeGlossaryPath: dependencies.knowledgeGlossaryPath,
+		allowedRoots:          dependencies.allowedRoots,
+		token:                 dependencies.token,
+		version:               dependencies.version,
+		logger:                dependencies.logger,
+		buildContext:          buildContext,
+		buildCancel:           buildCancel,
+		baseBranchMemory:      workspaceapplication.NewRememberedBaseMemory(),
 	}
 
 	mux := http.NewServeMux()

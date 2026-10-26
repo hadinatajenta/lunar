@@ -11,6 +11,7 @@ import (
 	"time"
 
 	codeindexapplication "lunar/backend/internal/codeindex/application"
+	codeindexinfrastructure "lunar/backend/internal/codeindex/infrastructure"
 	"lunar/backend/internal/config"
 	"lunar/backend/internal/workspace/infrastructure"
 )
@@ -66,6 +67,14 @@ func main() {
 				logger.Warn("cannot close the code index", "error", err)
 			}
 		}()
+	}
+
+	glossaryPath, glossaryError := codeindexinfrastructure.ResolveGlossaryPath("")
+	if glossaryError != nil {
+		logger.Warn("cannot resolve the domain knowledge glossary path, so knowledge indexing is disabled", "error", glossaryError)
+	} else {
+		dependencies.knowledgeLoader = codeindexinfrastructure.NewKnowledgeLoader()
+		dependencies.knowledgeGlossaryPath = glossaryPath
 	}
 
 	handler, stopHelper := newHelperHandler(dependencies)

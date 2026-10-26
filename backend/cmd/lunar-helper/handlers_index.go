@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 
@@ -166,6 +168,8 @@ func (s *helperServer) handleIndexBuild(w http.ResponseWriter, r *http.Request) 
 func (s *helperServer) runIndexBuild(rootPath string, repositories []string, rebuild bool) {
 	defer s.buildTracker.finish()
 
+	s.indexKnowledge()
+
 	if len(repositories) == 0 {
 		results, err := s.indexer.IndexWorkspace(s.buildContext, rootPath, s.allowedRoots)
 		if err != nil {
@@ -194,6 +198,33 @@ func (s *helperServer) runIndexBuild(rootPath string, repositories []string, reb
 		}
 		s.buildTracker.advance()
 	}
+}
+
+func (s *helperServer) indexKnowledge() {
+	if s.knowledgeLoader == nil || s.indexStore == nil || s.knowledgeGlossaryPath == "" {
+		return
+	}
+
+	if _, err := os.Stat(s.knowledgeGlossaryPath); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			s.logger.Info("no domain knowledge glossary found, skipping knowledge indexing", "path", s.knowledgeGlossaryPath)
+			return
+		}
+		s.logger.Warn("cannot inspect the domain knowledge glossary", "path", s.knowledgeGlossaryPath, "error", err)
+		return
+	}
+
+	glossary, err := s.knowledgeLoader.LoadAndIndex(s.buildContext, s.indexStore)
+	if err != nil {
+		s.logger.Warn("knowledge indexing failed", "error", err)
+		return
+	}
+	if glossary == nil {
+		s.logger.Warn("knowledge indexing returned no glossary")
+		return
+	}
+
+	s.logger.Info("indexed domain knowledge", "enum_count", len(glossary.Enums), "note_count", len(glossary.Notes))
 }
 
 func (s *helperServer) logIndexResults(results []codeindexapplication.IndexResult) {

@@ -695,7 +695,62 @@ The index database stays on your computer. When you ask a code question, the hel
 relevant pieces and sends them to the selected AI provider together with your question. The backend
 does not store the index.
 
-### 8.7 Helper settings
+### 8.7 Add domain knowledge
+
+The knowledge folder holds project words and rules that the code alone does not explain: what an
+internal abbreviation means, which status values are valid, or how a business process works. Copilot
+can search this material together with the code index, so answers use your team's language instead of
+guessing.
+
+The folder is `~/.lunar/knowledge` by default. On Windows it is `%USERPROFILE%\.lunar\knowledge`. To
+use another folder, set `LUNAR_KNOWLEDGE_DIR` before you start the helper.
+
+The required file is `glossary.yaml`. A minimal valid file looks like this:
+
+```yaml
+enums:
+  app_type:
+    description: "Merchant application type"
+    values:
+      "1": "EDC"
+      "2": "QRIS"
+
+notes:
+  - term: "ProcessPaymentRequest"
+    explanation: "Payment processing flow for EDC terminals."
+  - term: "MIG"
+    explanation: "A Confluence page that lists the repositories and branches for an issue."
+```
+
+`enums` records fixed value lists. Lunar stores this section, but it is not used in Copilot answers
+yet. Only `notes` and Markdown can be searched now.
+
+You can also put `.md` and `.markdown` files in the knowledge folder and its subfolders. Each `#`,
+`##`, or `###` heading becomes a searchable entry, so write one heading per topic. A file named
+`payments.md` with a `## Refund` heading is indexed as `payments: Refund`. Hidden folders and files
+are skipped.
+
+If `glossary.generated.yaml` exists in the folder, Lunar merges it with `glossary.yaml`. A term in
+`glossary.yaml` wins over the same term in the generated file.
+
+Create the folder and protect it:
+
+```bash
+mkdir -p ~/.lunar/knowledge
+chmod 700 ~/.lunar/knowledge
+chmod 600 ~/.lunar/knowledge/glossary.yaml
+```
+
+To refresh the knowledge, open **Copilot**, click the code index chip, and click **Build index**. The
+build reloads the knowledge folder before it indexes repositories. There is no separate re-index
+button. If `glossary.yaml` is missing, knowledge indexing is skipped and the helper writes an info log.
+If the YAML is invalid, the helper writes a warning and repository indexing continues.
+
+**Security warning:** when Copilot calls the domain knowledge tool, matching entries are sent to the
+AI provider you selected. Do not put passwords, tokens, API keys, or other secrets in knowledge
+files. Keep the folder at permission `0700` and the files at `0600`.
+
+### 8.8 Helper settings
 
 The helper reads these values from `backend/.env`:
 
@@ -708,7 +763,7 @@ The helper reads these values from `backend/.env`:
 If your frontend runs on a different address, add that exact address to `LUNAR_HELPER_ORIGINS` and
 restart the helper.
 
-### 8.8 Build a standalone helper binary
+### 8.9 Build a standalone helper binary
 
 `go run` is fine for daily use. If you want a binary you can keep:
 
@@ -950,6 +1005,8 @@ Open **Copilot**.
 - Click it to see repository, file, and chunk counts, then click **Build index**.
 - With the helper connected and the index ready, Copilot can search code, read files, find symbol
   references, list services, read routes, and inspect git diffs.
+- If the knowledge folder is set up, **Build index** also reloads it. Copilot can then search your
+  notes and Markdown with the domain knowledge tool. See [8.7](#87-add-domain-knowledge).
 - Without the helper or the index, Copilot still answers, but the answer has no code context and the
   page says why.
 
@@ -1024,7 +1081,7 @@ The order is not strict. The helper is independent of the backend.
 Your data stays:
 
 - Accounts, settings, encrypted tokens, and chat history are in `backend/data/lunar.db`.
-- The helper token and code index are in `~/.lunar/`.
+- The helper token, code index, and domain knowledge are in `~/.lunar/`.
 
 ### 10.3 Update the code
 
@@ -1060,14 +1117,15 @@ cp data/lunar.db data/lunar.db.backup
 
 ### 10.5 Reset the helper
 
-This deletes the helper token and the code index.
+This deletes the helper token, the code index, and every file in the domain knowledge folder. Back up
+`~/.lunar/knowledge` first if you want to keep it.
 
 ```bash
 rm -rf ~/.lunar
 ```
 
 Start the helper again. It creates a new token and an empty index. Reconnect the helper in Settings and
-build the index again.
+build the index again. Your knowledge files are not recreated.
 
 ---
 
@@ -1290,7 +1348,7 @@ These rules protect your accounts and your code.
 9. **Read the confirmation before Discard.** It cannot be undone.
 10. **Read the confirmation before Decline.** The author sees it immediately.
 11. **Back up `backend/data/lunar.db`.** It holds users, tokens, settings, and chat history.
-12. **Do not delete `~/.lunar` unless you mean to reset the helper.** It removes the token and index.
+12. **Do not delete `~/.lunar` unless you mean to reset the helper.** It removes the token, the index, and your domain knowledge files.
 13. **Log out on a shared computer.**
 
 ---
